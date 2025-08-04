@@ -3,6 +3,18 @@ name: Build Site
 on:
   workflow_call:
 
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,15 +26,6 @@ jobs:
     steps:
       - name: Checkout caller repo
         uses: actions/checkout@v4
-
-      - name: Switch to master branch (or create it)
-        run: git checkout -B master
-
-      - name: Reset master to match current branch
-        run: |
-          git fetch --depth 1 --no-tags origin $GITHUB_REF_NAME
-          git reset --hard origin/$GITHUB_REF_NAME
-          git status
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -56,13 +59,15 @@ jobs:
             exit $python_exit_code
           fi
 
-      - name: Commit files
-        run: |
-          git config --local user.name "Github Action"
-          git config --local user.email "action@github.com"
-          git add --all
-          git diff-index --quiet HEAD || git commit -m "Auto-build"
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-      - name: Push changes
-        run: |
-          git push -f --set-upstream origin master
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Upload entire repository
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

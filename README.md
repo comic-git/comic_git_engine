@@ -12,12 +12,7 @@ git config submodule.comic_git_engine.ignore all
 
 ## Pre-launch steps
 
-* Write release notes
-* Copy comic_git_dev content over to comic_git
-* Run Version update action to "1.0.0" in comic_git_engine
-* Tag branch "1.0.0" as "v1"
-* Update the Engine Version in the main comic_git to "1.0"
-* Update the action call in the main comic_git to use "v1"
+* Merge `deploy_from_workflow` to `master`
 
 # Post 1.0 TODO
 

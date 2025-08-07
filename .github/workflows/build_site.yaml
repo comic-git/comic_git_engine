@@ -44,7 +44,7 @@ jobs:
           rm -rf .git/modules/comic_git_engine/ || true
           rm -rf comic_git_engine/ || true
           git rm -f comic_git_engine/ || true
-          git submodule add -b "$ENGINE_VERSION" -f https://github.com/ryanvilbrandt/comic_git_engine
+          git submodule add -b "$ENGINE_VERSION" -f https://github.com/comic-git/comic_git_engine
 
       - name: Install dependencies
         run: |

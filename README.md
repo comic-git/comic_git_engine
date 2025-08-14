@@ -6,15 +6,7 @@
 git config submodule.comic_git_engine.ignore all
 ```
 
-# TODO for v1.0 launch
-
-* Update comic_git to what the website should look like for a new user
-
-## Pre-launch steps
-
-* Merge `deploy_from_workflow` to `master`
-
-# Post 1.0 TODO
+# TODO
 
 * Webring functionality
 * Get updated comic images from Caytlin for the showcase

@@ -5,8 +5,8 @@
 {%- block head %}
     {# `super()` means that everything that's currently in the `head` block in base.tpl is added first, and then the
        next line is added to the end. #}
-    {{- super() }}
     <link rel="stylesheet" type="text/css" href="{{ base_dir }}/comic_git_engine/css/infinite_scroll.css">
+    {{- super() }}
 {%- endblock %}
 {# This is the start of the `content` block. It's part of the <body> of the page. This is where all the visible
    parts of the website after the links bar and before the "Powered by comic_git" footer go. #}

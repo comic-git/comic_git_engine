@@ -1,16 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    {# Style sheet for margins and advanced layout #}
-    <link rel="stylesheet" type="text/css" href="{{ base_dir }}/css/advanced_stylesheet.css">
-    {# Style sheet for colors and fonts #}
+    <link rel="stylesheet" type="text/css" href="{{ base_dir }}/your_content/themes/{{ theme }}/css/fonts.css">
+    <link rel="stylesheet" type="text/css" href="{{ base_dir }}/comic_git_engine/css/base.css">
+    <link rel="stylesheet" type="text/css" href="{{ base_dir }}/comic_git_engine/css/comic.css">
     <link rel="stylesheet" type="text/css" href="{{ base_dir }}/your_content/themes/{{ theme }}/css/stylesheet.css">
     <title>{{ _title }} - {{ comic_title }}</title>
 </head>
+
 <body>
 <div id="container">
     {# Banner Image #}
-    <div id="banner"><img id="banner-img" src="{{ banner_image }}"></div>
+    <div id="banner">
+        <a id="banner-img-link" href="{{ base_dir }}/">
+            <img id="banner-img" alt="banner" src="{{ banner_image }}">
+        </a>
+    </div>
+
     {# Links Bar #}
     <div id="links-bar">
     {%- for link in links %}
@@ -20,40 +26,40 @@
 
     {# Comic Page #}
     <div id="comic-page">
+        {%- for comic_path in comic_paths %}
         <a href="{{ comic_base_dir }}/comic/{{ next_id }}/#comic-page">
-            {%- for comic_path in comic_paths %}
-            <img class="comic-image" src="{{ base_dir }}/{{ comic_paths[0] }}" title="{{ escaped_alt_text }}"/>
-            {%- endfor %}
+            <img class="comic-image" src="{{ base_dir }}/{{ comic_path }}" title="{{ escaped_alt_text }}"/>
         </a>
+        {%- endfor %}
     </div>
 
-    {# Navigation links. Supports disabling the links when you're at the first or last page. #}
-    <div id="navigation-bar">
+    {# Navigation Bar. Supports disabling the links when you're at the first or last page. #}
+    <div class="navigation-bar">
     {% if first_id == current_id %}
-        <a class="navigation-button-disabled">First</a>
-        <a class="navigation-button-disabled">Previous</a>
+        <a class="navigation-button-disabled first-button">‹‹ First</a>
+        <a class="navigation-button-disabled previous-button">‹ Previous</a>
     {% else %}
-        <a class="navigation-button" href="{{ comic_base_dir }}/comic/{{ first_id }}/#comic-page">First</a>
-        <a class="navigation-button" href="{{ comic_base_dir }}/comic/{{ previous_id }}/#comic-page">Previous</a>
+        <a class="navigation-button first-button" href="{{ comic_base_dir }}/comic/{{ first_id }}/#comic-page">‹‹ First</a>
+        <a class="navigation-button previous-button" href="{{ comic_base_dir }}/comic/{{ previous_id }}/#comic-page">‹ Previous</a>
     {% endif %}
     {% if last_id == current_id %}
-        <a class="navigation-button-disabled">Next</a>
-        <a class="navigation-button-disabled">Last</a>
+        <a class="navigation-button-disabled next-button">Next ›</a>
+        <a class="navigation-button-disabled last-button">Latest ››</a>
     {% else %}
-        <a class="navigation-button" href="{{ comic_base_dir }}/comic/{{ next_id }}/#comic-page">Next</a>
-        <a class="navigation-button" href="{{ comic_base_dir }}/comic/{{ last_id }}/#comic-page">Last</a>
+        <a class="navigation-button next-button" href="{{ comic_base_dir }}/comic/{{ next_id }}/#comic-page">Next ›</a>
+        <a class="navigation-button last-button" href="{{ comic_base_dir }}/comic/{{ last_id }}/#comic-page">Latest ››</a>
     {% endif %}
     </div>
 
-    {# The comic "blurb" at the bottom with title, post date, tags, etc #}
+    {# Post text and metadata like Title, Post Date, Storyline, Characters, and Tags #}
     <div id="blurb">
-        <h1 id="post-title">{{ _title }}</h1>
+        <h1 id="post-title">{{ page_title }}</h1>
         <h3 id="post-date">Posted on: {{ _post_date }}</h3>
 
         {# The storyline this page is in, with a link to the first page in that storyline #}
         {%- if _storyline %}
             <div id="storyline">
-                Storyline: <a href="{{ comic_base_dir }}/comic/{{ _storyline_id }}/#comic-page">{{ _storyline }}</a>
+                Storyline: <a href="{{ comic_base_dir }}/archive/#archive-section-{{ _storyline | replace(" ", "-") }}">{{ _storyline }}</a>
             </div>
         {%- endif %}
 
@@ -80,6 +86,7 @@
         {%- endif %}
 
         <hr id="post-body-break">
+
         {# The post that goes with this comic #}
         <div id="post-body">
 {{ post_html }}

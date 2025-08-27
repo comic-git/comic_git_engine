@@ -383,7 +383,7 @@ def create_comic_data(comic_folder: str, comic_info: RawConfigParser, page_info:
         "page_title": page_title,
         "comic_paths": [os.path.join(page_dir, f) for f in page_info["image_file_names"]],
         "thumbnail_path": os.path.join(page_dir, "_thumbnail.jpg"),
-        "escaped_alt_text": html.escape(page_info["Alt text"]),
+        "escaped_alt_text": html.escape(page_info.get("Alt text", "")),
         "first_id": first_id,
         "previous_id": previous_id,
         "current_id": current_id,

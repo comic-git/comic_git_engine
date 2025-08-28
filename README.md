@@ -8,8 +8,13 @@ git config submodule.comic_git_engine.ignore all
 
 # TODO
 
-* Update documentation for image links in the Links Bar
 * Webring functionality
-* Update documentation to describe markdown pages (see the `build_md_page` function)
 * Get updated comic images from Caytlin for the showcase
 * Update comic_git_showcase
+
+## Docs updates needed based on recent code updates
+
+* Image links in the Links Bar
+* Describe markdown pages (see the `build_md_page` function)
+* Add `template_name` to Jinja variables
+* Describe how you can add CSS files named after templates to the theme folder

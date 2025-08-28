@@ -130,6 +130,7 @@ def write_to_template(template_name: str, html_path: str, data_dict: Dict=None) 
         raise RuntimeError("Jinja environment was not initialized before write_to_template was called.")
     if data_dict is None:
         data_dict = {}
+    data_dict["template_name"] = template_name
     file_contents = build_md_page(template_name, data_dict)
     if file_contents is None:
         for ext in (".html", ".tpl"):

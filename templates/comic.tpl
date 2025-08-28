@@ -5,7 +5,6 @@
 {%- block head %}
     {# `super()` means that everything that's currently in the `head` block in base.tpl is added first, and then the
        next line is added to the end. #}
-    <link rel="stylesheet" type="text/css" href="{{ base_dir }}/comic_git_engine/css/comic.css">
     {{- super() }}
     <link rel="next" href="{{ comic_base_dir }}/comic/{{ next_id }}/">
 {%- endblock %}

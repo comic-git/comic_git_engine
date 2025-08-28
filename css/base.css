@@ -28,6 +28,10 @@ body {
     transition-duration: 0.2s;
 }
 
+.link-bar-link-image {
+    max-height: 1em;
+}
+
 .link-bar-separator {
     margin: 0 10px;
 }

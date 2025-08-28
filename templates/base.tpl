@@ -62,7 +62,13 @@
        it runs through list of all the links provided by the [Links Bar] section of your comic_info.ini file,
        and it generates a link for each of them. #}
     {%- for link in links %}
-        <a class="link-bar-link" href="{{ link.url }}">{{ link.name }}</a>
+        <a class="link-bar-link" href="{{ link.url }}">
+            {%- if link.image_url %}
+                <img class="link-bar-link-image" src="{{ link.image_url }}">
+            {%- else %}
+                {{ link.name }}
+            {%- endif %}
+        </a>
         {% if not loop.last %}<span class="link-bar-separator">|</span>{% endif %}
     {%- endfor %}
     </div>

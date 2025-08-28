@@ -8,6 +8,8 @@ git config submodule.comic_git_engine.ignore all
 
 # TODO
 
+* Update documentation for image links in the Links Bar
 * Webring functionality
+* Update documentation to describe markdown pages (see the `build_md_page` function)
 * Get updated comic images from Caytlin for the showcase
 * Update comic_git_showcase

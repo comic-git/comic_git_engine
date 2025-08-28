@@ -72,7 +72,17 @@ def setup_output_file_space(comic_info: RawConfigParser):
 def get_links_list(comic_info: RawConfigParser):
     link_list = []
     for option in comic_info.options("Links Bar"):
-        link_list.append({"name": option, "url": web_path(comic_info.get("Links Bar", option))})
+        d = {"name": "", "image_url": "", "url": web_path(comic_info.get("Links Bar", option))}
+        # If the option name is an image path, make that a URL
+        if re.search(r"\.(jpg|jpeg|png|tif|tiff|gif|bmp|webp|webv|svg|eps)$", option):
+            # If the URL starts with a forward slash, prepend the comic subdirectory
+            if option.startswith("/"):
+                d["image_url"] = BASE_DIRECTORY + option
+            else:
+                d["image_url"] = "https://" + option
+        else:
+            d["name"] = option
+        link_list.append(d)
     return link_list
 
 

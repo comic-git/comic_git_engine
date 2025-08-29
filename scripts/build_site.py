@@ -538,7 +538,7 @@ def load_webring_data(comic_info: RawConfigParser, comic_url: str) -> dict[str, 
     if data["version"] != 1:
         raise ValueError(f"Unknown webring data version: {data['version']}")
     show_all_members = comic_info.getboolean("Webring", "Show all members", fallback=False)
-    d = {
+    jinja_variables = {
         "enable_webring": True,
         "webring_label": data.get("label"),
         "webring_home": data.get("home"),
@@ -547,12 +547,12 @@ def load_webring_data(comic_info: RawConfigParser, comic_url: str) -> dict[str, 
     members = data["members"]
     webring_id = comic_info.get("Webring", "Webring ID")
     if show_all_members:
-        d["webring_members"] = []
+        jinja_variables["webring_members"] = []
         exclude_own_comic = comic_info.getboolean("Webring", "Exclude own comic from members", fallback=False)
         for m in members:
             if m["id"] == webring_id and exclude_own_comic:
                 continue
-            d["webring_members"].append(m)
+            jinja_variables["webring_members"].append(m)
     else:
         if not webring_id:
             raise ValueError("The 'Webring ID' option in the [Webring] section must be defined when 'Enable webring' "
@@ -566,10 +566,10 @@ def load_webring_data(comic_info: RawConfigParser, comic_url: str) -> dict[str, 
             raise ValueError(f"Couldn't find '{webring_id}' in the list of members. See the logs for the webring data "
                              f"that was received.")
         # Use the index we found to get the previous and next comics
-        d["webring_prev"] = members[(index - 1) % len(members)]
-        d["webring_next"] = members[(index + 1) % len(members)]
+        jinja_variables["webring_prev"] = members[(index - 1) % len(members)]
+        jinja_variables["webring_next"] = members[(index + 1) % len(members)]
 
-    return d
+    return jinja_variables
 
 
 def write_html_files(comic_folder: str, comic_info: RawConfigParser, comic_data_dicts: List[Dict], global_values: Dict):

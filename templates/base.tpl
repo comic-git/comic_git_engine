@@ -32,6 +32,7 @@
     <link rel="stylesheet" type="text/css" href="{{ base_dir }}/comic_git_engine/css/base.css">
     <link rel="stylesheet" type="text/css" href="{{ base_dir }}/comic_git_engine/css/{{ template_name }}.css">
     <link rel="stylesheet" type="text/css" href="{{ base_dir }}/your_content/themes/{{ theme }}/css/stylesheet.css">
+    <link rel="stylesheet" type="text/css" href="{{ base_dir }}/your_content/themes/{{ theme }}/css/base.css">
     <link rel="stylesheet" type="text/css" href="{{ base_dir }}/your_content/themes/{{ theme }}/css/{{ template_name }}.css">
     {%- if comic_folder != "" %}
     {# Allows for setting specific CSS for an extra comic. #}

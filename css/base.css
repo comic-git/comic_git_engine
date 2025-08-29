@@ -55,6 +55,40 @@ body {
     padding: 15px 15px 10px 15px;
 }
 
+/* Webring */
+
+.webring-members {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.webring-links {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    justify-content: center;
+    column-gap: 20px;
+}
+
+.webring-links > div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.webring-img {
+    max-height: 200px;
+    display: block;
+    margin: 0 auto;
+}
+
+.webring-label {
+    margin: 1em auto;
+}
+
 #powered-by {
+    margin-top: 2em;
     font-size: 0.7em;
 }

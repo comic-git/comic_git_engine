@@ -81,6 +81,10 @@
        "Powered by comic_git" footer. #}
     {% block content %}{% endblock %}
 
+    {%- if enable_webring  %}
+    {% include "webring.tpl" %}
+    {%- endif %}
+
     <div id="powered-by">
         Powered by <a id="powered-by-link" href="https://www.comic-git.com">comic_git</a> v{{ version }}
     </div>

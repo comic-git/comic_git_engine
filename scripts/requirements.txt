@@ -1,4 +1,4 @@
 Jinja2
-Pillow
 markdown2
+Pillow
 pytz

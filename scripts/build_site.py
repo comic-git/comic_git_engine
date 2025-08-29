@@ -1,9 +1,9 @@
 import argparse
 import html
+import json
 import os
 import re
 import shutil
-import sys
 import traceback
 from collections import OrderedDict, defaultdict
 from configparser import RawConfigParser
@@ -11,13 +11,15 @@ from copy import deepcopy
 from datetime import datetime
 from glob import glob
 from importlib import import_module
-from json import dumps
-from time import strptime, strftime, perf_counter_ns
 from typing import Dict, List, Tuple, Any, Optional
+from urllib.error import HTTPError
+from urllib.request import urlopen
 
+import sys
 from PIL import Image
 from markdown2 import Markdown
 from pytz import timezone
+from time import strptime, strftime, perf_counter_ns
 
 import utils
 from build_rss_feed import build_rss_feed
@@ -77,7 +79,7 @@ def get_links_list(comic_info: RawConfigParser):
         if re.search(r"\.(jpg|jpeg|png|tif|tiff|gif|bmp|webp|webv|svg|eps)$", option):
             # If the URL starts with a forward slash, prepend the comic subdirectory
             if option.startswith("/"):
-                d["image_url"] = BASE_DIRECTORY + option
+                d["image_url"] = web_path(option)
             else:
                 d["image_url"] = "https://" + option
         else:
@@ -189,6 +191,10 @@ def build_and_publish_comic_pages(
         "navigation_bar_below_comic": comic_info.getboolean("Navigation Bar", "Below comic", fallback=True),
         "navigation_bar_below_blurb": comic_info.getboolean("Navigation Bar", "Below blurb", fallback=False),
     }
+
+    # Load webring data
+    global_values.update(load_webring_data(comic_info, comic_url))
+
     # Update the global values with any custom values returned by the hook.py file's extra_global_value's function
     extra_global_variables = run_hook(
         global_values["theme"],
@@ -273,7 +279,7 @@ def save_page_info_json_file(comic_folder: str, page_info_list: List, scheduled_
     }
     os.makedirs(f"{comic_folder}comic", exist_ok=True)
     with open(f"{comic_folder}comic/page_info_list.json", "w") as f:
-        f.write(dumps(d))
+        f.write(json.dumps(d))
 
 
 def get_ids(comic_list: List[Dict], index):
@@ -514,6 +520,56 @@ def get_storylines(comic_info: RawConfigParser, comic_data_dicts: List[Dict]) ->
         [comic_info, comic_data_dicts, storylines_dict]
     )
     return hooked_storylines_dict if hooked_storylines_dict is not None else storylines_dict
+
+
+def load_webring_data(comic_info: RawConfigParser, comic_url: str) -> dict[str, Any]:
+    if not comic_info.getboolean("Webring", "Enable webring", fallback=False):
+        return {"enable_webring": False}
+    url = comic_info.get("Webring", "Endpoint")
+    if not url:
+        raise ValueError("The 'Endpoint' option in the [Webring] section must be defined when 'Enable webring' is enabled.")
+    if url.startswith("/"):
+        url = comic_url + url
+    try:
+        with urlopen(url) as response:
+            data = json.load(response)
+    except HTTPError as e:
+        raise ValueError(f"Couldn't load webring data from {url}") from e
+    if data["version"] != 1:
+        raise ValueError(f"Unknown webring data version: {data['version']}")
+    show_all_members = comic_info.getboolean("Webring", "Show all members", fallback=False)
+    d = {
+        "enable_webring": True,
+        "webring_label": data.get("label"),
+        "webring_home": data.get("home"),
+        "show_all_members": show_all_members,
+    }
+    members = data["members"]
+    webring_id = comic_info.get("Webring", "Webring ID")
+    if show_all_members:
+        d["webring_members"] = []
+        exclude_own_comic = comic_info.getboolean("Webring", "Exclude own comic from members", fallback=False)
+        for m in members:
+            if m["id"] == webring_id and exclude_own_comic:
+                continue
+            d["webring_members"].append(m)
+    else:
+        if not webring_id:
+            raise ValueError("The 'Webring ID' option in the [Webring] section must be defined when 'Enable webring' "
+                             "is enabled and 'Show all members' is False.")
+        # Find index of this site in the list of members
+        for index, member in enumerate(members):
+            if member["id"] == webring_id:
+                break
+        else:
+            print(f"Webring members:\n{json.dumps(data, indent=4)}")
+            raise ValueError(f"Couldn't find '{webring_id}' in the list of members. See the logs for the webring data "
+                             f"that was received.")
+        # Use the index we found to get the previous and next comics
+        d["webring_prev"] = members[(index - 1) % len(members)]
+        d["webring_next"] = members[(index + 1) % len(members)]
+
+    return d
 
 
 def write_html_files(comic_folder: str, comic_info: RawConfigParser, comic_data_dicts: List[Dict], global_values: Dict):

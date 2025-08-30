@@ -694,11 +694,6 @@ def print_processing_times():
 
 def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False):
     global BASE_DIRECTORY
-
-    print("CHECKING FOR ENVIRONMENT VARIABLES")
-    print(f"MY_ENV_VAR1: {os.getenv('MY_ENV_VAR1')}")
-    print(f"MY_ENV_VAR2: {os.getenv('MY_ENV_VAR2')}")
-
     checkpoint("Start", clear=True)
 
     # Get site-wide settings for this comic

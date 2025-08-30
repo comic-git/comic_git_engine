@@ -55,13 +55,6 @@ jobs:
 
       - name: Run python build script
         run: |
-          # Only export variables prefixed with INPUT_, stripping the prefix
-          for name in $(compgen -e); do
-            if [[ "$name" == INPUT_* ]]; then
-              short_name="${name#INPUT_}"
-              export "$short_name"="${!name}"
-            fi
-          done
           python comic_git_engine/scripts/build_site.py --delete-scheduled-posts
           python_exit_code=$?
           echo "python script exit code: $python_exit_code"

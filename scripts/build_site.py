@@ -39,6 +39,18 @@ https://comic-git.gitbook.io/documentation/advanced-editing/themes#editing-exist
 -->"""
 
 
+def add_inputs_to_env_vars(inputs: str):
+    """
+    Get a string from the named environment variable, break up the string into individual key/value pairs,
+    and then add each key/value pair as a new environment variable.
+
+    The strings must match the format `KEY=VALUE`, with each pair on a separate line.
+    """
+    for input_pair in utils.str_to_list(os.getenv(inputs, ""), "\n"):
+        k, v = utils.str_to_list(input_pair, ":")
+        os.environ[k] = v
+
+
 def web_path(rel_path: str):
     if rel_path.startswith("/"):
         return BASE_DIRECTORY + rel_path
@@ -695,6 +707,10 @@ def print_processing_times():
 def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False):
     global BASE_DIRECTORY
     checkpoint("Start", clear=True)
+
+    # Pull values from the INPUTS and SECRETS env vars and turn them into individual env vars
+    add_inputs_to_env_vars("INPUTS")
+    add_inputs_to_env_vars("SECRETS")
 
     # Get site-wide settings for this comic
     utils.find_project_root()

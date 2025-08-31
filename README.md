@@ -10,6 +10,9 @@ git config submodule.comic_git_engine.ignore all
 
 * Get updated comic images from Caytlin for the showcase
 * Update comic_git_showcase
+* Keyboard controls https://github.com/comic-git/comic_git/issues/75
+* Improve Social Media Previews https://github.com/comic-git/comic_git/issues/40
 
 ## Docs updates needed based on recent code updates
 
+* Add to Code Hooks about how to pass in INPUTs and SECRETs

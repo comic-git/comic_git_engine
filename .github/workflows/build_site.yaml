@@ -1,8 +1,5 @@
 name: Build Site
 
-on:
-  workflow_call:
-
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
@@ -14,6 +11,17 @@ permissions:
 concurrency:
   group: "pages"
   cancel-in-progress: false
+
+# Allow arbitrary inputs and secrets in this workflow, to be added as env vars to the Python script.
+on:
+  workflow_call:
+    inputs:
+      INPUTS:
+        required: false
+        type: string
+    secrets:
+      SECRETS:
+        required: false
 
 jobs:
   build:
@@ -54,6 +62,9 @@ jobs:
           pip install -r comic_git_engine/scripts/requirements_hooks.txt
 
       - name: Run python build script
+        env:
+          INPUTS: ${{ inputs.INPUTS }}
+          SECRETS: ${{ secrets.SECRETS }}
         run: |
           python comic_git_engine/scripts/build_site.py --delete-scheduled-posts
           python_exit_code=$?

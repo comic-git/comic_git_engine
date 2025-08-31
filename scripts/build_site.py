@@ -47,7 +47,7 @@ def add_inputs_to_env_vars(inputs: str):
     The strings must match the format `KEY=VALUE`, with each pair on a separate line.
     """
     for input_pair in utils.str_to_list(os.getenv(inputs, ""), "\n"):
-        k, v = utils.str_to_list(input_pair, ":")
+        k, v = utils.str_to_list(input_pair, ":", 1)
         os.environ[k] = v
 
 

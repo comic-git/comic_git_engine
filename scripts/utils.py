@@ -65,16 +65,13 @@ def get_comic_url(comic_info: RawConfigParser):
     return comic_url, base_directory
 
 
-def str_to_list(s: str, delimiter: str=",") -> List[str]:
+def str_to_list(s: str, delimiter: str = ",", max_split: int = -1) -> List[str]:
     """
     split(), but with extra stripping of white space and leading/trailing delimiters
-    :param s:
-    :param delimiter:
-    :return:
     """
     if not s:
         return []
-    return [item.strip(" ") for item in s.strip(delimiter + " ").split(delimiter)]
+    return [item.strip(" ") for item in s.strip(delimiter + " ").split(delimiter, max_split)]
 
 
 def find_project_root():

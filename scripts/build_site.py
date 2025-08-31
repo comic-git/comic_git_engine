@@ -44,7 +44,8 @@ def add_inputs_to_env_vars(inputs: str):
     Get a string from the named environment variable, break up the string into individual key/value pairs,
     and then add each key/value pair as a new environment variable.
 
-    The strings must match the format `KEY=VALUE`, with each pair on a separate line.
+    The strings must match the format `KEY:VALUE`, with each pair on a separate line.
+    Leading and trailing spaces are stripped from both the KEY and VALUE.
     """
     for input_pair in utils.str_to_list(os.getenv(inputs, ""), "\n"):
         k, v = utils.str_to_list(input_pair, ":", 1)

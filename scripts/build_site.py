@@ -48,8 +48,14 @@ def add_inputs_to_env_vars(inputs: str):
     Leading and trailing spaces are stripped from both the KEY and VALUE.
     """
     for input_pair in utils.str_to_list(os.getenv(inputs, ""), "\n"):
-        k, v = utils.str_to_list(input_pair, ":", 1)
-        os.environ[k] = v
+        if not input_pair:
+            continue
+        try:
+            k, v = utils.str_to_list(input_pair, ":", 1)
+        except ValueError:
+            print("Invalid key-value pair for input: {!r}".format(input_pair))
+        else:
+            os.environ[k] = v
 
 
 def web_path(rel_path: str):

@@ -79,6 +79,7 @@ jobs:
 
   deploy-github-pages:
     if: ${{ inputs.DEPLOY_TARGET == 'github-pages' }}
+    needs: build
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -31,7 +31,18 @@ on:
         required: false
 
 jobs:
+  check-deploy-target:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate DEPLOY_TARGET
+        run: |
+          if [[ "${{ inputs.DEPLOY_TARGET }}" != "github-pages" && "${{ inputs.DEPLOY_TARGET }}" != "neocities" ]]; then
+            echo "DEPLOY_TARGET must be 'github-pages' or 'neocities'."
+            exit 1
+          fi
+
   build:
+    needs: check-deploy-target
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -110,3 +121,21 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  deploy-neocities:
+    if: ${{ inputs.DEPLOY_TARGET == 'neocities' }}
+    needs: build
+    environment:
+      name: neocities
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to neocities
+        uses: bcomnes/deploy-to-neocities@v3
+        with:
+          api_key: ${{ secrets.NEOCITIES_API_TOKEN }}
+          cleanup: false
+          neocities_supporter: false # set this to true if you have a supporter account and want to bypass unsuported files filter.
+          preview_before_deploy: true # print a deployment plan prior to waiting for files to upload.
+          dist_dir: ${{ inputs.OUTPUT_DIR }}

@@ -16,6 +16,13 @@ concurrency:
 on:
   workflow_call:
     inputs:
+      DEPLOY_TARGET:
+        required: false
+        type: string
+        default: github-pages
+      OUTPUT_DIR:
+        required: false
+        type: string
       INPUTS:
         required: false
         type: string
@@ -25,10 +32,6 @@ on:
 
 jobs:
   build:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -63,6 +66,7 @@ jobs:
 
       - name: Run python build script
         env:
+          OUTPUT_DIR: ${{ inputs.OUTPUT_DIR }}
           INPUTS: ${{ inputs.INPUTS }}
           SECRETS: ${{ secrets.SECRETS }}
         run: |
@@ -73,6 +77,15 @@ jobs:
             exit $python_exit_code
           fi
 
+  deploy-github-pages:
+    if: ${{ inputs.DEPLOY_TARGET == 'github-pages' }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

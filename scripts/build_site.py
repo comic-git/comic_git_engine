@@ -719,6 +719,10 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
     global BASE_DIRECTORY
     checkpoint("Start", clear=True)
 
+    print(f"OUTPUT_DIR: {os.getenv("OUTPUT_DIR", "<none>")}")
+    print(f"INPUTS: {os.getenv("INPUTS", "<none>")}")
+    print(f"SECRETS: {os.getenv("SECRETS", "<none>")}")
+
     # Pull values from the INPUTS and SECRETS env vars and turn them into individual env vars
     add_inputs_to_env_vars("INPUTS")
     add_inputs_to_env_vars("SECRETS")

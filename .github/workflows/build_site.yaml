@@ -134,6 +134,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: .
+
       - name: Deploy to neocities
         uses: bcomnes/deploy-to-neocities@v3
         with:

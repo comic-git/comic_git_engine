@@ -17,6 +17,7 @@ on:
   workflow_call:
     inputs:
       DEPLOY_TARGET:
+        # `github-pages` or `neocities`
         required: false
         type: string
         default: github-pages

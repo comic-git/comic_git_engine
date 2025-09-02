@@ -28,6 +28,8 @@ on:
         required: false
         type: string
     secrets:
+      NEOCITIES_API_TOKEN:
+        required: false
       SECRETS:
         required: false
 
@@ -117,7 +119,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: ${{ inputs.OUTPUT_DIR || '.' }}
 
       - name: Deploy to GitHub Pages
         id: deployment

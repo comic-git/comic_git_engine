@@ -307,8 +307,9 @@ def save_page_info_json_file(comic_folder: str, page_info_list: List, scheduled_
         "page_info_list": page_info_list,
         "scheduled_post_count": scheduled_post_count
     }
-    os.makedirs(f"{comic_folder}comic", exist_ok=True)
-    with open(f"{comic_folder}comic/page_info_list.json", "w") as f:
+    output_dir = os.getenv("OUTPUT_DIR", "")
+    os.makedirs(os.path.join(output_dir, f"{comic_folder}comic"), exist_ok=True)
+    with open(os.path.join(output_dir, f"{comic_folder}comic/page_info_list.json"), "w") as f:
         f.write(json.dumps(d))
 
 
@@ -767,6 +768,8 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
 
     output_dir = os.getenv("OUTPUT_DIR", "")
     if output_dir:
+        shutil.copy("comic_git_engine", output_dir)
+        shutil.copy("your_content", output_dir)
         shutil.copy("favicon.ico", output_dir)
 
     run_hook(theme, "postprocess", [comic_info, comic_data_dicts, global_values])

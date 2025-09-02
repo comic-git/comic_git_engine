@@ -16,19 +16,36 @@ concurrency:
 on:
   workflow_call:
     inputs:
+      DEPLOY_TARGET:
+        # `github-pages` or `neocities`
+        required: false
+        type: string
+        default: github-pages
+      OUTPUT_DIR:
+        required: false
+        type: string
       INPUTS:
         required: false
         type: string
     secrets:
+      NEOCITIES_API_TOKEN:
+        required: false
       SECRETS:
         required: false
 
 jobs:
-  build:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  check-deploy-target:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate DEPLOY_TARGET
+        run: |
+          if [[ "${{ inputs.DEPLOY_TARGET }}" != "github-pages" && "${{ inputs.DEPLOY_TARGET }}" != "neocities" ]]; then
+            echo "DEPLOY_TARGET must be 'github-pages' or 'neocities'."
+            exit 1
+          fi
 
+  build:
+    needs: check-deploy-target
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -63,6 +80,7 @@ jobs:
 
       - name: Run python build script
         env:
+          OUTPUT_DIR: ${{ inputs.OUTPUT_DIR }}
           INPUTS: ${{ inputs.INPUTS }}
           SECRETS: ${{ secrets.SECRETS }}
         run: |
@@ -73,15 +91,60 @@ jobs:
             exit $python_exit_code
           fi
 
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: .
+
+  deploy-github-pages:
+    if: ${{ inputs.DEPLOY_TARGET == 'github-pages' }}
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: .
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: '.'
+          path: ${{ inputs.OUTPUT_DIR || '.' }}
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  deploy-neocities:
+    if: ${{ inputs.DEPLOY_TARGET == 'neocities' }}
+    needs: build
+    environment:
+      name: neocities
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: .
+
+      - name: Deploy to neocities
+        uses: bcomnes/deploy-to-neocities@v3
+        with:
+          api_key: ${{ secrets.NEOCITIES_API_TOKEN }}
+          cleanup: false
+          neocities_supporter: false # set this to true if you have a supporter account and want to bypass unsuported files filter.
+          preview_before_deploy: true # print a deployment plan prior to waiting for files to upload.
+          dist_dir: ${{ inputs.OUTPUT_DIR }}

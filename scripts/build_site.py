@@ -65,6 +65,10 @@ def web_path(rel_path: str):
 
 
 def delete_output_file_space(comic_info: RawConfigParser = None):
+    output_dir = os.getenv("OUTPUT_DIR", "")
+    if output_dir:
+        shutil.rmtree(output_dir, ignore_errors=True)
+        return
     shutil.rmtree("comic", ignore_errors=True)
     if os.path.isfile("feed.xml"):
         os.remove("feed.xml")
@@ -303,8 +307,9 @@ def save_page_info_json_file(comic_folder: str, page_info_list: List, scheduled_
         "page_info_list": page_info_list,
         "scheduled_post_count": scheduled_post_count
     }
-    os.makedirs(f"{comic_folder}comic", exist_ok=True)
-    with open(f"{comic_folder}comic/page_info_list.json", "w") as f:
+    output_dir = os.getenv("OUTPUT_DIR", "")
+    os.makedirs(os.path.join(output_dir, f"{comic_folder}comic"), exist_ok=True)
+    with open(os.path.join(output_dir, f"{comic_folder}comic/page_info_list.json"), "w") as f:
         f.write(json.dumps(d))
 
 
@@ -756,6 +761,12 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
     # Build the RSS feed
     build_rss_feed(comic_info, comic_data_dicts)
     checkpoint("Build RSS feed")
+
+    output_dir = os.getenv("OUTPUT_DIR", "")
+    if output_dir:
+        shutil.copytree("comic_git_engine", os.path.join(output_dir, "comic_git_engine"))
+        shutil.copytree("your_content", os.path.join(output_dir, "your_content"))
+        shutil.copy("favicon.ico", output_dir)
 
     run_hook(theme, "postprocess", [comic_info, comic_data_dicts, global_values])
 

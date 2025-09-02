@@ -139,6 +139,9 @@ def write_to_template(template_name: str, html_path: str, data_dict: Dict=None) 
         else:
             raise TemplateNotFound(f"Template matching '{template_name}' not found")
 
+    output_dir = os.getenv("OUTPUT_DIR", "")
+    if output_dir:
+        html_path = os.path.join(output_dir, html_path)
     dir_name = os.path.dirname(html_path)
     if dir_name:
         os.makedirs(dir_name, exist_ok=True)

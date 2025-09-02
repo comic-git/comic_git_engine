@@ -65,6 +65,10 @@ def web_path(rel_path: str):
 
 
 def delete_output_file_space(comic_info: RawConfigParser = None):
+    output_dir = os.getenv("OUTPUT_DIR", "")
+    if output_dir:
+        shutil.rmtree(output_dir, ignore_errors=True)
+        return
     shutil.rmtree("comic", ignore_errors=True)
     if os.path.isfile("feed.xml"):
         os.remove("feed.xml")
@@ -756,6 +760,10 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
     # Build the RSS feed
     build_rss_feed(comic_info, comic_data_dicts)
     checkpoint("Build RSS feed")
+
+    output_dir = os.getenv("OUTPUT_DIR", "")
+    if output_dir:
+        shutil.copy("favicon.ico", output_dir)
 
     run_hook(theme, "postprocess", [comic_info, comic_data_dicts, global_values])
 

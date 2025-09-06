@@ -9,7 +9,7 @@ from collections import OrderedDict, defaultdict
 from configparser import RawConfigParser
 from copy import deepcopy
 from datetime import datetime
-from glob import glob
+from glob import iglob
 from importlib import import_module
 from typing import Dict, List, Tuple, Any, Optional
 from urllib.error import HTTPError
@@ -248,7 +248,7 @@ def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_sc
     page_info_list = []
     scheduled_post_count = 0
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
-    for page_path in glob(f"your_content/{comic_folder}comics/*/"):
+    for page_path in iglob(f"your_content/{comic_folder}comics/*/"):
         filepath = f"{page_path}info.ini"
         if not os.path.exists(f"{page_path}info.ini"):
             print(f"{page_path} is missing its info.ini file. Skipping")
@@ -349,7 +349,7 @@ def load_transcripts_from_folder(transcripts_dir: str, page_name: str):
     extensions = ["*.txt", "*.md"]
     transcripts = {}
     for ext in extensions:
-        for transcript_path in sorted(glob(os.path.join(transcripts_dir, page_name, ext))):
+        for transcript_path in sorted(iglob(os.path.join(transcripts_dir, page_name, ext))):
             # Ignore the post.txt in the comic folders
             if transcript_path.endswith("post.txt"):
                 continue

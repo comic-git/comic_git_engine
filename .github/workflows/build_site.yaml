@@ -66,11 +66,14 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Pull in comic_git_engine
-        if: ${{ !exists('comic_git_engine/.git') }}
         run: |
-          ENGINE_VERSION=$(sed -n 's/Engine version = \(.*\)/\1/p' your_content/comic_info.ini)
-          echo "Engine version: $ENGINE_VERSION"
-          git submodule add -b "$ENGINE_VERSION" -f https://github.com/comic-git/comic_git_engine
+          if [ ! -d comic_git_engine/.git ]; then
+            ENGINE_VERSION=$(sed -n 's/Engine version = \(.*\)/\1/p' your_content/comic_info.ini)
+            echo "Engine version: $ENGINE_VERSION"
+            git submodule add -b "$ENGINE_VERSION" -f https://github.com/comic-git/comic_git_engine
+          fi
+          git -C comic_git_engine branch --show-current
+          git -C comic_git_engine rev-parse HEAD
 
       - name: Install dependencies
         run: |
@@ -85,8 +88,6 @@ jobs:
           INPUTS: ${{ inputs.INPUTS }}
           SECRETS: ${{ secrets.SECRETS }}
         run: |
-          echo "comic_git_engine branch: $(git -C comic_git_engine branch --show-current)"
-          echo "comic_git_engine HEAD commit: $(git -C comic_git_engine rev-parse HEAD)"
           python comic_git_engine/scripts/build_site.py --delete-scheduled-posts
           python_exit_code=$?
           echo "python script exit code: $python_exit_code"

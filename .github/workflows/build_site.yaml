@@ -48,7 +48,7 @@ jobs:
           fi
 
   build:
-    needs: check-deploy-target
+    needs: check-parameters
     runs-on: ubuntu-latest
     strategy:
       matrix:

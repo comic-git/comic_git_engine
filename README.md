@@ -19,4 +19,4 @@ git config submodule.comic_git_engine.ignore all
 ## Docs updates needed based on recent code updates
 
 * How to deploy to Neocities
-* Specify that build_site will update all submodules 
+* EXTRA_MODULES param

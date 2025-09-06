@@ -349,7 +349,9 @@ def load_transcripts_from_folder(transcripts_dir: str, page_name: str):
     extensions = ["*.txt", "*.md"]
     transcripts = {}
     for ext in extensions:
-        for transcript_path in sorted(glob(os.path.join(transcripts_dir, page_name, ext))):
+        transcript_paths = glob(os.path.join(transcripts_dir, page_name, ext))
+        print(transcript_paths)
+        for transcript_path in sorted(transcript_paths):
             # Ignore the post.txt in the comic folders
             if transcript_path.endswith("post.txt"):
                 continue

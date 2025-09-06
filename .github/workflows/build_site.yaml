@@ -77,6 +77,8 @@ jobs:
       - name: Update all submodules to latest remote
         run: |
           git submodule update --remote
+          ls tamberlane-transcripts
+          ls tamberlane-transcripts/1
 
 #       - name: Pull in additional submodules
 #         if: ${{ inputs.EXTRA_SUBMODULES != '' }}

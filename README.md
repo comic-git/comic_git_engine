@@ -9,6 +9,7 @@ git config submodule.comic_git_engine.ignore all
 # TODO
 
 * Update the homepage_is_latest_comic template so it loads the comic.css files correctly
+* Update latest.tpl as well
 * Get updated comic images from Caytlin for the showcase
 * Update comic_git_showcase
 * Keyboard controls https://github.com/comic-git/comic_git/issues/75
@@ -17,3 +18,5 @@ git config submodule.comic_git_engine.ignore all
 
 ## Docs updates needed based on recent code updates
 
+* How to deploy to Neocities
+* Specify that build_site will update all submodules 

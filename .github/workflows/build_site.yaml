@@ -72,8 +72,10 @@ jobs:
             echo "Engine version: $ENGINE_VERSION";
             git submodule add -b "$ENGINE_VERSION" -f https://github.com/comic-git/comic_git_engine;
           fi
+          git submodule update --remote
           echo "Branch: $(git -C comic_git_engine branch --show-current)";
-          echo "Commit: $(git -C comic_git_engine rev-parse HEAD)";
+          echo "Commit message: $(git -C comic_git_engine log -1 --pretty=%B)";
+          echo "Commit SHA: $(git -C comic_git_engine rev-parse HEAD)";
 
       - name: Install dependencies
         run: |

@@ -27,9 +27,6 @@ on:
       INPUTS:
         required: false
         type: string
-      EXTRA_SUBMODULES:
-        required: false
-        type: string
     secrets:
       NEOCITIES_API_TOKEN:
         required: false

@@ -19,4 +19,5 @@ git config submodule.comic_git_engine.ignore all
 ## Docs updates needed based on recent code updates
 
 * How to deploy to Neocities
-* EXTRA_MODULES param
+* How to use submodules
+* Update "Build locally" docs to specify that the action will use whatever branch is in .gitmodules (test this)

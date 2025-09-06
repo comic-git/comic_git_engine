@@ -37,7 +37,7 @@ on:
         required: false
 
 jobs:
-  check-deploy-target:
+  check-parameters:
     runs-on: ubuntu-latest
     steps:
       - name: Validate DEPLOY_TARGET
@@ -57,6 +57,8 @@ jobs:
     steps:
       - name: Checkout caller repo
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -64,32 +66,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Pull in comic_git_engine
+        if: ${{ !exists('comic_git_engine/.git') }}
         run: |
           ENGINE_VERSION=$(sed -n 's/Engine version = \(.*\)/\1/p' your_content/comic_info.ini)
           echo "Engine version: $ENGINE_VERSION"
-          echo "Removing submodule if it exists..."
-          git submodule deinit -f comic_git_engine/ || true
-          rm -rf .git/modules/comic_git_engine/ || true
-          rm -rf comic_git_engine/ || true
-          git rm -f comic_git_engine/ || true
           git submodule add -b "$ENGINE_VERSION" -f https://github.com/comic-git/comic_git_engine
-
-      - name: Pull in additional submodules
-        if: ${{ inputs.EXTRA_SUBMODULES != '' }}
-        run: |
-          while IFS= read -r line; do
-            # Skip empty lines
-            [ -z "$line" ] && continue
-            repo_branch="$line"
-            repo_path=$(echo "$repo_branch" | cut -d'@' -f1)
-            branch=$(echo "$repo_branch" | cut -d'@' -f2)
-            repo_url="https://github.com/$repo_path.git"
-            name=$(basename "$repo_path")
-            if [ -n "$repo_path" ] && [ -n "$branch" ]; then
-              echo "Adding submodule $name from $repo_url on branch $branch"
-              git submodule add -b "$branch" -f "$repo_url"
-            fi
-          done <<< "${{ inputs.EXTRA_SUBMODULES }}"
 
       - name: Install dependencies
         run: |
@@ -104,6 +85,8 @@ jobs:
           INPUTS: ${{ inputs.INPUTS }}
           SECRETS: ${{ secrets.SECRETS }}
         run: |
+          echo "comic_git_engine branch: $(git -C comic_git_engine branch --show-current)"
+          echo "comic_git_engine HEAD commit: $(git -C comic_git_engine rev-parse HEAD)"
           python comic_git_engine/scripts/build_site.py --delete-scheduled-posts
           python_exit_code=$?
           echo "python script exit code: $python_exit_code"

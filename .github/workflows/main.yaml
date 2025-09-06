@@ -20,28 +20,39 @@ jobs:
           git add --all
           git commit -m "Version ${{ github.event.inputs.version }}"
           git push
-      - name: Update "latest" branch
+      - name: Update version branches and tags
         run: |
+          VERSION=${{ github.event.inputs.version }}
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          MAJOR_TAG="v$MAJOR"
+          MINOR_TAG="v$MAJOR.$MINOR"
+          FULL_TAG="v$VERSION"
+
+          # Create and reset branches
           git fetch --all
-          git checkout latest
-          git reset --hard origin/master
-          git push -f
-      - name: Update minor version branch
-        run: |
-          export INPUT=${{ github.event.inputs.version }}
-          export ENGINE_VERSION=$(echo $INPUT | sed 's/\.[^.]*$//')
-          echo "Engine version (minor only): $ENGINE_VERSION"
-          git checkout -b $ENGINE_VERSION
-          git reset --hard origin/master
-          git push -f --set-upstream origin $ENGINE_VERSION
-      - name: Update revision branch
-        run: |
-          export ENGINE_VERSION=${{ github.event.inputs.version }}
-          echo "Engine version (full): $ENGINE_VERSION"
-          git checkout -b $ENGINE_VERSION
-          git reset --hard origin/master
-          git tag v$ENGINE_VERSION
-          git push -f --tag --set-upstream origin $ENGINE_VERSION
+          git checkout -B latest origin/master
+          git push -f origin latest
+
+          git checkout -B $MINOR_TAG origin/master
+          git push -f origin $MINOR_TAG
+
+          git checkout -B $VERSION origin/master
+          git push -f origin $VERSION
+
+          # Delete existing tags if present
+          git tag -d $MAJOR_TAG || true
+          git tag -d $MINOR_TAG || true
+          git tag -d $FULL_TAG || true
+          git push --delete origin $MAJOR_TAG || true
+          git push --delete origin $MINOR_TAG || true
+          git push --delete origin $FULL_TAG || true
+
+          # Create new tags
+          git tag $MAJOR_TAG
+          git tag $MINOR_TAG
+          git tag $FULL_TAG
+          git push --tags
 
   make_release:
     needs: update_version

@@ -8,6 +8,7 @@ git config submodule.comic_git_engine.ignore all
 
 # TODO
 
+* Update the homepage_is_latest_comic template so it loads the comic.css files correctly
 * Get updated comic images from Caytlin for the showcase
 * Update comic_git_showcase
 * Keyboard controls https://github.com/comic-git/comic_git/issues/75

@@ -69,7 +69,7 @@ jobs:
         run: |
           ls -la
           ls -la comic_git_engine
-          if [ ! -d comic_git_engine/.git ]; then
+          if [ ! -e comic_git_engine/.git ]; then
             ENGINE_VERSION=$(sed -n 's/Engine version = \(.*\)/\1/p' your_content/comic_info.ini)
             echo "Engine version: $ENGINE_VERSION"
             git submodule add -b "$ENGINE_VERSION" -f https://github.com/comic-git/comic_git_engine

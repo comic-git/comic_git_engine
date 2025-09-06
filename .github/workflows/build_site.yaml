@@ -74,22 +74,26 @@ jobs:
           git rm -f comic_git_engine/ || true
           git submodule add -b "$ENGINE_VERSION" -f https://github.com/comic-git/comic_git_engine
 
-      - name: Pull in additional submodules
-        if: ${{ inputs.EXTRA_SUBMODULES != '' }}
+      - name: Update all submodules to latest remote
         run: |
-          while IFS= read -r line; do
-            # Skip empty lines
-            [ -z "$line" ] && continue
-            repo_branch="$line"
-            repo_path=$(echo "$repo_branch" | cut -d'@' -f1)
-            branch=$(echo "$repo_branch" | cut -d'@' -f2)
-            repo_url="https://github.com/$repo_path.git"
-            name=$(basename "$repo_path")
-            if [ -n "$repo_path" ] && [ -n "$branch" ]; then
-              echo "Adding submodule $name from $repo_url on branch $branch"
-              git submodule add -b "$branch" -f "$repo_url"
-            fi
-          done <<< "${{ inputs.EXTRA_SUBMODULES }}"
+          git submodule update --remote
+
+#       - name: Pull in additional submodules
+#         if: ${{ inputs.EXTRA_SUBMODULES != '' }}
+#         run: |
+#           while IFS= read -r line; do
+#             # Skip empty lines
+#             [ -z "$line" ] && continue
+#             repo_branch="$line"
+#             repo_path=$(echo "$repo_branch" | cut -d'@' -f1)
+#             branch=$(echo "$repo_branch" | cut -d'@' -f2)
+#             repo_url="https://github.com/$repo_path.git"
+#             name=$(basename "$repo_path")
+#             if [ -n "$repo_path" ] && [ -n "$branch" ]; then
+#               echo "Adding submodule $name from $repo_url on branch $branch"
+#               git submodule add -b "$branch" -f "$repo_url"
+#             fi
+#           done <<< "${{ inputs.EXTRA_SUBMODULES }}"
 
       - name: Install dependencies
         run: |

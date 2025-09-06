@@ -34,8 +34,8 @@ jobs:
           git checkout -B latest origin/master
           git push -f origin latest
 
-          git checkout -B $MINOR_TAG origin/master
-          git push -f origin $MINOR_TAG
+          git checkout -B "$MAJOR.$MINOR" origin/master
+          git push -f origin "$MAJOR.$MINOR"
 
           git checkout -B $VERSION origin/master
           git push -f origin $VERSION

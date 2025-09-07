@@ -17,7 +17,7 @@ on:
   workflow_call:
     inputs:
       DEPLOY_TARGET:
-        description: `github-pages` or `neocities`
+        description: "`github-pages` or `neocities`"
         required: false
         type: string
         default: github-pages
@@ -27,11 +27,11 @@ on:
       NEOCITIES_CLEAR:
         required: false
         type: boolean
-        default: true
+        default: 'true'
       NEOCITIES_SUPPORTER:
         required: false
         type: boolean
-        default: false
+        default: 'false'
       INPUTS:
         required: false
         type: string
@@ -53,8 +53,8 @@ jobs:
           fi
       - name: Validate NEOCITIES_CLEAR and NEOCITIES_SUPPORTER
         run: |
-          echo "NEOCITIES_CLEAR: ${{ inputs.NEOCITIES_CLEAR }}";
-          echo "NEOCITIES_SUPPORTER: ${{ inputs.NEOCITIES_SUPPORTER }}";
+          echo "NEOCITIES_CLEAR: ${{ inputs.NEOCITIES_CLEAR == 'true' }}";
+          echo "NEOCITIES_SUPPORTER: ${{ inputs.NEOCITIES_SUPPORTER == 'true' }}";
 
   build:
     needs: check-parameters

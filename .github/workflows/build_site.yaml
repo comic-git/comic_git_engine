@@ -12,7 +12,6 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
-# Allow arbitrary inputs and secrets in this workflow, to be added as env vars to the Python script.
 on:
   workflow_call:
     inputs:
@@ -160,10 +159,6 @@ jobs:
         with:
           name: site
           path: .
-
-#       - name: Remove Python files from OUTPUT_DIR
-#         run: |
-#           find "${{ inputs.OUTPUT_DIR }}" -type f \( -name "*.py" -o -name "*.pyc" \) -delete
 
       - name: Deploy to neocities
         uses: bcomnes/deploy-to-neocities@v3

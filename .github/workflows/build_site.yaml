@@ -51,6 +51,10 @@ jobs:
             echo "DEPLOY_TARGET must be 'github-pages' or 'neocities'."
             exit 1
           fi
+      - name: Validate NEOCITIES_CLEAR and NEOCITIES_SUPPORTER
+        run: |
+          echo "NEOCITIES_CLEAR: $NEOCITIES_CLEAR";
+          echo "NEOCITIES_SUPPORTER: $NEOCITIES_SUPPORTER";
 
   build:
     needs: check-parameters

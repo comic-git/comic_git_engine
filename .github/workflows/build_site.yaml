@@ -56,6 +56,10 @@ jobs:
             echo "DEPLOY_TARGET must be 'github-pages' or 'neocities'."
             exit 1
           fi
+      - name: Check Neocities parameters
+        run: |
+          echo "NEOCITIES_CLEAR: ${{ inputs.NEOCITIES_CLEAR == true }}"
+          echo "NEOCITIES_SUPPORTER: ${{ inputs.NEOCITIES_SUPPORTER == true }}"
 
   build:
     needs: check-parameters

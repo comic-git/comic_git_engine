@@ -24,6 +24,14 @@ on:
       OUTPUT_DIR:
         required: false
         type: string
+      NEOCITIES_CLEAR:
+        required: false
+        type: boolean
+        default: true
+      NEOCITIES_SUPPORTER:
+        required: false
+        type: boolean
+        default: false
       INPUTS:
         required: false
         type: string
@@ -147,7 +155,7 @@ jobs:
         uses: bcomnes/deploy-to-neocities@v3
         with:
           api_key: ${{ secrets.NEOCITIES_API_TOKEN }}
-          cleanup: false
-          neocities_supporter: false # set this to true if you have a supporter account and want to bypass unsuported files filter.
+          cleanup: ${{ inputs.neocities_clear }}
+          neocities_supporter: ${{ inputs.neocities_clear }} # set this to true if you have a supporter account and want to bypass unsupported files filter.
           preview_before_deploy: true # print a deployment plan prior to waiting for files to upload.
           dist_dir: ${{ inputs.OUTPUT_DIR }}

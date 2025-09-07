@@ -155,6 +155,10 @@ jobs:
           name: site
           path: .
 
+      - name: Remove Python files from OUTPUT_DIR
+        run: |
+          find "${{ inputs.OUTPUT_DIR }}" -type f \( -name "*.py" -o -name "*.pyc" \) -delete
+
       - name: Deploy to neocities
         uses: bcomnes/deploy-to-neocities@v3
         with:

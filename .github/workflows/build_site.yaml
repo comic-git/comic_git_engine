@@ -25,13 +25,19 @@ on:
         required: false
         type: string
       NEOCITIES_CLEAR:
+        description: "If true, will destructively delete files found on Neocities not found in your OUTPUT_DIR."
         required: false
         type: boolean
         default: true
       NEOCITIES_SUPPORTER:
+        description: "Set this to true if you have a paid neocities account and want to bypass the unsupported files filter. (https://neocities.org/site_files/allowed_types)"
         required: false
         type: boolean
         default: false
+      NEOCITIES_PROTECTED_FILES:
+        description: "An optional glob string used to mark files as protected. Protected files are never cleaned up. Test this option out with `cleanup` set to `false` before relying on it. Protected files are printed when `cleanup` is set to true or false. Glob strings are processed by minimatch (https://github.com/isaacs/minimatch) against remote neocities file paths. Protected files can still be updated."
+        required: false
+        type: string
       INPUTS:
         required: false
         type: string
@@ -155,15 +161,16 @@ jobs:
           name: site
           path: .
 
-      - name: Remove Python files from OUTPUT_DIR
-        run: |
-          find "${{ inputs.OUTPUT_DIR }}" -type f \( -name "*.py" -o -name "*.pyc" \) -delete
+#       - name: Remove Python files from OUTPUT_DIR
+#         run: |
+#           find "${{ inputs.OUTPUT_DIR }}" -type f \( -name "*.py" -o -name "*.pyc" \) -delete
 
       - name: Deploy to neocities
         uses: bcomnes/deploy-to-neocities@v3
         with:
           api_key: ${{ secrets.NEOCITIES_API_TOKEN }}
-          cleanup: ${{ inputs.neocities_clear }}
-          neocities_supporter: ${{ inputs.neocities_clear }} # set this to true if you have a supporter account and want to bypass unsupported files filter.
-          preview_before_deploy: true # print a deployment plan prior to waiting for files to upload.
           dist_dir: ${{ inputs.OUTPUT_DIR }}
+          cleanup: ${{ inputs.NEOCITIES_CLEAR }}
+          neocities_supporter: ${{ inputs.NEOCITIES_SUPPORTER }}
+          preview_before_deploy: true
+          protected_files: ${{ inputs.NEOCITIES_PROTECTED_FILES }}

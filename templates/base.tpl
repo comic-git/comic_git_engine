@@ -39,13 +39,9 @@
     <link rel="stylesheet" type="text/css" href="{{ base_dir }}/your_content/themes/{{ theme }}/css/{{ comic_folder.strip('/') }}.css">
     {%- endif %}
     <link rel="icon" href="{{ base_dir }}/favicon.ico" type="image/x-icon" />
-    <meta property="og:title" content="{{ comic_title }}" />
-    <meta property="og:description" content="{{ comic_description }}" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="{{ comic_url }}/" />
-    <meta property="og:image" content="{{ comic_url + '/your_content/images/preview_image.png' }}" />
-    <meta property="og:image:width" content="200" />
-    <meta property="og:image:height" content="200" />
+    {%- for k, v in social_media.items() %}
+    <meta property="{{ k }}" content="{{ v }}" />
+    {%- endfor %}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ _title }} - {{ comic_title }}</title>
     {%- endblock %}

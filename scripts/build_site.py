@@ -769,9 +769,11 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
 
     output_dir = os.getenv("OUTPUT_DIR", "")
     if output_dir:
-        shutil.copytree("comic_git_engine", os.path.join(output_dir, "comic_git_engine"))
+        shutil.copytree("comic_git_engine/css", os.path.join(output_dir, "comic_git_engine/css"))
+        shutil.copytree("comic_git_engine/js", os.path.join(output_dir, "comic_git_engine/js"))
         shutil.copytree("your_content", os.path.join(output_dir, "your_content"))
         shutil.copy("favicon.ico", output_dir)
+        checkpoint("Copy extra files to output directory")
 
     run_hook(theme, "postprocess", [comic_info, comic_data_dicts, global_values])
 

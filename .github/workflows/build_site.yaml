@@ -23,7 +23,7 @@ on:
       OUTPUT_DIR:
         required: false
         type: string
-      NEOCITIES_CLEAR:
+      NEOCITIES_CLEAN:
         description: "If true, will destructively delete files found on Neocities not found in your OUTPUT_DIR."
         required: false
         type: boolean
@@ -58,7 +58,7 @@ jobs:
           fi
       - name: Check Neocities parameters
         run: |
-          echo "NEOCITIES_CLEAR: ${{ inputs.NEOCITIES_CLEAR == true }}"
+          echo "NEOCITIES_CLEAN: ${{ inputs.NEOCITIES_CLEAN == true }}"
           echo "NEOCITIES_SUPPORTER: ${{ inputs.NEOCITIES_SUPPORTER == true }}"
 
   build:
@@ -165,7 +165,7 @@ jobs:
         with:
           api_key: ${{ secrets.NEOCITIES_API_TOKEN }}
           dist_dir: ${{ inputs.OUTPUT_DIR }}
-          cleanup: ${{ inputs.NEOCITIES_CLEAR }}
+          cleanup: ${{ inputs.NEOCITIES_CLEAN }}
           neocities_supporter: ${{ inputs.NEOCITIES_SUPPORTER }}
           preview_before_deploy: true
           protected_files: ${{ inputs.NEOCITIES_PROTECTED_FILES }}

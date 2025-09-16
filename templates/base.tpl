@@ -40,7 +40,9 @@
     {%- endif %}
     <link rel="icon" href="{{ base_dir }}/favicon.ico" type="image/x-icon" />
     {%- for k, v in social_media.items() %}
+        {%- if not k.startswith("_") %}
     <meta property="{{ k }}" content="{{ v }}" />
+        {%- endif %}
     {%- endfor %}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ _title }} - {{ comic_title }}</title>

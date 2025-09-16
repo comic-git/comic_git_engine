@@ -173,6 +173,22 @@ def read_info(filepath, to_dict=False):
     return info
 
 
+def pick_data(social_media_data: dict, template_name: str) -> dict:
+    # If the template name isn't defined, use `base` instead
+    if template_name not in social_media_data:
+        return social_media_data.get("base", {})
+    # Pull data for the given template and check if it has an `_inherits` field.
+    data = deepcopy(social_media_data[template_name])
+    inherits = data.get("_inherits")
+    if inherits:
+        # If there is an `_inherits` field defined, load data from that and apply current data on top of it.
+        d = pick_data(social_media_data, inherits)
+        d.update(data)
+        data = d
+        del data["_inherits"]
+    return data
+
+
 def get_social_media_data(
         comic_info: RawConfigParser, comic_data_dict: dict, template_name: str, html_path: str
 ):
@@ -204,16 +220,13 @@ def get_social_media_data(
                     "og:image": "_thumbnail",
                     "og:image:alt": "_alt_text",
                 },
-                "latest": "comic",
+                "latest": {
+                    "_inherits": "comic",
+                },
             }
         social_media_data_by_comic[comic_data_dict["comic_folder"]] = social_media_data
     # Parse social media data and apply dynamic data as needed
-    data = social_media_data.get(template_name) or social_media_data.get("base")
-    # If we got a string instead of a dict, load that template's data instead
-    if isinstance(data, str):
-        data = social_media_data.get(data) or social_media_data.get("base")
-    # Make a copy, so we don't fuck up the global variable
-    data = deepcopy(data)
+    data = pick_data(social_media_data, template_name)
     # Iterate through all the values in the data dict, applying dynamic data where appropriate
     comic_url = comic_data_dict["comic_url"]
     if not comic_url.endswith("/"):
@@ -227,7 +240,7 @@ def get_social_media_data(
         elif v == "_comic_description":
             data[k] = comic_info.get("Comic Info", "Description")
         elif v == "_url":
-            data[k] = urljoin(comic_url, html_path)
+            data[k] = html_path
         elif v == "_title":
             data[k] = comic_data_dict["_title"]
         elif v == "_preview_image":

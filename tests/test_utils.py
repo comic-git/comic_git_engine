@@ -1,3 +1,4 @@
+import json
 from configparser import RawConfigParser
 from copy import deepcopy
 from unittest import TestCase
@@ -350,3 +351,64 @@ class TestGetSocialMediaData(TestCase):
             call(r"extra_comic_2\your_content/social_media.json"),
         ])
         open_mock.assert_called_once_with(r"extra_comic_1\your_content/social_media.json")
+
+    @patch("scripts.utils.os.path.isfile", return_value=True)
+    @patch("builtins.open", new_callable=mock_open, read_data=json.dumps({
+        "base": {
+            "og:type": "audio",
+            "og:site_name": "My Comic!!",
+        },
+        "comic": {
+            "_inherits": "base",
+            "og:type": "video",
+            "og:title": "Page 1",
+        },
+        "latest": {
+            "_inherits": "comic",
+            "og:type": "cellotype",
+            "og:description": "That's a lot of nested data",
+        },
+    }))
+    def test_inherits(self, *_mocks):
+        """Tests that _inherits properly overlaps/overrides data as needed."""
+        # latest
+        expected = {
+            "og:type": "cellotype",
+            "og:site_name": "My Comic!!",
+            "og:title": "Page 1",
+            "og:description": "That's a lot of nested data",
+        }
+        actual = utils.get_social_media_data(
+            self.comic_info,
+            self.comic_data_dict,
+            "latest",
+            "comic/001/index.html",
+        )
+        self.assertEqual(expected, actual)
+
+        # comic
+        expected = {
+            "og:type": "video",
+            "og:site_name": "My Comic!!",
+            "og:title": "Page 1",
+        }
+        actual = utils.get_social_media_data(
+            self.comic_info,
+            self.comic_data_dict,
+            "comic",
+            "comic/001/index.html",
+        )
+        self.assertEqual(expected, actual)
+
+        # non-existent-template
+        expected = {
+            "og:type": "audio",
+            "og:site_name": "My Comic!!",
+        }
+        actual = utils.get_social_media_data(
+            self.comic_info,
+            self.comic_data_dict,
+            "non-existent-template",
+            "comic/001/index.html",
+        )
+        self.assertEqual(expected, actual)

@@ -25,3 +25,4 @@ git config submodule.comic_git_engine.ignore all
 * How to use submodules
 * Update "Build locally" docs to specify that the action will use whatever branch is in .gitmodules (test this)
 * Move Collaborators help out of Code Hooks page
+* Social Media previews

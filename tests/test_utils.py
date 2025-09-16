@@ -211,6 +211,27 @@ class TestGetSocialMediaData(TestCase):
         )
         self.assertEqual(expected, actual)
 
+    def test_html_in_post_text(self):
+        """Test that HTML in the post text is escaped properly."""
+        comic_data_dict = deepcopy(self.comic_data_dict)
+        comic_data_dict["post_md"] = "This is a post with <blink>HTML</blink> in it!"
+        expected = {
+            "og:type": "article",
+            "og:site_name": "My Comic!!",
+            "og:title": "Page 1",
+            "og:description": "This is a post with &lt;blink&gt;HTML&lt;/blink&gt; in it!",
+            "og:url": "https://ryanvilbrandt.github.io/comic_git_dev/comic/001/",
+            "og:image": "https://ryanvilbrandt.github.io/comic_git_dev/your_content/comics/001/_thumbnail.jpg",
+            "og:image:alt": "This is where your first comic page will go!",
+        }
+        actual = utils.get_social_media_data(
+            self.comic_info,
+            comic_data_dict,
+            "comic",
+            "comic/001/index.html",
+        )
+        self.assertEqual(expected, actual)
+
     @patch("scripts.utils.os.path.isfile", return_value=True)
     @patch("builtins.open", new_callable=mock_open, read_data='{"comic": {"og:type": "video", "og:site_name": "_title"}}')
     def test_read_from_file(self, open_mock, isfile_mock):

@@ -235,7 +235,7 @@ def get_social_media_data(
         elif v == "_thumbnail":
             data[k] = urljoin(comic_url, comic_data_dict["thumbnail_path"])
         elif v == "_post_text":
-            data[k] = html.escape(comic_data_dict["post_md"])
+            data[k] = html.escape(comic_data_dict["post_md"], quote=False)
         elif v == "_alt_text":
             data[k] = comic_data_dict["escaped_alt_text"]
     return data

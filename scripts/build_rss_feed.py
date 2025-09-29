@@ -122,5 +122,5 @@ def build_rss_feed(comic_info: RawConfigParser, comic_data_dicts: List[Dict]):
     # Replace CDATA manually, because XML is stupid and I can't figure out how to insert raw text
     pretty_string = pretty_string.format(**cdata_dict)
 
-    with open(os.path.join(os.getenv("OUTPUT_DIR"), "feed.xml"), 'wb') as f:
+    with open(os.path.join(os.getenv("OUTPUT_DIR", ""), "feed.xml"), 'wb') as f:
         f.write(bytes(pretty_string, "utf-8"))

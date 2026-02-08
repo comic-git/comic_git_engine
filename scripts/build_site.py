@@ -429,6 +429,7 @@ def create_comic_data(comic_folder: str, comic_info: RawConfigParser, page_info:
         page_title = ""
     d = {
         "page_title": page_title,
+        "page_dir": page_dir,
         "comic_paths": [os.path.join(page_dir, f) for f in page_info["image_file_names"]],
         "thumbnail_path": os.path.join(page_dir, "_thumbnail.jpg"),
         "escaped_alt_text": html.escape(page_info.get("Alt text", "")),
@@ -620,8 +621,12 @@ def write_html_files(comic_folder: str, comic_info: RawConfigParser, comic_data_
     print("Writing {} comic pages...".format(len(comic_data_dicts)))
     for comic_data_dict in comic_data_dicts:
         html_path = f"{comic_folder}comic/{comic_data_dict['page_name']}/index.html"
+        # Use the custom social_media.json file defined for this particular comic, if one exists
+        custom_social_media_path = os.path.join(comic_data_dict["page_dir"], "social_media.json")
         comic_data_dict.update(global_values)
-        comic_data_dict["social_media"] = utils.get_social_media_data(comic_info, comic_data_dict, "comic", html_path)
+        comic_data_dict["social_media"] = utils.get_social_media_data(
+            comic_info, comic_data_dict, "comic", html_path, custom_social_media_path
+        )
         utils.write_to_template("comic", html_path, comic_data_dict)
     write_other_pages(comic_folder, comic_info, comic_data_dicts, global_values)
     run_hook(global_values["theme"], "build_other_pages", [comic_folder, comic_info, comic_data_dicts])

@@ -190,11 +190,25 @@ def pick_data(social_media_data: dict, template_name: str) -> dict:
 
 
 def get_social_media_data(
-        comic_info: RawConfigParser, comic_data_dict: dict, template_name: str, html_path: str
-):
+        comic_info: RawConfigParser, comic_data_dict: dict, template_name: str, html_path: str,
+        custom_json_path: str = None
+) -> dict:
+    """
+    :param comic_info: Config data for comic_info.ini file.
+    :param comic_data_dict: All comic data for the site.
+    :param template_name: Template name for the page being built.
+    :param html_path: The HTML path for the page being built.
+    :param custom_json_path: If a special social_media.json file has been defined, pass the path in here
+        and this function will use it.
+    :return:
+    """
     global social_media_data_by_comic
-    # Get the social media data for the given comic_folder (lets extra comics have different data)
-    social_media_data = social_media_data_by_comic.get(comic_data_dict["comic_folder"])
+    if custom_json_path and os.path.isfile(custom_json_path):
+        with open(custom_json_path) as f:
+            social_media_data = json.load(f)
+    else:
+        # Get the social media data for the given comic_folder (lets extra comics have different data)
+        social_media_data = social_media_data_by_comic.get(comic_data_dict["comic_folder"])
     # Load social media data from the file if it's not loaded yet, or create default data
     if not social_media_data:
         filepath = os.path.join(comic_data_dict["comic_folder"], "your_content/social_media.json")

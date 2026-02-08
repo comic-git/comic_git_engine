@@ -1,14 +1,19 @@
+import html
+import json
 import os
 import re
 from configparser import RawConfigParser
-from time import strftime
+from copy import deepcopy
 from typing import List, Dict, Optional
+from urllib.parse import urljoin
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateNotFound
 from markdown2 import Markdown
+from time import strftime
 
 jinja_environment: Optional[Environment] = None
 markdown_parser: Optional[Markdown] = None
+social_media_data_by_comic = {}
 
 
 def build_jinja_environment(comic_info: RawConfigParser, template_folders: List[str]):
@@ -166,3 +171,98 @@ def read_info(filepath, to_dict=False):
             raise NotImplementedError("Configs with multiple sections not yet supported")
         return dict(info["DEFAULT"])
     return info
+
+
+def pick_data(social_media_data: dict, template_name: str) -> dict:
+    # If the template name isn't defined, use `base` instead
+    if template_name not in social_media_data:
+        return social_media_data.get("base", {})
+    # Pull data for the given template and check if it has an `_inherits` field.
+    data = deepcopy(social_media_data[template_name])
+    inherits = data.get("_inherits")
+    if inherits:
+        # If there is an `_inherits` field defined, load data from that and apply current data on top of it.
+        d = pick_data(social_media_data, inherits)
+        d.update(data)
+        data = d
+        del data["_inherits"]
+    return data
+
+
+def get_social_media_data(
+        comic_info: RawConfigParser, comic_data_dict: dict, template_name: str, html_path: str,
+        custom_json_path: str = None
+) -> dict:
+    """
+    :param comic_info: Config data for comic_info.ini file.
+    :param comic_data_dict: All comic data for the site.
+    :param template_name: Template name for the page being built.
+    :param html_path: The HTML path for the page being built.
+    :param custom_json_path: If a special social_media.json file has been defined, pass the path in here
+        and this function will use it.
+    :return:
+    """
+    global social_media_data_by_comic
+    if custom_json_path and os.path.isfile(custom_json_path):
+        with open(custom_json_path) as f:
+            social_media_data = json.load(f)
+    else:
+        # Get the social media data for the given comic_folder (lets extra comics have different data)
+        social_media_data = social_media_data_by_comic.get(comic_data_dict["comic_folder"])
+    # Load social media data from the file if it's not loaded yet, or create default data
+    if not social_media_data:
+        filepath = os.path.join(comic_data_dict["comic_folder"], "your_content/social_media.json")
+        if os.path.isfile(filepath):
+            with open(filepath) as f:
+                social_media_data = json.load(f)
+        else:
+            social_media_data = {
+                "base": {
+                    "og:type": "website",
+                    "og:site_name": "_comic_name",
+                    "og:title": "_title",
+                    "og:description": "_comic_description",
+                    "og:url": "_url",
+                    "og:image": "_preview_image",
+                },
+                "comic": {
+                    "og:type": "article",
+                    "og:site_name": "_comic_name",
+                    "og:title": "_title",
+                    "og:description": "_post_text",
+                    "og:url": "_url",
+                    "og:image": "_thumbnail",
+                    "og:image:alt": "_alt_text",
+                },
+                "latest": {
+                    "_inherits": "comic",
+                },
+            }
+        social_media_data_by_comic[comic_data_dict["comic_folder"]] = social_media_data
+    # Parse social media data and apply dynamic data as needed
+    data = pick_data(social_media_data, template_name)
+    # Iterate through all the values in the data dict, applying dynamic data where appropriate
+    comic_url = comic_data_dict["comic_url"]
+    if not comic_url.endswith("/"):
+        comic_url += "/"
+    if html_path.endswith("index.html"):
+        html_path = html_path[:-10]
+    html_path = urljoin(comic_url, html_path)
+    for k, v in data.items():
+        if v == "_comic_name":
+            data[k] = comic_info.get("Comic Info", "Comic name")
+        elif v == "_comic_description":
+            data[k] = comic_info.get("Comic Info", "Description")
+        elif v == "_url":
+            data[k] = html_path
+        elif v == "_title":
+            data[k] = comic_data_dict["_title"]
+        elif v == "_preview_image":
+            data[k] = urljoin(comic_url, "your_content/images/preview_image.png")
+        elif v == "_thumbnail":
+            data[k] = urljoin(comic_url, comic_data_dict["thumbnail_path"])
+        elif v == "_post_text":
+            data[k] = html.escape(comic_data_dict["post_md"])
+        elif v == "_alt_text":
+            data[k] = comic_data_dict["escaped_alt_text"]
+    return data

@@ -405,7 +405,7 @@ def create_comic_data(comic_folder: str, comic_info: RawConfigParser, page_info:
         )
     else:
         archive_post_date = page_info["Post date"]
-    post_html = []
+    post_md = []
     post_text_paths = [
         f"your_content/{comic_folder}before post text.txt",
         f"your_content/{comic_folder}before post text.html",
@@ -416,8 +416,9 @@ def create_comic_data(comic_folder: str, comic_info: RawConfigParser, page_info:
     for post_text_path in post_text_paths:
         if os.path.exists(post_text_path):
             with open(post_text_path, "rb") as f:
-                post_html.append(f.read().decode("utf-8"))
-    post_html = MARKDOWN.convert("\n\n".join(post_html))
+                post_md.append(f.read().decode("utf-8"))
+    post_md = "\n\n".join(post_md)
+    post_html = MARKDOWN.convert(post_md)
     # Figure out page_title from the info.ini or comic page file names
     if "Title" in page_info:
         page_title = page_info["Title"]
@@ -428,6 +429,7 @@ def create_comic_data(comic_folder: str, comic_info: RawConfigParser, page_info:
         page_title = ""
     d = {
         "page_title": page_title,
+        "page_dir": page_dir,
         "comic_paths": [os.path.join(page_dir, f) for f in page_info["image_file_names"]],
         "thumbnail_path": os.path.join(page_dir, "_thumbnail.jpg"),
         "escaped_alt_text": html.escape(page_info.get("Alt text", "")),
@@ -437,6 +439,7 @@ def create_comic_data(comic_folder: str, comic_info: RawConfigParser, page_info:
         "next_id": next_id,
         "last_id": last_id,
         "archive_post_date": archive_post_date,
+        "post_md": post_md,
         "post_html": post_html,
         "transcripts": get_transcripts(comic_folder, comic_info, page_info["page_name"]),
     }
@@ -618,7 +621,12 @@ def write_html_files(comic_folder: str, comic_info: RawConfigParser, comic_data_
     print("Writing {} comic pages...".format(len(comic_data_dicts)))
     for comic_data_dict in comic_data_dicts:
         html_path = f"{comic_folder}comic/{comic_data_dict['page_name']}/index.html"
+        # Use the custom social_media.json file defined for this particular comic, if one exists
+        custom_social_media_path = os.path.join(comic_data_dict["page_dir"], "social_media.json")
         comic_data_dict.update(global_values)
+        comic_data_dict["social_media"] = utils.get_social_media_data(
+            comic_info, comic_data_dict, "comic", html_path, custom_social_media_path
+        )
         utils.write_to_template("comic", html_path, comic_data_dict)
     write_other_pages(comic_folder, comic_info, comic_data_dicts, global_values)
     run_hook(global_values["theme"], "build_other_pages", [comic_folder, comic_info, comic_data_dicts])
@@ -639,7 +647,7 @@ def write_other_pages(comic_folder: str, comic_info: RawConfigParser, comic_data
     for page in pages_list:
         # Special handling for tag pages
         if page["template_name"] == "tagged":
-            write_tagged_pages(comic_data_dicts, base_data_dict)
+            write_tagged_pages(comic_info, comic_data_dicts, base_data_dict)
             continue
         # If we're building the index or 404 pages, they should go in the root directory
         if page["template_name"].lower() in ("index", "404"):
@@ -655,10 +663,11 @@ def write_other_pages(comic_folder: str, comic_info: RawConfigParser, comic_data
         data_dict = base_data_dict.copy()
         if page["title"]:
             data_dict["_title"] = page["title"]
+        data_dict["social_media"] = utils.get_social_media_data(comic_info, data_dict, page["template_name"], html_path)
         utils.write_to_template(page["template_name"], html_path, data_dict)
 
 
-def write_tagged_pages(comic_data_dicts: List[Dict], global_values: Dict):
+def write_tagged_pages(comic_info: RawConfigParser, comic_data_dicts: List[Dict], global_values: Dict):
     if not comic_data_dicts:
         return
     tags = defaultdict(list)
@@ -677,6 +686,7 @@ def write_tagged_pages(comic_data_dicts: List[Dict], global_values: Dict):
         # Tag names can get weird, and it doesn't matter too much if their files don't get created.
         # Catch any exceptions and print the error, but let things continue if needed.
         filename = f"tagged/{tag}/index.html"
+        data_dict["social_media"] = utils.get_social_media_data(comic_info, data_dict, "tagged", filename)
         try:
             utils.write_to_template("tagged", filename, data_dict)
         except Exception:
@@ -764,9 +774,11 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
 
     output_dir = os.getenv("OUTPUT_DIR", "")
     if output_dir:
-        shutil.copytree("comic_git_engine", os.path.join(output_dir, "comic_git_engine"))
+        shutil.copytree("comic_git_engine/css", os.path.join(output_dir, "comic_git_engine/css"))
+        shutil.copytree("comic_git_engine/js", os.path.join(output_dir, "comic_git_engine/js"))
         shutil.copytree("your_content", os.path.join(output_dir, "your_content"))
         shutil.copy("favicon.ico", output_dir)
+        checkpoint("Copy extra files to output directory")
 
     run_hook(theme, "postprocess", [comic_info, comic_data_dicts, global_values])
 

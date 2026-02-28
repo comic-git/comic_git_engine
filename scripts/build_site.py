@@ -818,4 +818,12 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    main(args.delete_scheduled_posts, args.publish_all_comics)
+    try:
+        main(args.delete_scheduled_posts, args.publish_all_comics)
+    except Exception as e:
+        # If the repo is not running in GitHub, raise the error normally
+        if not os.getenv("GITHUB_REPOSITORY"):
+            raise
+        # Otherwise, print the error to stdout so it's more readable in the logs
+        print(traceback.format_exc())
+        print(f"\n============= ERROR =============\n{e}\n=================================\n")

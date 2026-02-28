@@ -249,6 +249,8 @@ def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_sc
     scheduled_post_count = 0
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
     for page_path in iglob(f"your_content/{comic_folder}comics/*/"):
+        # Unuglify Windows paths
+        page_path = page_path.replace("\\", "/")
         filepath = f"{page_path}info.ini"
         if not os.path.exists(f"{page_path}info.ini"):
             print(f"{page_path} is missing its info.ini file. Skipping")
@@ -265,6 +267,15 @@ def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_sc
             filenames = page_info.get("Filenames") or page_info.get("Filename", "")
             if filenames:
                 page_info["image_file_names"] = utils.str_to_list(filenames)
+                # Sanity check that the files actually exist
+                for filename in page_info["image_file_names"]:
+                    path = os.path.join(page_path, filename)
+                    if not os.path.isfile(path):
+                        raise FileNotFoundError(
+                            f"Could not find comic image {path}\n"
+                            f"Did you mistype the filename in the info.ini file? Remember that filenames and extensions "
+                            f"are case-sensitive when building on GitHub."
+                        )
             else:
                 # If Filenames weren't defined in the info.ini, then search through all images in the given comic
                 # folder and add any you find to the list of image files.
@@ -414,7 +425,7 @@ def create_comic_data(comic_folder: str, comic_info: RawConfigParser, page_info:
         f"your_content/{comic_folder}after post text.html",
     ]
     for post_text_path in post_text_paths:
-        if os.path.exists(post_text_path):
+        if os.path.isfile(post_text_path):
             with open(post_text_path, "rb") as f:
                 post_md.append(f.read().decode("utf-8"))
     post_md = "\n\n".join(post_md)

@@ -19,7 +19,7 @@
 
     {# When text is surrounded by {{ these double curly braces }}, it's representing a variable that's passed in by
        the Python script that generates the HTML file. That value is dropped into the existing HTML with no changes.
-       For example, if the value passed in to `comic_base_dir` is `comic_git`, then `{{ comic_base_dir }}/comic`
+       For example, if the value passed in to `comic_base_dir` is `/comic_git`, then `{{ comic_base_dir }}/comic`
        becomes `/comic_git/comic` #}
     {%- if comic_paths %}
     <div id="comic-page">

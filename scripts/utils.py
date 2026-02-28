@@ -18,10 +18,16 @@ social_media_data_by_comic = {}
 
 def build_jinja_environment(comic_info: RawConfigParser, template_folders: List[str]):
     global jinja_environment
-    if comic_info.getboolean("Comic Settings", "Allow missing variables in templates", fallback=False):
-        jinja_environment = Environment(loader=FileSystemLoader(template_folders))  # noqa
-    else:
-        jinja_environment = Environment(loader=FileSystemLoader(template_folders), undefined=StrictUndefined)  # noqa
+    try:
+        if comic_info.getboolean("Comic Settings", "Allow missing variables in templates", fallback=False):
+            jinja_environment = Environment(loader=FileSystemLoader(template_folders))  # noqa
+        else:
+            jinja_environment = Environment(loader=FileSystemLoader(template_folders), undefined=StrictUndefined)  # noqa
+    except Exception as e:
+        raise ValueError(
+            f"Error initializing Jinja2 environment with template folders: {template_folders}\n"
+            f"Verify all template folders exist and are readable. {e}"
+        ) from e
 
 
 def build_markdown_parser(comic_info: RawConfigParser):
@@ -103,8 +109,19 @@ def build_md_page(template_name: str, data_dict: Dict=None) -> Optional[str]:
     md_path = f"your_content/themes/{theme}/pages/{template_name}.md"
     if not os.path.isfile(md_path):
         return None
-    with open(md_path, "rb") as f:
-        converted_md = markdown_parser.convert(f.read())
+    try:
+        with open(md_path, "rb") as f:
+            converted_md = markdown_parser.convert(f.read())
+    except IOError as e:
+        raise ValueError(
+            f"Error reading markdown file {md_path}\n"
+            f"Verify the file exists and is readable."
+        ) from e
+    except Exception as e:
+        raise ValueError(
+            f"Error converting markdown file {md_path}: {e}\n"
+            f"Verify the file is valid markdown and uses UTF-8 encoding."
+        ) from e
     metadata = converted_md.metadata
     new_data_dict = data_dict.copy()
     new_data_dict["text"] = converted_md
@@ -156,25 +173,43 @@ def write_to_template(template_name: str, html_path: str, data_dict: Dict=None) 
         os.makedirs(dir_name, exist_ok=True)
     t = strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{t}] Writing {html_path}")
-    with open(html_path, "wb") as f:
-        f.write(bytes(file_contents, "utf-8"))
+    try:
+        with open(html_path, "wb") as f:
+            f.write(bytes(file_contents, "utf-8"))
+    except (OSError, IOError) as e:
+        raise ValueError(
+            f"Could not write to {html_path}\n"
+            f"Verify the directory exists and you have write permissions."
+        ) from e
 
 
 def read_info(filepath, to_dict=False):
-    with open(filepath, "rb") as f:
-        info_string = f.read().decode("utf-8")
-    if not re.search(r"^\[.*?]", info_string):
-        # print(filepath + " has no section")
-        info_string = "[DEFAULT]\n" + info_string
-    info = RawConfigParser()
-    info.optionxform = str
-    info.read_string(info_string)
-    if to_dict:
-        # TODO: Support multiple sections
-        if not list(info.keys()) == ["DEFAULT"]:
-            raise NotImplementedError("Configs with multiple sections not yet supported")
-        return dict(info["DEFAULT"])
-    return info
+    try:
+        with open(filepath, "rb") as f:
+            info_string = f.read().decode("utf-8")
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            f"Configuration file not found: {filepath}\n"
+            f"Verify the file path is correct and the file exists."
+        ) from e
+    try:
+        if not re.search(r"^\[.*?]", info_string):
+            # print(filepath + " has no section")
+            info_string = "[DEFAULT]\n" + info_string
+        info = RawConfigParser()
+        info.optionxform = str
+        info.read_string(info_string)
+        if to_dict:
+            # TODO: Support multiple sections
+            if not list(info.keys()) == ["DEFAULT"]:
+                raise NotImplementedError("Configs with multiple sections not yet supported")
+            return dict(info["DEFAULT"])
+        return info
+    except Exception as e:
+        raise ValueError(
+            f"Error parsing configuration file {filepath}: {e}\n"
+            f"Verify the file is the correct format with each uncommented line matching the format <option> = <value>"
+        ) from e
 
 
 def pick_data(social_media_data: dict, template_name: str) -> dict:
@@ -208,8 +243,19 @@ def get_social_media_data(
     """
     global social_media_data_by_comic
     if custom_json_path and os.path.isfile(custom_json_path):
-        with open(custom_json_path) as f:
-            social_media_data = json.load(f)
+        try:
+            with open(custom_json_path) as f:
+                social_media_data = json.load(f)
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f"Invalid JSON in social_media.json file: {custom_json_path}\n"
+                f"Verify the file contains valid JSON syntax."
+            ) from e
+        except IOError as e:
+            raise ValueError(
+                f"Error reading social_media.json file: {custom_json_path}\n"
+                f"Verify the file exists and is readable."
+            ) from e
     else:
         # Get the social media data for the given comic_folder (lets extra comics have different data)
         social_media_data = social_media_data_by_comic.get(comic_data_dict["comic_folder"])

@@ -242,7 +242,14 @@ def build_and_publish_comic_pages(
 def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_scheduled_posts: bool,
                        publish_all_comics: bool) -> Tuple[List[Dict], int]:
     date_format = comic_info.get("Comic Settings", "Date format")
-    tz_info = timezone(comic_info.get("Comic Settings", "Timezone"))
+    try:
+        tz_info = timezone(comic_info.get("Comic Settings", "Timezone"))
+    except Exception as e:
+        raise ValueError(
+            f"Invalid timezone specified in [Comic Settings] Timezone: {e}\n"
+            f"Use a valid IANA timezone name (e.g., 'America/Los_Angeles', 'Europe/London', 'UTC'). "
+            f"See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for a complete list."
+        ) from e
     local_time = datetime.now(tz=tz_info)
     print(f"Local time is {local_time}")
     page_info_list = []
@@ -256,7 +263,13 @@ def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_sc
             print(f"{page_path} is missing its info.ini file. Skipping")
             continue
         page_info = read_info(filepath, to_dict=True)
-        post_date = tz_info.localize(datetime.strptime(page_info["Post date"], date_format))
+        try:
+            post_date = tz_info.localize(datetime.strptime(page_info["Post date"], date_format))
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid 'Post date' in {filepath}: {page_info['Post date']}\n"
+                f"The date format is '{date_format}'. Ensure the date matches this format exactly (case-sensitive)."
+            ) from e
         if post_date > local_time and not publish_all_comics:
             scheduled_post_count += 1
             # Post date is in the future, so delete the folder with the resources

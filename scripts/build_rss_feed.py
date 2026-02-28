@@ -43,7 +43,14 @@ def add_item(xml_parent, comic_data, comic_url, comic_info):
     ElementTree.SubElement(item, "title").text = comic_data["_title"]
     ElementTree.SubElement(item, "{http://purl.org/dc/elements/1.1/}creator").text = \
         comic_info.get("Comic Info", "Author")
-    post_date = strptime(comic_data["_post_date"], comic_info.get("Comic Settings", "Date format"))
+    date_format = comic_info.get("Comic Settings", "Date format")
+    try:
+        post_date = strptime(comic_data["_post_date"], date_format)
+    except ValueError as e:
+        raise ValueError(
+            f"Invalid post date '{comic_data['_post_date']}' for page '{comic_data['page_name']}'\n"
+            f"The date format is '{date_format}'. Ensure the date matches this format."
+        ) from e
     ElementTree.SubElement(item, "pubDate").text = strftime("%a, %d %b %Y %H:%M:%S +0000", post_date)
     direct_link = urljoin(comic_url, "comic/{}/".format(comic_data["page_name"]))
     ElementTree.SubElement(item, "link").text = direct_link
@@ -122,5 +129,17 @@ def build_rss_feed(comic_info: RawConfigParser, comic_data_dicts: List[Dict]):
     # Replace CDATA manually, because XML is stupid and I can't figure out how to insert raw text
     pretty_string = pretty_string.format(**cdata_dict)
 
-    with open(os.path.join(os.getenv("OUTPUT_DIR", ""), "feed.xml"), 'wb') as f:
-        f.write(bytes(pretty_string, "utf-8"))
+    feed_path = os.path.join(os.getenv("OUTPUT_DIR", ""), "feed.xml")
+    try:
+        with open(feed_path, 'wb') as f:
+            f.write(bytes(pretty_string, "utf-8"))
+    except (OSError, IOError) as e:
+        raise ValueError(
+            f"Could not write RSS feed to {feed_path}\n"
+            f"Verify the output directory exists and has write permissions."
+        ) from e
+    except UnicodeEncodeError as e:
+        raise ValueError(
+            f"Error encoding RSS feed to UTF-8\n"
+            f"PLACEHOLDER: The feed may contain unsupported characters."
+        ) from e

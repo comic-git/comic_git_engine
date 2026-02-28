@@ -497,7 +497,11 @@ def resize(im, size):
         w = int(size[:-1].strip())
         h = image_height / image_width * w
     else:
-        raise ValueError("Unknown resize value: {!r}".format(size))
+        raise ValueError(
+            "Unknown resize value: {!r}\n"
+            "Use format like '100,200' (width,height), '50%' (percentage), '100h' (height), or '100w' (width)."
+            .format(size)
+        )
     return im.resize((int(w), int(h)))
 
 
@@ -579,9 +583,15 @@ def load_webring_data(comic_info: RawConfigParser, comic_url: str) -> dict[str, 
         with urlopen(url) as response:
             data = json.load(response)
     except HTTPError as e:
-        raise ValueError(f"Couldn't load webring data from {url}") from e
+        raise ValueError(
+            f"Couldn't load webring data from {url}\n"
+            f"Check that the endpoint URL is correct and accessible, and that the server is responding."
+        ) from e
     if data["version"] != 1:
-        raise ValueError(f"Unknown webring data version: {data['version']}")
+        raise ValueError(
+            f"Unknown webring data version: {data['version']}\n"
+            f"Please report this error to the comic_git developers on our Discord. https://discord.gg/zmdHGXB"
+        )
     show_all_members = comic_info.getboolean("Webring", "Show all members", fallback=False)
     jinja_variables = {
         "enable_webring": True,
@@ -608,8 +618,10 @@ def load_webring_data(comic_info: RawConfigParser, comic_url: str) -> dict[str, 
                 break
         else:
             print(f"Webring members:\n{json.dumps(data, indent=4)}")
-            raise ValueError(f"Couldn't find '{webring_id}' in the list of members. See the logs for the webring data "
-                             f"that was received.")
+            raise ValueError(
+                f"Couldn't find '{webring_id}' in the list of members.\n"
+                f"Verify your Webring ID matches exactly with one of the IDs in the webring data (see logs above)."
+            )
         # Use the index we found to get the previous and next comics
         jinja_variables["webring_prev"] = members[(index - 1) % len(members)]
         jinja_variables["webring_next"] = members[(index + 1) % len(members)]

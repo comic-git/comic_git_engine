@@ -142,7 +142,11 @@ def write_to_template(template_name: str, html_path: str, data_dict: Dict=None) 
             except TemplateNotFound:
                 pass
         else:
-            raise TemplateNotFound(f"Template matching '{template_name}' not found")
+            raise TemplateNotFound(
+                f"Template matching '{template_name}' not found\n"
+                f"Verify the template file exists in your theme's templates folder or the default templates folder, "
+                f"and that the filename matches (case-sensitive)."
+            )
 
     output_dir = os.getenv("OUTPUT_DIR", "")
     if output_dir:

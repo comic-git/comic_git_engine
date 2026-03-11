@@ -490,7 +490,7 @@ def build_comic_data_dicts(comic_folder: str, comic_info: RawConfigParser, page_
     ]
 
 
-def resize(im, size):
+def resize(im: Image, size: str) -> Image:
     image_width, image_height = im.size
     if "," in size:
         # Convert a string of the form "100, 36" into a 2-tuple of ints (100, 36)

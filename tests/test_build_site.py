@@ -1,8 +1,9 @@
 from configparser import RawConfigParser
 from copy import deepcopy
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
+from build_site import resize
 from scripts import build_site
 
 MUT = "scripts.build_site."
@@ -37,6 +38,40 @@ WEBRING_JSON = {
         }
     ]
 }
+
+
+class TestImageUtils(TestCase):
+
+    def test_resize_set_size(self):
+        im = MagicMock()
+        im.size = 100, 200
+        self.assertEqual(im.resize.return_value, resize(im, " 150, 350 "))
+        im.resize.assert_called_once_with((150, 350))
+
+    def test_resize_percentage(self):
+        im = MagicMock()
+        im.size = 100, 200
+        self.assertEqual(im.resize.return_value, resize(im, "50%"))
+        im.resize.assert_called_once_with((50, 100))
+
+    def test_resize_set_height(self):
+        im = MagicMock()
+        im.size = 100, 200
+        self.assertEqual(im.resize.return_value, resize(im, "220h"))
+        im.resize.assert_called_once_with((110, 220))
+
+    def test_resize_set_width(self):
+        im = MagicMock()
+        im.size = 100, 200
+        self.assertEqual(im.resize.return_value, resize(im, "110w"))
+        im.resize.assert_called_once_with((110, 220))
+
+    def test_resize_exception(self):
+        im = MagicMock()
+        im.size = 100, 200
+        with self.assertRaisesRegex(ValueError, "Unknown resize value:"):
+            resize(im, "farts lol")
+        im.resize.assert_not_called()
 
 
 @patch(MUT + "json.load", return_value=WEBRING_JSON)

@@ -13,6 +13,10 @@ body {
     margin-bottom: 15px;
 }
 
+#banner-img {
+    width: 100%;
+}
+
 #links-bar {
     margin-bottom: 15px;
     padding: 5px;

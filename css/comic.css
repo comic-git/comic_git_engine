@@ -18,6 +18,10 @@
     cursor: zoom-out;
 }
 
+.comic-image {
+    width: 100%;
+}
+
 #comic-overlay-image {
     margin: 1rem;
     max-width: calc(100% - 2rem);
@@ -26,6 +30,7 @@
 }
 
 .navigation-bar {
+    width: 100%;
     display: flex;
     margin: 0 auto 20px auto;
     font-weight: bold;
@@ -33,8 +38,14 @@
 }
 
 .navigation-button, .navigation-button-disabled {
-    padding: 0 20px;
+    padding: 0 2%;
+    font-size: clamp(1em, 5vw, 2em);
     white-space: nowrap;
+}
+
+.navigation-button-disabled {
+    cursor: default;
+    pointer-events: none;
 }
 
 #post-title {

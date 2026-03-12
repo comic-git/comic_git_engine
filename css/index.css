@@ -1,3 +1,7 @@
+#home-page {
+    margin: 7px;
+}
+
 .infobox {
     display: block;
     padding: 10px 15px;
@@ -5,6 +9,9 @@
     background-color: #ECF7FB;
 }
 
+#comic-git-logo {
+    width: 100%;
+}
 
 .right-column-layout, .left-column-layout {
     display: grid;

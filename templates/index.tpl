@@ -5,6 +5,8 @@
    parts of the website after the links bar and before the "Powered by comic_git" footer go. #}
 {%- block content %}
 
+<div id="home-page">
 {{ home_page_text }}
+</div>
 
 {%- endblock %}

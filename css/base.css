@@ -38,6 +38,8 @@ body {
 
 .link-bar-separator {
     margin: 0 10px;
+    cursor: default;
+    pointer-events: none;
 }
 
 /* Styles <a> links to look like buttons with rounded borders. */
@@ -95,4 +97,54 @@ body {
 #powered-by {
     margin-top: 2em;
     font-size: 0.7em;
+}
+
+/* Responsive list indenting */
+ul, ol {
+    padding-left: clamp(1rem, 5vw, 2rem);
+}
+
+@media screen and (max-width: 700px) {
+    body, #container {
+        margin: 0;
+    }
+
+    #container {
+        padding: 0 0 30px;
+    }
+
+    #blurb {
+        margin: 0 10px;
+    }
+}
+
+@media screen and (max-width: 500px) {
+    #links-bar {
+        flex-wrap: wrap;
+        column-gap: 0.45em;
+        row-gap: 0.35em;
+        padding: 4px;
+        line-height: 1.25;
+    }
+
+    .link-bar-link {
+        display: inline-block;
+        padding: 0.2em 0.45em;
+        border-radius: 999px;
+        white-space: nowrap;
+        text-decoration: none;
+        background-color: rgb(255 255 255 / 12%);
+    }
+
+    .link-bar-link:hover {
+        text-decoration: none;
+    }
+
+    .link-bar-separator {
+        display: none;
+    }
+
+    .link-bar-link-image {
+        max-height: 0.9em;
+    }
 }

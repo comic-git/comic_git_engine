@@ -8,6 +8,12 @@ git config submodule.comic_git_engine.ignore all
 
 # TODO
 
+## High Priority
+
+* Extra comics should be included in the RSS feed (option for separate RSS feeds for each extra?)
+
+## Medium Priority
+
 * Improve Social Media Previews https://github.com/comic-git/comic_git/issues/40
 * Add "Move sections to end" option for the Archive
 * Look into "smart" upload to Neocities, where it only uploads changed files

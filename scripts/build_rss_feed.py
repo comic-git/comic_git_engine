@@ -225,12 +225,16 @@ def write_feed_xml(feed_output_path: str, xml_text: str) -> None:
         ) from e
 
 
-def build_rss_feed(comic_info: RawConfigParser, comic_data_dicts: list[dict[str, Any]]) -> None:
+def build_rss_feed(
+        comic_info: RawConfigParser,
+        comic_data_dicts: list[dict[str, Any]],
+        feed_relative_path: str = "feed.xml",
+) -> None:
     if not comic_info.getboolean("RSS Feed", "Build RSS feed"):
         return
 
     validate_comic_data_dicts(comic_data_dicts)
-    feed_context = build_feed_context(comic_info, comic_data_dicts)
+    feed_context = build_feed_context(comic_info, comic_data_dicts, feed_relative_path=feed_relative_path)
     root, cdata_map = build_feed_xml(feed_context)
     xml_text = serialize_feed_xml(root, cdata_map)
     write_feed_xml(feed_context["feed_output_path"], xml_text)

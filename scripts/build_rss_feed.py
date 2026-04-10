@@ -1,5 +1,6 @@
 import os
 from configparser import RawConfigParser
+from dataclasses import dataclass
 from re import sub
 from time import strptime, strftime
 from typing import Any
@@ -9,6 +10,14 @@ from xml.etree import ElementTree
 from xml.etree.ElementTree import register_namespace
 
 from utils import get_comic_url
+
+
+@dataclass(slots=True)
+class FeedJob:
+    comic_info: RawConfigParser
+    comic_data_dicts: list[dict[str, Any]]
+    feed_relative_path: str = "feed.xml"
+    comic_page_relative_path: str = "comic"
 
 
 def add_base_tags_to_channel(channel: ElementTree.Element, feed_context: dict[str, Any]) -> None:
@@ -228,22 +237,46 @@ def write_feed_xml(feed_output_path: str, xml_text: str) -> None:
         ) from e
 
 
+def build_feed_job(
+        comic_info: RawConfigParser,
+        comic_data_dicts: list[dict[str, Any]],
+        feed_relative_path: str = "feed.xml",
+        comic_page_relative_path: str = "comic",
+) -> FeedJob:
+    return FeedJob(
+        comic_info=comic_info,
+        comic_data_dicts=comic_data_dicts,
+        feed_relative_path=feed_relative_path,
+        comic_page_relative_path=comic_page_relative_path,
+    )
+
+
+def build_rss_feed_from_job(feed_job: FeedJob) -> None:
+    if not feed_job.comic_info.getboolean("RSS Feed", "Build RSS feed"):
+        return
+
+    validate_comic_data_dicts(feed_job.comic_data_dicts)
+    feed_context = build_feed_context(
+        feed_job.comic_info,
+        feed_job.comic_data_dicts,
+        feed_relative_path=feed_job.feed_relative_path,
+        comic_page_relative_path=feed_job.comic_page_relative_path,
+    )
+    root, cdata_map = build_feed_xml(feed_context)
+    xml_text = serialize_feed_xml(root, cdata_map)
+    write_feed_xml(feed_context["feed_output_path"], xml_text)
+
+
 def build_rss_feed(
         comic_info: RawConfigParser,
         comic_data_dicts: list[dict[str, Any]],
         feed_relative_path: str = "feed.xml",
         comic_page_relative_path: str = "comic",
 ) -> None:
-    if not comic_info.getboolean("RSS Feed", "Build RSS feed"):
-        return
-
-    validate_comic_data_dicts(comic_data_dicts)
-    feed_context = build_feed_context(
+    feed_job = build_feed_job(
         comic_info,
         comic_data_dicts,
         feed_relative_path=feed_relative_path,
         comic_page_relative_path=comic_page_relative_path,
     )
-    root, cdata_map = build_feed_xml(feed_context)
-    xml_text = serialize_feed_xml(root, cdata_map)
-    write_feed_xml(feed_context["feed_output_path"], xml_text)
+    build_rss_feed_from_job(feed_job)

@@ -223,6 +223,29 @@ class TestRssFeed(TestCase):
             item.find("guid").text,
         )
 
+    def test_build_rss_feed_from_job_uses_explicit_job_settings(self):
+        feed_job = build_rss_feed.build_feed_job(
+            comic_info=deepcopy(self.comic_info),
+            comic_data_dicts=[self.make_comic_data()],
+            feed_relative_path="rss/main.xml",
+            comic_page_relative_path="extras/story/comic",
+        )
+
+        with patch("builtins.open", new_callable=mock_open) as open_mock:
+            with patch.dict(os.environ, {"OUTPUT_DIR": "output"}, clear=False):
+                build_rss_feed.build_rss_feed_from_job(feed_job)
+
+        feed_path = open_mock.call_args.args[0]
+        output = open_mock().write.call_args.args[0].decode("utf-8")
+        root = self.parse_feed(output)
+        channel = root.find("channel")
+        atom_link = channel.find("{http://www.w3.org/2005/Atom}link")
+        item = channel.find("item")
+
+        self.assertEqual(os.path.join("output", "rss/main.xml"), feed_path)
+        self.assertEqual("https://www.tamberlanecomic.com/rss/main.xml", atom_link.attrib["href"])
+        self.assertEqual("https://www.tamberlanecomic.com/extras/story/comic/Page 1/", item.find("link").text)
+
     def test_build_rss_feed_newest_first_reverses_item_order(self):
         comic_info = deepcopy(self.comic_info)
         comic_info.set("RSS Feed", "Newest first", "True")

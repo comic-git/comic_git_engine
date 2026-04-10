@@ -8,6 +8,7 @@ import traceback
 from collections import OrderedDict, defaultdict
 from configparser import RawConfigParser
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime
 from glob import iglob
 from importlib import import_module
@@ -22,7 +23,7 @@ from pytz import timezone
 from time import strptime, strftime, perf_counter_ns
 
 import utils
-from build_rss_feed import build_rss_feed
+from build_rss_feed import FeedJob, build_feed_job, build_rss_feed_from_job
 from utils import read_info
 
 VERSION = "1.0.9"
@@ -37,6 +38,14 @@ It is auto-generated, and any work you do here will be replaced the next time th
 If you want to edit any of these files, follow the instructions at
 https://comic-git.gitbook.io/documentation/advanced-editing/themes#editing-existing-pages
 -->"""
+
+
+@dataclass(slots=True)
+class ComicBuildResult:
+    comic_folder: str
+    comic_info: RawConfigParser
+    comic_data_dicts: list[dict[str, Any]]
+    global_values: dict[str, Any]
 
 
 def add_inputs_to_env_vars(inputs: str):
@@ -762,6 +771,41 @@ def print_processing_times():
     print("{}: {:.2f} ms".format("Total time", (PROCESSING_TIMES[-1][1] - PROCESSING_TIMES[0][1]) / 1_000_000))
 
 
+def normalize_comic_folder(comic_folder: str) -> str:
+    return comic_folder.strip("/")
+
+
+def get_feed_relative_path(comic_folder: str) -> str:
+    comic_folder = normalize_comic_folder(comic_folder)
+    if not comic_folder:
+        return "feed.xml"
+    return f"{comic_folder}/feed.xml"
+
+
+def get_comic_page_relative_path(comic_folder: str) -> str:
+    comic_folder = normalize_comic_folder(comic_folder)
+    if not comic_folder:
+        return "comic"
+    return f"{comic_folder}/comic"
+
+
+def build_rss_feed_job_for_comic_result(comic_result: ComicBuildResult) -> FeedJob:
+    return build_feed_job(
+        comic_result.comic_info,
+        comic_result.comic_data_dicts,
+        feed_relative_path=get_feed_relative_path(comic_result.comic_folder),
+        comic_page_relative_path=get_comic_page_relative_path(comic_result.comic_folder),
+    )
+
+
+def get_rss_feed_jobs(comic_results: list[ComicBuildResult]) -> list[FeedJob]:
+    return [
+        build_rss_feed_job_for_comic_result(comic_result)
+        for comic_result in comic_results
+        if normalize_comic_folder(comic_result.comic_folder) == ""
+    ]
+
+
 def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False):
     global BASE_DIRECTORY
     checkpoint("Start", clear=True)
@@ -787,14 +831,23 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
     checkpoint("Setup output file space")
 
     # Build any extra comics that may be needed
+    comic_results = []
     extra_comic_values = {}
     for extra_comic in get_extra_comics_list(comic_info):
         print(extra_comic)
         extra_comic_info = get_extra_comic_info(extra_comic, comic_info)
         os.makedirs(extra_comic, exist_ok=True)
-        comic_data_dicts, _ = build_and_publish_comic_pages(
+        comic_data_dicts, extra_global_values = build_and_publish_comic_pages(
             comic_url, extra_comic.strip("/") + "/", extra_comic_info, delete_scheduled_posts,
             publish_all_comics
+        )
+        comic_results.append(
+            ComicBuildResult(
+                comic_folder=extra_comic.strip("/") + "/",
+                comic_info=extra_comic_info,
+                comic_data_dicts=comic_data_dicts,
+                global_values=extra_global_values,
+            )
         )
         extra_comic_values[extra_comic] = comic_data_dicts[-1] if comic_data_dicts else {}
 
@@ -803,9 +856,17 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
     comic_data_dicts, global_values = build_and_publish_comic_pages(
         comic_url, "", comic_info, delete_scheduled_posts, publish_all_comics, extra_comic_values
     )
+    main_comic_result = ComicBuildResult(
+        comic_folder="",
+        comic_info=comic_info,
+        comic_data_dicts=comic_data_dicts,
+        global_values=global_values,
+    )
+    comic_results.append(main_comic_result)
 
     # Build the RSS feed
-    build_rss_feed(comic_info, comic_data_dicts)
+    for feed_job in get_rss_feed_jobs(comic_results):
+        build_rss_feed_from_job(feed_job)
     checkpoint("Build RSS feed")
 
     output_dir = os.getenv("OUTPUT_DIR", "")

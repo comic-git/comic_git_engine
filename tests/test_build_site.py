@@ -253,3 +253,109 @@ class TestLoadWebringData(TestCase):
             },
             build_site.load_webring_data(self.comic_info, COMIC_URL),
         )
+
+
+@patch(MUT + "print_processing_times")
+@patch(MUT + "checkpoint")
+@patch(MUT + "build_rss_feed_from_job")
+@patch(MUT + "build_feed_job")
+@patch(MUT + "build_and_publish_comic_pages")
+@patch(MUT + "get_extra_comics_list", return_value=[])
+@patch(MUT + "setup_output_file_space")
+@patch(MUT + "run_hook")
+@patch(MUT + "utils.get_comic_url", return_value=(COMIC_URL, "/comic_git_dev"))
+@patch(MUT + "read_info")
+@patch(MUT + "utils.find_project_root")
+@patch(MUT + "add_inputs_to_env_vars")
+class TestMain(TestCase):
+
+    def test_main_builds_rss_feed_job_from_main_comic(
+            self,
+            _mock_add_inputs_to_env_vars,
+            _mock_find_project_root,
+            mock_read_info,
+            _mock_get_comic_url,
+            mock_run_hook,
+            _mock_setup_output_file_space,
+            _mock_get_extra_comics_list,
+            mock_build_and_publish_comic_pages,
+            mock_build_feed_job,
+            mock_build_rss_feed_from_job,
+            _mock_checkpoint,
+            _mock_print_processing_times,
+    ):
+        comic_info = RawConfigParser()
+        comic_info.add_section("Comic Settings")
+        comic_info.set("Comic Settings", "Theme", "default")
+        comic_info.add_section("RSS Feed")
+        comic_info.set("RSS Feed", "Build RSS feed", "True")
+        mock_read_info.return_value = comic_info
+        mock_run_hook.return_value = None
+        comic_data_dicts = [{"page_name": "Page 1"}]
+        global_values = {"theme": "default"}
+        mock_build_and_publish_comic_pages.return_value = (comic_data_dicts, global_values)
+        feed_job = object()
+        mock_build_feed_job.return_value = feed_job
+
+        build_site.main()
+
+        mock_build_feed_job.assert_called_once_with(
+            comic_info,
+            comic_data_dicts,
+            feed_relative_path="feed.xml",
+            comic_page_relative_path="comic",
+        )
+        mock_build_rss_feed_from_job.assert_called_once_with(feed_job)
+
+
+class TestRssFeedJobs(TestCase):
+
+    def test_build_rss_feed_job_for_main_comic(self):
+        comic_info = RawConfigParser()
+        comic_result = build_site.ComicBuildResult(
+            comic_folder="",
+            comic_info=comic_info,
+            comic_data_dicts=[{"page_name": "Page 1"}],
+            global_values={},
+        )
+
+        feed_job = build_site.build_rss_feed_job_for_comic_result(comic_result)
+
+        self.assertEqual(comic_info, feed_job.comic_info)
+        self.assertEqual([{"page_name": "Page 1"}], feed_job.comic_data_dicts)
+        self.assertEqual("feed.xml", feed_job.feed_relative_path)
+        self.assertEqual("comic", feed_job.comic_page_relative_path)
+
+    def test_build_rss_feed_job_for_extra_comic_uses_folder_paths(self):
+        comic_info = RawConfigParser()
+        comic_result = build_site.ComicBuildResult(
+            comic_folder="extras/story/",
+            comic_info=comic_info,
+            comic_data_dicts=[{"page_name": "Page 1"}],
+            global_values={},
+        )
+
+        feed_job = build_site.build_rss_feed_job_for_comic_result(comic_result)
+
+        self.assertEqual("extras/story/feed.xml", feed_job.feed_relative_path)
+        self.assertEqual("extras/story/comic", feed_job.comic_page_relative_path)
+
+    def test_get_rss_feed_jobs_returns_main_job_only_for_now(self):
+        main_result = build_site.ComicBuildResult(
+            comic_folder="",
+            comic_info=RawConfigParser(),
+            comic_data_dicts=[{"page_name": "Main"}],
+            global_values={},
+        )
+        extra_result = build_site.ComicBuildResult(
+            comic_folder="extras/story/",
+            comic_info=RawConfigParser(),
+            comic_data_dicts=[{"page_name": "Extra"}],
+            global_values={},
+        )
+
+        feed_jobs = build_site.get_rss_feed_jobs([extra_result, main_result])
+
+        self.assertEqual(1, len(feed_jobs))
+        self.assertEqual("feed.xml", feed_jobs[0].feed_relative_path)
+        self.assertEqual("comic", feed_jobs[0].comic_page_relative_path)

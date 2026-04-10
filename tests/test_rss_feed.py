@@ -31,7 +31,6 @@ class TestRssFeed(TestCase):
 
     def setUp(self):
         self.maxDiff = None
-        build_rss_feed.cdata_dict = {}
 
     def make_comic_data(self, **overrides):
         data = {
@@ -195,6 +194,20 @@ class TestRssFeed(TestCase):
         titles = [item.find("title").text for item in self.get_items(output)]
 
         self.assertEqual(["Page Three", "Page Two", "Page One"], titles)
+
+    def test_build_rss_feed_newest_first_does_not_mutate_input_order(self):
+        comic_info = deepcopy(self.comic_info)
+        comic_info.set("RSS Feed", "Newest first", "True")
+        comic_data_dicts = [
+            self.make_comic_data(_title="Page One", _post_date="January 1, 1903", page_name="Page 1"),
+            self.make_comic_data(_title="Page Two", _post_date="January 2, 1903", page_name="Page 2"),
+            self.make_comic_data(_title="Page Three", _post_date="January 3, 1903", page_name="Page 3"),
+        ]
+
+        self.build_feed_output(comic_data_dicts=comic_data_dicts, comic_info=comic_info)
+        titles = [comic_data["_title"] for comic_data in comic_data_dicts]
+
+        self.assertEqual(["Page One", "Page Two", "Page Three"], titles)
 
     def test_build_rss_feed_preserves_input_order_by_default(self):
         comic_data_dicts = [

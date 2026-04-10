@@ -47,14 +47,26 @@ class TestRssFeed(TestCase):
         data.update(overrides)
         return data
 
-    def build_feed_output(self, comic_data_dicts=None, comic_info=None, output_dir="", feed_relative_path="feed.xml"):
+    def build_feed_output(
+            self,
+            comic_data_dicts=None,
+            comic_info=None,
+            output_dir="",
+            feed_relative_path="feed.xml",
+            comic_page_relative_path="comic",
+    ):
         if comic_data_dicts is None:
             comic_data_dicts = [self.make_comic_data()]
         if comic_info is None:
             comic_info = deepcopy(self.comic_info)
         with patch("builtins.open", new_callable=mock_open) as open_mock:
             with patch.dict(os.environ, {"OUTPUT_DIR": output_dir}, clear=False):
-                build_rss_feed.build_rss_feed(comic_info, comic_data_dicts, feed_relative_path=feed_relative_path)
+                build_rss_feed.build_rss_feed(
+                    comic_info,
+                    comic_data_dicts,
+                    feed_relative_path=feed_relative_path,
+                    comic_page_relative_path=comic_page_relative_path,
+                )
         if not open_mock.called:
             return None, None, open_mock
         return (
@@ -194,6 +206,22 @@ class TestRssFeed(TestCase):
         self.assertEqual(os.path.join("output", "extras/news.xml"), feed_path)
         self.assertEqual("https://www.tamberlanecomic.com/extras/news.xml", atom_link.attrib["href"])
         self.assertEqual("https://www.tamberlanecomic.com/", channel.find("link").text)
+
+    def test_build_rss_feed_uses_custom_comic_page_relative_path(self):
+        _, output, _ = self.build_feed_output(
+            comic_page_relative_path="extras/bonus/comic",
+        )
+
+        item = self.get_items(output)[0]
+
+        self.assertEqual(
+            "https://www.tamberlanecomic.com/extras/bonus/comic/Page 1/",
+            item.find("link").text,
+        )
+        self.assertEqual(
+            "https://www.tamberlanecomic.com/extras/bonus/comic/page_1/",
+            item.find("guid").text,
+        )
 
     def test_build_rss_feed_newest_first_reverses_item_order(self):
         comic_info = deepcopy(self.comic_info)

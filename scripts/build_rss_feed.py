@@ -33,8 +33,9 @@ def add_image_tag(channel: ElementTree.Element, feed_context: dict[str, Any]) ->
     ElementTree.SubElement(image_tag, "height").text = feed_context["channel_image_height"]
 
 
-def build_item_link(comic_url: str, page_name: str) -> str:
-    return urljoin(comic_url, f"comic/{page_name}/")
+def build_item_link(comic_url: str, comic_page_relative_path: str, page_name: str) -> str:
+    comic_page_relative_path = comic_page_relative_path.strip("/")
+    return urljoin(comic_url, f"{comic_page_relative_path}/{page_name}/")
 
 
 def format_guid(direct_link: str) -> str:
@@ -110,9 +111,10 @@ def normalize_feed_item(
         comic_data: dict[str, Any],
         comic_info: RawConfigParser,
         comic_url: str,
+        comic_page_relative_path: str,
         item_index: int,
 ) -> dict[str, Any]:
-    direct_link = build_item_link(comic_url, comic_data["page_name"])
+    direct_link = build_item_link(comic_url, comic_page_relative_path, comic_data["page_name"])
     return {
         "title": comic_data["_title"],
         "author": comic_info.get("Comic Info", "Author"),
@@ -154,6 +156,7 @@ def build_feed_context(
         comic_info: RawConfigParser,
         comic_data_dicts: list[dict[str, Any]],
         feed_relative_path: str = "feed.xml",
+        comic_page_relative_path: str = "comic",
 ) -> dict[str, Any]:
     comic_url, _ = get_comic_url(comic_info)
     if not comic_url.endswith("/"):
@@ -162,7 +165,7 @@ def build_feed_context(
     ordered_comic_data_dicts = order_comic_data_dicts(comic_info, comic_data_dicts)
     feed_context = normalize_channel_context(comic_info, comic_url, feed_relative_path)
     feed_context["items"] = [
-        normalize_feed_item(comic_data, comic_info, comic_url, item_index)
+        normalize_feed_item(comic_data, comic_info, comic_url, comic_page_relative_path, item_index)
         for item_index, comic_data in enumerate(ordered_comic_data_dicts)
     ]
     return feed_context
@@ -229,12 +232,18 @@ def build_rss_feed(
         comic_info: RawConfigParser,
         comic_data_dicts: list[dict[str, Any]],
         feed_relative_path: str = "feed.xml",
+        comic_page_relative_path: str = "comic",
 ) -> None:
     if not comic_info.getboolean("RSS Feed", "Build RSS feed"):
         return
 
     validate_comic_data_dicts(comic_data_dicts)
-    feed_context = build_feed_context(comic_info, comic_data_dicts, feed_relative_path=feed_relative_path)
+    feed_context = build_feed_context(
+        comic_info,
+        comic_data_dicts,
+        feed_relative_path=feed_relative_path,
+        comic_page_relative_path=comic_page_relative_path,
+    )
     root, cdata_map = build_feed_xml(feed_context)
     xml_text = serialize_feed_xml(root, cdata_map)
     write_feed_xml(feed_context["feed_output_path"], xml_text)

@@ -97,6 +97,18 @@ def pretty_xml(element):
     return pretty_string
 
 
+def validate_comic_data_dicts(comic_data_dicts: List[Dict]):
+    seen_page_names = set()
+    for comic_data in comic_data_dicts:
+        page_name = comic_data["page_name"]
+        if page_name in seen_page_names:
+            raise ValueError(
+                f"Duplicate page_name '{page_name}' found in RSS feed input.\n"
+                f"Each comic page in a single feed must have a unique page_name."
+            )
+        seen_page_names.add(page_name)
+
+
 def build_rss_feed(comic_info: RawConfigParser, comic_data_dicts: List[Dict]):
     global cdata_dict
 
@@ -117,6 +129,8 @@ def build_rss_feed(comic_info: RawConfigParser, comic_data_dicts: List[Dict]):
 
     add_base_tags_to_channel(channel, comic_url, comic_info)
     add_image_tag(channel, comic_url, comic_info)
+
+    validate_comic_data_dicts(comic_data_dicts)
 
     if comic_info.getboolean("RSS Feed", "Newest first", fallback=False):
         comic_data_dicts.reverse()

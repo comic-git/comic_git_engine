@@ -168,7 +168,7 @@ def build_and_publish_comic_pages(
     save_page_info_json_file(comic_folder, page_info_list, scheduled_post_count)
     checkpoint(f"Save page_info_list.json file in '{comic_folder}'")
 
-    # Build full comic data dicts, to build templates with
+    # Build full comic data dicts to build templates with
     comic_data_dicts = build_comic_data_dicts(comic_folder, comic_info, page_info_list)
     checkpoint(f"Build full comic data dicts for '{comic_folder}'")
 

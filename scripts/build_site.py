@@ -798,11 +798,33 @@ def build_rss_feed_job_for_comic_result(comic_result: ComicBuildResult) -> FeedJ
     )
 
 
-def get_rss_feed_jobs(comic_results: list[ComicBuildResult]) -> list[FeedJob]:
+def get_rss_feed_mode(comic_info: RawConfigParser) -> str:
+    return comic_info.get("RSS Feed", "Feed mode", fallback="main-only").strip().lower()
+
+
+def get_main_comic_result(comic_results: list[ComicBuildResult]) -> ComicBuildResult:
+    for comic_result in comic_results:
+        if normalize_comic_folder(comic_result.comic_folder) == "":
+            return comic_result
+    raise ValueError("Could not find the main comic result for RSS generation.")
+
+
+def select_comic_results_for_rss(
+        comic_info: RawConfigParser,
+        comic_results: list[ComicBuildResult],
+) -> list[ComicBuildResult]:
+    rss_feed_mode = get_rss_feed_mode(comic_info)
+    if rss_feed_mode == "main-only":
+        return [get_main_comic_result(comic_results)]
+    if rss_feed_mode == "per-comic":
+        return comic_results
+    raise ValueError(f"Unknown RSS feed mode: {rss_feed_mode}")
+
+
+def get_rss_feed_jobs(comic_info: RawConfigParser, comic_results: list[ComicBuildResult]) -> list[FeedJob]:
     return [
         build_rss_feed_job_for_comic_result(comic_result)
-        for comic_result in comic_results
-        if normalize_comic_folder(comic_result.comic_folder) == ""
+        for comic_result in select_comic_results_for_rss(comic_info, comic_results)
     ]
 
 
@@ -865,7 +887,7 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
     comic_results.append(main_comic_result)
 
     # Build the RSS feed
-    for feed_job in get_rss_feed_jobs(comic_results):
+    for feed_job in get_rss_feed_jobs(comic_info, comic_results):
         build_rss_feed_from_job(feed_job)
     checkpoint("Build RSS feed")
 

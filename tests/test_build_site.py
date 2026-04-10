@@ -310,6 +310,13 @@ class TestMain(TestCase):
 
 class TestRssFeedJobs(TestCase):
 
+    def make_root_comic_info(self, rss_feed_mode: str | None = None):
+        comic_info = RawConfigParser()
+        comic_info.add_section("RSS Feed")
+        if rss_feed_mode is not None:
+            comic_info.set("RSS Feed", "Feed mode", rss_feed_mode)
+        return comic_info
+
     def test_build_rss_feed_job_for_main_comic(self):
         comic_info = RawConfigParser()
         comic_result = build_site.ComicBuildResult(
@@ -340,7 +347,7 @@ class TestRssFeedJobs(TestCase):
         self.assertEqual("extras/story/feed.xml", feed_job.feed_relative_path)
         self.assertEqual("extras/story/comic", feed_job.comic_page_relative_path)
 
-    def test_get_rss_feed_jobs_returns_main_job_only_for_now(self):
+    def test_select_comic_results_for_rss_defaults_to_main_only(self):
         main_result = build_site.ComicBuildResult(
             comic_folder="",
             comic_info=RawConfigParser(),
@@ -354,8 +361,67 @@ class TestRssFeedJobs(TestCase):
             global_values={},
         )
 
-        feed_jobs = build_site.get_rss_feed_jobs([extra_result, main_result])
+        selected_results = build_site.select_comic_results_for_rss(
+            self.make_root_comic_info(),
+            [extra_result, main_result],
+        )
 
-        self.assertEqual(1, len(feed_jobs))
-        self.assertEqual("feed.xml", feed_jobs[0].feed_relative_path)
-        self.assertEqual("comic", feed_jobs[0].comic_page_relative_path)
+        self.assertEqual([main_result], selected_results)
+
+    def test_select_comic_results_for_rss_supports_per_comic_mode(self):
+        main_result = build_site.ComicBuildResult(
+            comic_folder="",
+            comic_info=RawConfigParser(),
+            comic_data_dicts=[{"page_name": "Main"}],
+            global_values={},
+        )
+        extra_result = build_site.ComicBuildResult(
+            comic_folder="extras/story/",
+            comic_info=RawConfigParser(),
+            comic_data_dicts=[{"page_name": "Extra"}],
+            global_values={},
+        )
+
+        selected_results = build_site.select_comic_results_for_rss(
+            self.make_root_comic_info("per-comic"),
+            [extra_result, main_result],
+        )
+
+        self.assertEqual([extra_result, main_result], selected_results)
+
+    def test_select_comic_results_for_rss_rejects_unknown_mode(self):
+        main_result = build_site.ComicBuildResult(
+            comic_folder="",
+            comic_info=RawConfigParser(),
+            comic_data_dicts=[{"page_name": "Main"}],
+            global_values={},
+        )
+
+        with self.assertRaisesRegex(ValueError, "Unknown RSS feed mode: weird-mode"):
+            build_site.select_comic_results_for_rss(
+                self.make_root_comic_info("weird-mode"),
+                [main_result],
+            )
+
+    def test_get_rss_feed_jobs_returns_jobs_for_selected_results(self):
+        root_comic_info = self.make_root_comic_info("per-comic")
+        main_result = build_site.ComicBuildResult(
+            comic_folder="",
+            comic_info=RawConfigParser(),
+            comic_data_dicts=[{"page_name": "Main"}],
+            global_values={},
+        )
+        extra_result = build_site.ComicBuildResult(
+            comic_folder="extras/story/",
+            comic_info=RawConfigParser(),
+            comic_data_dicts=[{"page_name": "Extra"}],
+            global_values={},
+        )
+
+        feed_jobs = build_site.get_rss_feed_jobs(root_comic_info, [extra_result, main_result])
+
+        self.assertEqual(2, len(feed_jobs))
+        self.assertEqual("extras/story/feed.xml", feed_jobs[0].feed_relative_path)
+        self.assertEqual("extras/story/comic", feed_jobs[0].comic_page_relative_path)
+        self.assertEqual("feed.xml", feed_jobs[1].feed_relative_path)
+        self.assertEqual("comic", feed_jobs[1].comic_page_relative_path)

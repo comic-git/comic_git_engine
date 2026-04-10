@@ -799,22 +799,6 @@ def build_rss_feed_job_for_comic_result(comic_result: ComicBuildResult) -> FeedJ
     )
 
 
-def get_rss_feed_mode(comic_info: RawConfigParser) -> str:
-    return comic_info.get("RSS Feed", "Feed mode", fallback="main-only").strip().lower()
-
-
-def comic_builds_rss_feed(comic_info: RawConfigParser) -> bool:
-    return comic_info.getboolean("RSS Feed", "Build RSS feed", fallback=False)
-
-
-def prefix_comic_title_in_rss_titles(comic_info: RawConfigParser) -> bool:
-    return comic_info.getboolean("RSS Feed", "Prefix comic title in RSS titles", fallback=False)
-
-
-def get_rss_title_format(comic_info: RawConfigParser) -> str:
-    return comic_info.get("RSS Feed", "RSS title format", fallback="").strip()
-
-
 def get_main_comic_result(comic_results: list[ComicBuildResult]) -> ComicBuildResult:
     for comic_result in comic_results:
         if normalize_comic_folder(comic_result.comic_folder) == "":
@@ -826,14 +810,24 @@ def select_comic_results_for_rss(
         comic_info: RawConfigParser,
         comic_results: list[ComicBuildResult],
 ) -> list[ComicBuildResult]:
-    rss_feed_mode = get_rss_feed_mode(comic_info)
+    rss_feed_mode = comic_info.get("RSS Feed", "Feed mode", fallback="main-only").strip().lower()
     if rss_feed_mode == "main-only":
         main_comic_result = get_main_comic_result(comic_results)
-        return [main_comic_result] if comic_builds_rss_feed(main_comic_result.comic_info) else []
+        return [
+            main_comic_result
+        ] if main_comic_result.comic_info.getboolean("RSS Feed", "Build RSS feed", fallback=False) else []
     if rss_feed_mode == "per-comic":
-        return [comic_result for comic_result in comic_results if comic_builds_rss_feed(comic_result.comic_info)]
+        return [
+            comic_result
+            for comic_result in comic_results
+            if comic_result.comic_info.getboolean("RSS Feed", "Build RSS feed", fallback=False)
+        ]
     if rss_feed_mode == "combined":
-        return [comic_result for comic_result in comic_results if comic_builds_rss_feed(comic_result.comic_info)]
+        return [
+            comic_result
+            for comic_result in comic_results
+            if comic_result.comic_info.getboolean("RSS Feed", "Build RSS feed", fallback=False)
+        ]
     raise ValueError(f"Unknown RSS feed mode: {rss_feed_mode}")
 
 
@@ -842,8 +836,8 @@ def get_combined_rss_item_title(comic_info: RawConfigParser, comic_result: Comic
     page_title = comic_data.get("page_title") or comic_data.get("_title") or comic_data["page_name"]
     if not comic_folder:
         return comic_data.get("_title", page_title)
-    title_format = get_rss_title_format(comic_info)
-    if not title_format and not prefix_comic_title_in_rss_titles(comic_info):
+    title_format = comic_info.get("RSS Feed", "RSS title format", fallback="").strip()
+    if not title_format and not comic_info.getboolean("RSS Feed", "Prefix comic title in RSS titles", fallback=False):
         return comic_data.get("_title", page_title)
     if not title_format:
         title_format = "{comic_title}: {page_title}"
@@ -889,7 +883,7 @@ def build_combined_rss_feed_job(
 
 
 def get_rss_feed_jobs(comic_info: RawConfigParser, comic_results: list[ComicBuildResult]) -> list[FeedJob]:
-    rss_feed_mode = get_rss_feed_mode(comic_info)
+    rss_feed_mode = comic_info.get("RSS Feed", "Feed mode", fallback="main-only").strip().lower()
     selected_comic_results = select_comic_results_for_rss(comic_info, comic_results)
     if rss_feed_mode == "combined":
         if not selected_comic_results:

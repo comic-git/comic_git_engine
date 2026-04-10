@@ -310,15 +310,22 @@ class TestMain(TestCase):
 
 class TestRssFeedJobs(TestCase):
 
-    def make_root_comic_info(self, rss_feed_mode: str | None = None):
+    def make_root_comic_info(self, rss_feed_mode: str | None = None, build_rss_feed: bool = True):
         comic_info = RawConfigParser()
         comic_info.add_section("RSS Feed")
+        comic_info.set("RSS Feed", "Build RSS feed", str(build_rss_feed))
         if rss_feed_mode is not None:
             comic_info.set("RSS Feed", "Feed mode", rss_feed_mode)
         return comic_info
 
-    def test_build_rss_feed_job_for_main_comic(self):
+    def make_comic_info(self, build_rss_feed: bool = True):
         comic_info = RawConfigParser()
+        comic_info.add_section("RSS Feed")
+        comic_info.set("RSS Feed", "Build RSS feed", str(build_rss_feed))
+        return comic_info
+
+    def test_build_rss_feed_job_for_main_comic(self):
+        comic_info = self.make_comic_info()
         comic_result = build_site.ComicBuildResult(
             comic_folder="",
             comic_info=comic_info,
@@ -332,9 +339,10 @@ class TestRssFeedJobs(TestCase):
         self.assertEqual([{"page_name": "Page 1"}], feed_job.comic_data_dicts)
         self.assertEqual("feed.xml", feed_job.feed_relative_path)
         self.assertEqual("comic", feed_job.comic_page_relative_path)
+        self.assertTrue(feed_job.build_enabled)
 
     def test_build_rss_feed_job_for_extra_comic_uses_folder_paths(self):
-        comic_info = RawConfigParser()
+        comic_info = self.make_comic_info()
         comic_result = build_site.ComicBuildResult(
             comic_folder="extras/story/",
             comic_info=comic_info,
@@ -350,13 +358,13 @@ class TestRssFeedJobs(TestCase):
     def test_select_comic_results_for_rss_defaults_to_main_only(self):
         main_result = build_site.ComicBuildResult(
             comic_folder="",
-            comic_info=RawConfigParser(),
+            comic_info=self.make_comic_info(),
             comic_data_dicts=[{"page_name": "Main"}],
             global_values={},
         )
         extra_result = build_site.ComicBuildResult(
             comic_folder="extras/story/",
-            comic_info=RawConfigParser(),
+            comic_info=self.make_comic_info(),
             comic_data_dicts=[{"page_name": "Extra"}],
             global_values={},
         )
@@ -368,16 +376,37 @@ class TestRssFeedJobs(TestCase):
 
         self.assertEqual([main_result], selected_results)
 
-    def test_select_comic_results_for_rss_supports_per_comic_mode(self):
+    def test_select_comic_results_for_rss_main_only_skips_disabled_main(self):
         main_result = build_site.ComicBuildResult(
             comic_folder="",
-            comic_info=RawConfigParser(),
+            comic_info=self.make_comic_info(build_rss_feed=False),
             comic_data_dicts=[{"page_name": "Main"}],
             global_values={},
         )
         extra_result = build_site.ComicBuildResult(
             comic_folder="extras/story/",
-            comic_info=RawConfigParser(),
+            comic_info=self.make_comic_info(),
+            comic_data_dicts=[{"page_name": "Extra"}],
+            global_values={},
+        )
+
+        selected_results = build_site.select_comic_results_for_rss(
+            self.make_root_comic_info(),
+            [extra_result, main_result],
+        )
+
+        self.assertEqual([], selected_results)
+
+    def test_select_comic_results_for_rss_supports_per_comic_mode(self):
+        main_result = build_site.ComicBuildResult(
+            comic_folder="",
+            comic_info=self.make_comic_info(),
+            comic_data_dicts=[{"page_name": "Main"}],
+            global_values={},
+        )
+        extra_result = build_site.ComicBuildResult(
+            comic_folder="extras/story/",
+            comic_info=self.make_comic_info(),
             comic_data_dicts=[{"page_name": "Extra"}],
             global_values={},
         )
@@ -389,10 +418,73 @@ class TestRssFeedJobs(TestCase):
 
         self.assertEqual([extra_result, main_result], selected_results)
 
+    def test_select_comic_results_for_rss_per_comic_filters_disabled_comics(self):
+        main_result = build_site.ComicBuildResult(
+            comic_folder="",
+            comic_info=self.make_comic_info(),
+            comic_data_dicts=[{"page_name": "Main"}],
+            global_values={},
+        )
+        extra_result = build_site.ComicBuildResult(
+            comic_folder="extras/story/",
+            comic_info=self.make_comic_info(build_rss_feed=False),
+            comic_data_dicts=[{"page_name": "Extra"}],
+            global_values={},
+        )
+
+        selected_results = build_site.select_comic_results_for_rss(
+            self.make_root_comic_info("per-comic"),
+            [extra_result, main_result],
+        )
+
+        self.assertEqual([main_result], selected_results)
+
+    def test_select_comic_results_for_rss_supports_combined_mode(self):
+        main_result = build_site.ComicBuildResult(
+            comic_folder="",
+            comic_info=self.make_comic_info(),
+            comic_data_dicts=[{"page_name": "Main"}],
+            global_values={},
+        )
+        extra_result = build_site.ComicBuildResult(
+            comic_folder="extras/story/",
+            comic_info=self.make_comic_info(),
+            comic_data_dicts=[{"page_name": "Extra"}],
+            global_values={},
+        )
+
+        selected_results = build_site.select_comic_results_for_rss(
+            self.make_root_comic_info("combined"),
+            [extra_result, main_result],
+        )
+
+        self.assertEqual([extra_result, main_result], selected_results)
+
+    def test_select_comic_results_for_rss_combined_filters_disabled_comics(self):
+        main_result = build_site.ComicBuildResult(
+            comic_folder="",
+            comic_info=self.make_comic_info(build_rss_feed=False),
+            comic_data_dicts=[{"page_name": "Main"}],
+            global_values={},
+        )
+        extra_result = build_site.ComicBuildResult(
+            comic_folder="extras/story/",
+            comic_info=self.make_comic_info(),
+            comic_data_dicts=[{"page_name": "Extra"}],
+            global_values={},
+        )
+
+        selected_results = build_site.select_comic_results_for_rss(
+            self.make_root_comic_info("combined", build_rss_feed=False),
+            [extra_result, main_result],
+        )
+
+        self.assertEqual([extra_result], selected_results)
+
     def test_select_comic_results_for_rss_rejects_unknown_mode(self):
         main_result = build_site.ComicBuildResult(
             comic_folder="",
-            comic_info=RawConfigParser(),
+            comic_info=self.make_comic_info(),
             comic_data_dicts=[{"page_name": "Main"}],
             global_values={},
         )
@@ -407,13 +499,13 @@ class TestRssFeedJobs(TestCase):
         root_comic_info = self.make_root_comic_info("per-comic")
         main_result = build_site.ComicBuildResult(
             comic_folder="",
-            comic_info=RawConfigParser(),
+            comic_info=self.make_comic_info(),
             comic_data_dicts=[{"page_name": "Main"}],
             global_values={},
         )
         extra_result = build_site.ComicBuildResult(
             comic_folder="extras/story/",
-            comic_info=RawConfigParser(),
+            comic_info=self.make_comic_info(),
             comic_data_dicts=[{"page_name": "Extra"}],
             global_values={},
         )
@@ -425,3 +517,70 @@ class TestRssFeedJobs(TestCase):
         self.assertEqual("extras/story/comic", feed_jobs[0].comic_page_relative_path)
         self.assertEqual("feed.xml", feed_jobs[1].feed_relative_path)
         self.assertEqual("comic", feed_jobs[1].comic_page_relative_path)
+
+    def test_build_combined_rss_comic_data_dicts_adds_per_item_path_overrides(self):
+        main_result = build_site.ComicBuildResult(
+            comic_folder="",
+            comic_info=self.make_comic_info(),
+            comic_data_dicts=[{"page_name": "Main"}],
+            global_values={},
+        )
+        extra_result = build_site.ComicBuildResult(
+            comic_folder="extras/story/",
+            comic_info=self.make_comic_info(),
+            comic_data_dicts=[{"page_name": "Extra"}],
+            global_values={},
+        )
+
+        combined_comic_data_dicts = build_site.build_combined_rss_comic_data_dicts([extra_result, main_result])
+
+        self.assertEqual("extras/story/comic", combined_comic_data_dicts[0]["rss_comic_page_relative_path"])
+        self.assertEqual("comic", combined_comic_data_dicts[1]["rss_comic_page_relative_path"])
+        self.assertEqual("Extra", combined_comic_data_dicts[0]["page_name"])
+        self.assertEqual("Main", combined_comic_data_dicts[1]["page_name"])
+
+    def test_get_rss_feed_jobs_returns_single_combined_job(self):
+        root_comic_info = self.make_root_comic_info("combined")
+        main_result = build_site.ComicBuildResult(
+            comic_folder="",
+            comic_info=self.make_comic_info(),
+            comic_data_dicts=[{"page_name": "Main"}],
+            global_values={},
+        )
+        extra_result = build_site.ComicBuildResult(
+            comic_folder="extras/story/",
+            comic_info=self.make_comic_info(),
+            comic_data_dicts=[{"page_name": "Extra"}],
+            global_values={},
+        )
+
+        feed_jobs = build_site.get_rss_feed_jobs(root_comic_info, [extra_result, main_result])
+
+        self.assertEqual(1, len(feed_jobs))
+        self.assertEqual("feed.xml", feed_jobs[0].feed_relative_path)
+        self.assertEqual("comic", feed_jobs[0].comic_page_relative_path)
+        self.assertEqual(2, len(feed_jobs[0].comic_data_dicts))
+        self.assertEqual("extras/story/comic", feed_jobs[0].comic_data_dicts[0]["rss_comic_page_relative_path"])
+        self.assertEqual("comic", feed_jobs[0].comic_data_dicts[1]["rss_comic_page_relative_path"])
+        self.assertTrue(feed_jobs[0].build_enabled)
+
+    def test_get_rss_feed_jobs_combined_uses_root_metadata_even_if_root_feed_disabled(self):
+        root_comic_info = self.make_root_comic_info("combined", build_rss_feed=False)
+        main_result = build_site.ComicBuildResult(
+            comic_folder="",
+            comic_info=self.make_comic_info(build_rss_feed=False),
+            comic_data_dicts=[{"page_name": "Main"}],
+            global_values={},
+        )
+        extra_result = build_site.ComicBuildResult(
+            comic_folder="extras/story/",
+            comic_info=self.make_comic_info(),
+            comic_data_dicts=[{"page_name": "Extra"}],
+            global_values={},
+        )
+
+        feed_jobs = build_site.get_rss_feed_jobs(root_comic_info, [extra_result, main_result])
+
+        self.assertEqual(1, len(feed_jobs))
+        self.assertIs(root_comic_info, feed_jobs[0].comic_info)
+        self.assertTrue(feed_jobs[0].build_enabled)

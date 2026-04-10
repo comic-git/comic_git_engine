@@ -223,6 +223,28 @@ class TestRssFeed(TestCase):
             item.find("guid").text,
         )
 
+    def test_build_rss_feed_allows_per_item_comic_page_relative_path_override(self):
+        comic_data_dicts = [
+            self.make_comic_data(_title="Main", page_name="Main Page"),
+            self.make_comic_data(
+                _title="Extra",
+                page_name="Extra Page",
+                rss_comic_page_relative_path="extras/story/comic",
+            ),
+        ]
+
+        _, output, _ = self.build_feed_output(comic_data_dicts=comic_data_dicts)
+        items = self.get_items(output)
+
+        self.assertEqual(
+            "https://www.tamberlanecomic.com/comic/Main Page/",
+            items[0].find("link").text,
+        )
+        self.assertEqual(
+            "https://www.tamberlanecomic.com/extras/story/comic/Extra Page/",
+            items[1].find("link").text,
+        )
+
     def test_build_rss_feed_from_job_uses_explicit_job_settings(self):
         feed_job = build_rss_feed.build_feed_job(
             comic_info=deepcopy(self.comic_info),

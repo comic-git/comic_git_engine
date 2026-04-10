@@ -18,6 +18,7 @@ class FeedJob:
     comic_data_dicts: list[dict[str, Any]]
     feed_relative_path: str = "feed.xml"
     comic_page_relative_path: str = "comic"
+    build_enabled: bool = True
 
 
 def add_base_tags_to_channel(channel: ElementTree.Element, feed_context: dict[str, Any]) -> None:
@@ -116,6 +117,10 @@ def normalize_item_categories(comic_data: dict[str, Any]) -> list[dict[str, str]
     return categories
 
 
+def get_item_comic_page_relative_path(comic_data: dict[str, Any], default_comic_page_relative_path: str) -> str:
+    return comic_data.get("rss_comic_page_relative_path", default_comic_page_relative_path)
+
+
 def normalize_feed_item(
         comic_data: dict[str, Any],
         comic_info: RawConfigParser,
@@ -123,7 +128,11 @@ def normalize_feed_item(
         comic_page_relative_path: str,
         item_index: int,
 ) -> dict[str, Any]:
-    direct_link = build_item_link(comic_url, comic_page_relative_path, comic_data["page_name"])
+    direct_link = build_item_link(
+        comic_url,
+        get_item_comic_page_relative_path(comic_data, comic_page_relative_path),
+        comic_data["page_name"],
+    )
     return {
         "title": comic_data["_title"],
         "author": comic_info.get("Comic Info", "Author"),
@@ -242,17 +251,21 @@ def build_feed_job(
         comic_data_dicts: list[dict[str, Any]],
         feed_relative_path: str = "feed.xml",
         comic_page_relative_path: str = "comic",
+        build_enabled: bool | None = None,
 ) -> FeedJob:
+    if build_enabled is None:
+        build_enabled = comic_info.getboolean("RSS Feed", "Build RSS feed", fallback=False)
     return FeedJob(
         comic_info=comic_info,
         comic_data_dicts=comic_data_dicts,
         feed_relative_path=feed_relative_path,
         comic_page_relative_path=comic_page_relative_path,
+        build_enabled=build_enabled,
     )
 
 
 def build_rss_feed_from_job(feed_job: FeedJob) -> None:
-    if not feed_job.comic_info.getboolean("RSS Feed", "Build RSS feed"):
+    if not feed_job.build_enabled:
         return
 
     validate_comic_data_dicts(feed_job.comic_data_dicts)

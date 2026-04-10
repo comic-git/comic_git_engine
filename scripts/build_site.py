@@ -802,6 +802,10 @@ def get_rss_feed_mode(comic_info: RawConfigParser) -> str:
     return comic_info.get("RSS Feed", "Feed mode", fallback="main-only").strip().lower()
 
 
+def comic_builds_rss_feed(comic_info: RawConfigParser) -> bool:
+    return comic_info.getboolean("RSS Feed", "Build RSS feed", fallback=False)
+
+
 def get_main_comic_result(comic_results: list[ComicBuildResult]) -> ComicBuildResult:
     for comic_result in comic_results:
         if normalize_comic_folder(comic_result.comic_folder) == "":
@@ -815,16 +819,49 @@ def select_comic_results_for_rss(
 ) -> list[ComicBuildResult]:
     rss_feed_mode = get_rss_feed_mode(comic_info)
     if rss_feed_mode == "main-only":
-        return [get_main_comic_result(comic_results)]
+        main_comic_result = get_main_comic_result(comic_results)
+        return [main_comic_result] if comic_builds_rss_feed(main_comic_result.comic_info) else []
     if rss_feed_mode == "per-comic":
-        return comic_results
+        return [comic_result for comic_result in comic_results if comic_builds_rss_feed(comic_result.comic_info)]
+    if rss_feed_mode == "combined":
+        return [comic_result for comic_result in comic_results if comic_builds_rss_feed(comic_result.comic_info)]
     raise ValueError(f"Unknown RSS feed mode: {rss_feed_mode}")
 
 
+def build_combined_rss_comic_data_dicts(comic_results: list[ComicBuildResult]) -> list[dict[str, Any]]:
+    combined_comic_data_dicts = []
+    for comic_result in comic_results:
+        comic_page_relative_path = get_comic_page_relative_path(comic_result.comic_folder)
+        for comic_data in comic_result.comic_data_dicts:
+            merged_comic_data = comic_data.copy()
+            merged_comic_data["rss_comic_page_relative_path"] = comic_page_relative_path
+            combined_comic_data_dicts.append(merged_comic_data)
+    return combined_comic_data_dicts
+
+
+def build_combined_rss_feed_job(
+        comic_info: RawConfigParser,
+        comic_results: list[ComicBuildResult],
+) -> FeedJob:
+    return build_feed_job(
+        comic_info,
+        build_combined_rss_comic_data_dicts(comic_results),
+        feed_relative_path="feed.xml",
+        comic_page_relative_path="comic",
+        build_enabled=bool(comic_results),
+    )
+
+
 def get_rss_feed_jobs(comic_info: RawConfigParser, comic_results: list[ComicBuildResult]) -> list[FeedJob]:
+    rss_feed_mode = get_rss_feed_mode(comic_info)
+    selected_comic_results = select_comic_results_for_rss(comic_info, comic_results)
+    if rss_feed_mode == "combined":
+        if not selected_comic_results:
+            return []
+        return [build_combined_rss_feed_job(comic_info, selected_comic_results)]
     return [
         build_rss_feed_job_for_comic_result(comic_result)
-        for comic_result in select_comic_results_for_rss(comic_info, comic_results)
+        for comic_result in selected_comic_results
     ]
 
 

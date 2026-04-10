@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import traceback
+from string import Formatter
 from collections import OrderedDict, defaultdict
 from configparser import RawConfigParser
 from copy import deepcopy
@@ -806,6 +807,14 @@ def comic_builds_rss_feed(comic_info: RawConfigParser) -> bool:
     return comic_info.getboolean("RSS Feed", "Build RSS feed", fallback=False)
 
 
+def prefix_comic_title_in_rss_titles(comic_info: RawConfigParser) -> bool:
+    return comic_info.getboolean("RSS Feed", "Prefix comic title in RSS titles", fallback=False)
+
+
+def get_rss_title_format(comic_info: RawConfigParser) -> str:
+    return comic_info.get("RSS Feed", "RSS title format", fallback="").strip()
+
+
 def get_main_comic_result(comic_results: list[ComicBuildResult]) -> ComicBuildResult:
     for comic_result in comic_results:
         if normalize_comic_folder(comic_result.comic_folder) == "":
@@ -828,13 +837,40 @@ def select_comic_results_for_rss(
     raise ValueError(f"Unknown RSS feed mode: {rss_feed_mode}")
 
 
-def build_combined_rss_comic_data_dicts(comic_results: list[ComicBuildResult]) -> list[dict[str, Any]]:
+def get_combined_rss_item_title(comic_info: RawConfigParser, comic_result: ComicBuildResult, comic_data: dict[str, Any]) -> str:
+    comic_folder = normalize_comic_folder(comic_result.comic_folder)
+    page_title = comic_data.get("page_title") or comic_data.get("_title") or comic_data["page_name"]
+    if not comic_folder:
+        return comic_data.get("_title", page_title)
+    title_format = get_rss_title_format(comic_info)
+    if not title_format and not prefix_comic_title_in_rss_titles(comic_info):
+        return comic_data.get("_title", page_title)
+    if not title_format:
+        title_format = "{comic_title}: {page_title}"
+    variables = {
+        "comic_title": comic_result.comic_info.get("Comic Info", "Comic name", fallback=""),
+        "page_title": page_title,
+    }
+    for _, field_name, _, _ in Formatter().parse(title_format):
+        if field_name and field_name not in variables:
+            raise ValueError(
+                f"Unknown RSS title format variable '{field_name}'. "
+                f"Supported variables: comic_title, page_title"
+            )
+    return title_format.format(**variables)
+
+
+def build_combined_rss_comic_data_dicts(
+        comic_info: RawConfigParser,
+        comic_results: list[ComicBuildResult],
+) -> list[dict[str, Any]]:
     combined_comic_data_dicts = []
     for comic_result in comic_results:
         comic_page_relative_path = get_comic_page_relative_path(comic_result.comic_folder)
         for comic_data in comic_result.comic_data_dicts:
             merged_comic_data = comic_data.copy()
             merged_comic_data["rss_comic_page_relative_path"] = comic_page_relative_path
+            merged_comic_data["_title"] = get_combined_rss_item_title(comic_info, comic_result, merged_comic_data)
             combined_comic_data_dicts.append(merged_comic_data)
     return combined_comic_data_dicts
 
@@ -845,7 +881,7 @@ def build_combined_rss_feed_job(
 ) -> FeedJob:
     return build_feed_job(
         comic_info,
-        build_combined_rss_comic_data_dicts(comic_results),
+        build_combined_rss_comic_data_dicts(comic_info, comic_results),
         feed_relative_path="feed.xml",
         comic_page_relative_path="comic",
         build_enabled=bool(comic_results),

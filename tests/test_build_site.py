@@ -310,16 +310,27 @@ class TestMain(TestCase):
 
 class TestRssFeedJobs(TestCase):
 
-    def make_root_comic_info(self, rss_feed_mode: str | None = None, build_rss_feed: bool = True):
+    def make_root_comic_info(
+            self,
+            rss_feed_mode: str | None = None,
+            build_rss_feed: bool = True,
+            prefix_comic_title: bool = False,
+            rss_title_format: str = "",
+    ):
         comic_info = RawConfigParser()
         comic_info.add_section("RSS Feed")
         comic_info.set("RSS Feed", "Build RSS feed", str(build_rss_feed))
+        comic_info.set("RSS Feed", "Prefix comic title in RSS titles", str(prefix_comic_title))
+        if rss_title_format:
+            comic_info.set("RSS Feed", "RSS title format", rss_title_format)
         if rss_feed_mode is not None:
             comic_info.set("RSS Feed", "Feed mode", rss_feed_mode)
         return comic_info
 
-    def make_comic_info(self, build_rss_feed: bool = True):
+    def make_comic_info(self, build_rss_feed: bool = True, comic_name: str = "Comic"):
         comic_info = RawConfigParser()
+        comic_info.add_section("Comic Info")
+        comic_info.set("Comic Info", "Comic name", comic_name)
         comic_info.add_section("RSS Feed")
         comic_info.set("RSS Feed", "Build RSS feed", str(build_rss_feed))
         return comic_info
@@ -521,23 +532,80 @@ class TestRssFeedJobs(TestCase):
     def test_build_combined_rss_comic_data_dicts_adds_per_item_path_overrides(self):
         main_result = build_site.ComicBuildResult(
             comic_folder="",
-            comic_info=self.make_comic_info(),
+            comic_info=self.make_comic_info(comic_name="Main Comic"),
             comic_data_dicts=[{"page_name": "Main"}],
             global_values={},
         )
         extra_result = build_site.ComicBuildResult(
             comic_folder="extras/story/",
-            comic_info=self.make_comic_info(),
+            comic_info=self.make_comic_info(comic_name="Extra Comic"),
             comic_data_dicts=[{"page_name": "Extra"}],
             global_values={},
         )
 
-        combined_comic_data_dicts = build_site.build_combined_rss_comic_data_dicts([extra_result, main_result])
+        combined_comic_data_dicts = build_site.build_combined_rss_comic_data_dicts(
+            self.make_root_comic_info("combined"),
+            [extra_result, main_result],
+        )
 
         self.assertEqual("extras/story/comic", combined_comic_data_dicts[0]["rss_comic_page_relative_path"])
         self.assertEqual("comic", combined_comic_data_dicts[1]["rss_comic_page_relative_path"])
         self.assertEqual("Extra", combined_comic_data_dicts[0]["page_name"])
         self.assertEqual("Main", combined_comic_data_dicts[1]["page_name"])
+
+    def test_build_combined_rss_comic_data_dicts_prefixes_extra_titles_when_enabled(self):
+        root_comic_info = self.make_root_comic_info("combined", prefix_comic_title=True)
+        main_result = build_site.ComicBuildResult(
+            comic_folder="",
+            comic_info=self.make_comic_info(comic_name="Main Comic"),
+            comic_data_dicts=[{"page_name": "Main", "_title": "Main Title", "page_title": "Main Title"}],
+            global_values={},
+        )
+        extra_result = build_site.ComicBuildResult(
+            comic_folder="extras/story/",
+            comic_info=self.make_comic_info(comic_name="Extra Comic"),
+            comic_data_dicts=[{"page_name": "Extra", "_title": "Extra Title", "page_title": "Extra Title"}],
+            global_values={},
+        )
+
+        combined_comic_data_dicts = build_site.build_combined_rss_comic_data_dicts(
+            root_comic_info,
+            [extra_result, main_result],
+        )
+
+        self.assertEqual("Extra Comic: Extra Title", combined_comic_data_dicts[0]["_title"])
+        self.assertEqual("Main Title", combined_comic_data_dicts[1]["_title"])
+
+    def test_build_combined_rss_comic_data_dicts_applies_custom_title_format_to_extra_titles(self):
+        root_comic_info = self.make_root_comic_info(
+            "combined",
+            rss_title_format="[{comic_title}] {page_title}",
+        )
+        extra_result = build_site.ComicBuildResult(
+            comic_folder="extras/story/",
+            comic_info=self.make_comic_info(comic_name="Extra Comic"),
+            comic_data_dicts=[{"page_name": "Extra", "_title": "Extra Title", "page_title": "Extra Title"}],
+            global_values={},
+        )
+
+        combined_comic_data_dicts = build_site.build_combined_rss_comic_data_dicts(root_comic_info, [extra_result])
+
+        self.assertEqual("[Extra Comic] Extra Title", combined_comic_data_dicts[0]["_title"])
+
+    def test_build_combined_rss_comic_data_dicts_rejects_unknown_title_format_variables(self):
+        root_comic_info = self.make_root_comic_info(
+            "combined",
+            rss_title_format="{unknown} {page_title}",
+        )
+        extra_result = build_site.ComicBuildResult(
+            comic_folder="extras/story/",
+            comic_info=self.make_comic_info(comic_name="Extra Comic"),
+            comic_data_dicts=[{"page_name": "Extra", "_title": "Extra Title", "page_title": "Extra Title"}],
+            global_values={},
+        )
+
+        with self.assertRaisesRegex(ValueError, "Unknown RSS title format variable 'unknown'"):
+            build_site.build_combined_rss_comic_data_dicts(root_comic_info, [extra_result])
 
     def test_get_rss_feed_jobs_returns_single_combined_job(self):
         root_comic_info = self.make_root_comic_info("combined")

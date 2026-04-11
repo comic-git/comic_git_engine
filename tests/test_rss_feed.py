@@ -5,7 +5,7 @@ from unittest import TestCase
 from unittest.mock import mock_open, patch
 from xml.etree import ElementTree
 
-from scripts import build_rss_feed
+from scripts import rss
 
 
 class TestRssFeed(TestCase):
@@ -61,7 +61,7 @@ class TestRssFeed(TestCase):
             comic_info = deepcopy(self.comic_info)
         with patch("builtins.open", new_callable=mock_open) as open_mock:
             with patch.dict(os.environ, {"OUTPUT_DIR": output_dir}, clear=False):
-                build_rss_feed.build_rss_feed(
+                rss.build_rss_feed(
                     comic_info,
                     comic_data_dicts,
                     feed_relative_path=feed_relative_path,
@@ -246,7 +246,7 @@ class TestRssFeed(TestCase):
         )
 
     def test_build_rss_feed_from_job_uses_explicit_job_settings(self):
-        feed_job = build_rss_feed.build_feed_job(
+        feed_job = rss.build_feed_job(
             comic_info=deepcopy(self.comic_info),
             comic_data_dicts=[self.make_comic_data()],
             feed_relative_path="rss/main.xml",
@@ -255,7 +255,7 @@ class TestRssFeed(TestCase):
 
         with patch("builtins.open", new_callable=mock_open) as open_mock:
             with patch.dict(os.environ, {"OUTPUT_DIR": "output"}, clear=False):
-                build_rss_feed.build_rss_feed_from_job(feed_job)
+                rss.build_rss_feed_from_job(feed_job)
 
         feed_path = open_mock.call_args.args[0]
         output = open_mock().write.call_args.args[0].decode("utf-8")
@@ -424,6 +424,23 @@ class TestRssFeed(TestCase):
 
         self.assertEqual("https://cdn.example.com/banner.png", image.find("url").text)
 
+    def test_build_rss_feed_uses_default_hidden_rss_settings(self):
+        comic_info = deepcopy(self.comic_info)
+        comic_info.remove_option("RSS Feed", "Language")
+        comic_info.remove_option("RSS Feed", "Image")
+        comic_info.remove_option("RSS Feed", "Image width")
+        comic_info.remove_option("RSS Feed", "Image height")
+
+        _, output, _ = self.build_feed_output(comic_info=comic_info)
+        root = self.parse_feed(output)
+        channel = root.find("channel")
+        image = channel.find("image")
+
+        self.assertEqual("en-us", channel.find("language").text)
+        self.assertEqual("https://www.tamberlanecomic.com/your_content/images/banner.png", image.find("url").text)
+        self.assertEqual("100", image.find("width").text)
+        self.assertEqual("36", image.find("height").text)
+
     def test_build_rss_feed_xml_escapes_text_outside_cdata(self):
         comic_info = deepcopy(self.comic_info)
         comic_info.set("Comic Info", "Comic name", "Cats & Dogs")
@@ -456,7 +473,7 @@ class TestRssFeed(TestCase):
         with patch("builtins.open", side_effect=OSError("Permission denied")):
             with patch.dict(os.environ, {"OUTPUT_DIR": "output"}, clear=False):
                 with self.assertRaises(ValueError) as cm:
-                    build_rss_feed.build_rss_feed(self.comic_info, [self.make_comic_data()])
+                    rss.build_rss_feed(self.comic_info, [self.make_comic_data()])
 
         self.assertIn(f"Could not write RSS feed to {feed_path}", str(cm.exception))
         self.assertIn("Verify the output directory exists and has write permissions.", str(cm.exception))

@@ -2,6 +2,7 @@ import os
 from configparser import RawConfigParser
 from dataclasses import dataclass
 from re import sub
+from string import Formatter
 from time import strptime, strftime
 from typing import Any
 from urllib.parse import urljoin
@@ -9,7 +10,13 @@ from xml.dom import minidom
 from xml.etree import ElementTree
 from xml.etree.ElementTree import register_namespace
 
+from models import ComicBuildResult
 from utils import get_comic_url
+
+DEFAULT_RSS_LANGUAGE = "en-us"
+DEFAULT_RSS_IMAGE = "your_content/images/banner.png"
+DEFAULT_RSS_IMAGE_WIDTH = "100"
+DEFAULT_RSS_IMAGE_HEIGHT = "36"
 
 
 @dataclass(slots=True)
@@ -163,10 +170,13 @@ def normalize_channel_context(
         "channel_title": comic_info.get("Comic Info", "Comic name"),
         "channel_description": comic_info.get("RSS Feed", "Description"),
         "channel_author": comic_info.get("Comic Info", "Author"),
-        "channel_language": comic_info.get("RSS Feed", "Language"),
-        "channel_image_url": urljoin(comic_url, comic_info.get("RSS Feed", "Image")),
-        "channel_image_width": comic_info.get("RSS Feed", "Image width"),
-        "channel_image_height": comic_info.get("RSS Feed", "Image height"),
+        "channel_language": comic_info.get("RSS Feed", "Language", fallback=DEFAULT_RSS_LANGUAGE),
+        "channel_image_url": urljoin(
+            comic_url,
+            comic_info.get("RSS Feed", "Image", fallback=DEFAULT_RSS_IMAGE),
+        ),
+        "channel_image_width": comic_info.get("RSS Feed", "Image width", fallback=DEFAULT_RSS_IMAGE_WIDTH),
+        "channel_image_height": comic_info.get("RSS Feed", "Image height", fallback=DEFAULT_RSS_IMAGE_HEIGHT),
     }
 
 
@@ -293,3 +303,124 @@ def build_rss_feed(
         comic_page_relative_path=comic_page_relative_path,
     )
     build_rss_feed_from_job(feed_job)
+
+
+def normalize_comic_folder(comic_folder: str) -> str:
+    return comic_folder.strip("/")
+
+
+def get_feed_relative_path(comic_folder: str) -> str:
+    comic_folder = normalize_comic_folder(comic_folder)
+    if not comic_folder:
+        return "feed.xml"
+    return f"{comic_folder}/feed.xml"
+
+
+def get_comic_page_relative_path(comic_folder: str) -> str:
+    comic_folder = normalize_comic_folder(comic_folder)
+    if not comic_folder:
+        return "comic"
+    return f"{comic_folder}/comic"
+
+
+def build_rss_feed_job_for_comic_result(comic_result: ComicBuildResult) -> FeedJob:
+    return build_feed_job(
+        comic_result.comic_info,
+        comic_result.comic_data_dicts,
+        feed_relative_path=get_feed_relative_path(comic_result.comic_folder),
+        comic_page_relative_path=get_comic_page_relative_path(comic_result.comic_folder),
+    )
+
+
+def get_main_comic_result(comic_results: list[ComicBuildResult]) -> ComicBuildResult:
+    for comic_result in comic_results:
+        if normalize_comic_folder(comic_result.comic_folder) == "":
+            return comic_result
+    raise ValueError("Could not find the main comic result for RSS generation.")
+
+
+def select_comic_results_for_rss(
+        comic_info: RawConfigParser,
+        comic_results: list[ComicBuildResult],
+) -> list[ComicBuildResult]:
+    rss_feed_mode = comic_info.get("RSS Feed", "Feed mode", fallback="main-only").strip().lower()
+    if rss_feed_mode == "main-only":
+        main_comic_result = get_main_comic_result(comic_results)
+        return [
+            main_comic_result
+        ] if main_comic_result.comic_info.getboolean("RSS Feed", "Build RSS feed", fallback=False) else []
+    if rss_feed_mode == "per-comic":
+        return [
+            comic_result
+            for comic_result in comic_results
+            if comic_result.comic_info.getboolean("RSS Feed", "Build RSS feed", fallback=False)
+        ]
+    if rss_feed_mode == "combined":
+        return [
+            comic_result
+            for comic_result in comic_results
+            if comic_result.comic_info.getboolean("RSS Feed", "Build RSS feed", fallback=False)
+        ]
+    raise ValueError(f"Unknown RSS feed mode: {rss_feed_mode}")
+
+
+def get_combined_rss_item_title(comic_info: RawConfigParser, comic_result: ComicBuildResult, comic_data: dict[str, Any]) -> str:
+    comic_folder = normalize_comic_folder(comic_result.comic_folder)
+    page_title = comic_data.get("page_title") or comic_data.get("_title") or comic_data["page_name"]
+    if not comic_folder:
+        return comic_data.get("_title", page_title)
+    title_format = comic_info.get("RSS Feed", "RSS title format", fallback="").strip()
+    if not title_format:
+        return comic_data.get("_title", page_title)
+    variables = {
+        "comic_title": comic_result.comic_info.get("Comic Info", "Comic name", fallback=""),
+        "page_title": page_title,
+    }
+    for _, field_name, _, _ in Formatter().parse(title_format):
+        if field_name and field_name not in variables:
+            raise ValueError(
+                f"Unknown RSS title format variable '{field_name}'. "
+                f"Supported variables: comic_title, page_title"
+            )
+    return title_format.format(**variables)
+
+
+def build_combined_rss_comic_data_dicts(
+        comic_info: RawConfigParser,
+        comic_results: list[ComicBuildResult],
+) -> list[dict[str, Any]]:
+    combined_comic_data_dicts = []
+    for comic_result in comic_results:
+        comic_page_relative_path = get_comic_page_relative_path(comic_result.comic_folder)
+        for comic_data in comic_result.comic_data_dicts:
+            merged_comic_data = comic_data.copy()
+            merged_comic_data["rss_comic_page_relative_path"] = comic_page_relative_path
+            merged_comic_data["_title"] = get_combined_rss_item_title(comic_info, comic_result, merged_comic_data)
+            combined_comic_data_dicts.append(merged_comic_data)
+    return combined_comic_data_dicts
+
+
+def build_combined_rss_feed_job(
+        comic_info: RawConfigParser,
+        comic_results: list[ComicBuildResult],
+) -> FeedJob:
+    return build_feed_job(
+        comic_info,
+        build_combined_rss_comic_data_dicts(comic_info, comic_results),
+        feed_relative_path="feed.xml",
+        comic_page_relative_path="comic",
+        build_enabled=bool(comic_results),
+    )
+
+
+def get_rss_feed_jobs(comic_info: RawConfigParser, comic_results: list[ComicBuildResult]) -> list[FeedJob]:
+    rss_feed_mode = comic_info.get("RSS Feed", "Feed mode", fallback="main-only").strip().lower()
+    selected_comic_results = select_comic_results_for_rss(comic_info, comic_results)
+    if rss_feed_mode == "combined":
+        if not selected_comic_results:
+            return []
+        return [build_combined_rss_feed_job(comic_info, selected_comic_results)]
+    return [
+        build_rss_feed_job_for_comic_result(comic_result)
+        for comic_result in selected_comic_results
+    ]

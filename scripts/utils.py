@@ -4,19 +4,27 @@ import os
 import re
 from configparser import RawConfigParser
 from copy import deepcopy
-from typing import List, Dict, Optional
 from urllib.parse import urljoin
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateNotFound
 from markdown2 import Markdown
-from time import strftime
+from time import strftime, perf_counter_ns
 
-jinja_environment: Optional[Environment] = None
-markdown_parser: Optional[Markdown] = None
-social_media_data_by_comic = {}
+BASE_DIRECTORY = ""
+PROCESSING_TIMES: list[tuple[str, float]] = []
+
+jinja_environment: Environment | None = None
+markdown_parser: Markdown | None = None
+social_media_data_by_comic: dict[str, dict] = {}
 
 
-def build_jinja_environment(comic_info: RawConfigParser, template_folders: List[str]):
+def web_path(rel_path: str) -> str:
+    if rel_path.startswith("/"):
+        return BASE_DIRECTORY + rel_path
+    return rel_path
+
+
+def build_jinja_environment(comic_info: RawConfigParser, template_folders: list[str]) -> None:
     global jinja_environment
     try:
         if comic_info.getboolean("Comic Settings", "Allow missing variables in templates", fallback=False):
@@ -30,13 +38,13 @@ def build_jinja_environment(comic_info: RawConfigParser, template_folders: List[
         ) from e
 
 
-def build_markdown_parser(comic_info: RawConfigParser):
+def build_markdown_parser(comic_info: RawConfigParser) -> None:
     global markdown_parser
     extras = comic_info.get("Comic Settings", "Markdown extras", fallback="")
     markdown_parser = Markdown(extras=["metadata"] + str_to_list(extras))
 
 
-def get_comic_url(comic_info: RawConfigParser):
+def get_comic_url(comic_info: RawConfigParser) -> tuple[str, str]:
     # Let user-defined comic domain and base directory override all other values
     comic_domain = comic_info.get("Comic Settings", "Comic domain", fallback=None)
     base_directory = comic_info.get("Comic Settings", "Comic subdirectory", fallback=None)
@@ -76,7 +84,7 @@ def get_comic_url(comic_info: RawConfigParser):
     return comic_url, base_directory
 
 
-def str_to_list(s: str, delimiter: str = ",", max_split: int = -1) -> List[str]:
+def str_to_list(s: str, delimiter: str = ",", max_split: int = -1) -> list[str]:
     """
     split(), but with extra stripping of white space and leading/trailing delimiters
     """
@@ -94,7 +102,7 @@ def find_project_root():
                                     "running this script from within the comic_git repository.")
 
 
-def build_md_page(template_name: str, data_dict: Dict=None) -> Optional[str]:
+def build_md_page(template_name: str, data_dict: dict | None = None) -> str | None:
     """
     Searches in the `pages` directory in the given theme directory for a file named {template_name}.md. If it doesn't
     find it, it returns None. Otherwise, the contents of that file are parsed as Markdown, and the md_page.tpl
@@ -129,7 +137,7 @@ def build_md_page(template_name: str, data_dict: Dict=None) -> Optional[str]:
     return template.render(**new_data_dict)
 
 
-def write_to_template(template_name: str, html_path: str, data_dict: Dict=None) -> None:
+def write_to_template(template_name: str, html_path: str, data_dict: dict | None = None) -> None:
     """
     Searches for an MD, HTML, or TPL file named `template_name` in the "templates" folder of your
     theme directory, or the "templates" directory. It then builds that template at the specified `html_path` using
@@ -316,3 +324,21 @@ def get_social_media_data(
         elif v == "_alt_text":
             data[k] = comic_data_dict["escaped_alt_text"]
     return data
+
+
+def checkpoint(s: str, clear: bool = False) -> None:
+    global PROCESSING_TIMES
+    if clear:
+        PROCESSING_TIMES = [(s, perf_counter_ns())]
+    else:
+        PROCESSING_TIMES.append((s, perf_counter_ns()))
+
+
+def print_processing_times() -> None:
+    last_processed_time = None
+    print("")
+    for name, t in PROCESSING_TIMES:
+        if last_processed_time is not None:
+            print("{}: {:.2f} ms".format(name, (t - last_processed_time) / 1_000_000))
+        last_processed_time = t
+    print("{}: {:.2f} ms".format("Total time", (PROCESSING_TIMES[-1][1] - PROCESSING_TIMES[0][1]) / 1_000_000))

@@ -22,8 +22,8 @@ from markdown2 import Markdown
 from pytz import timezone
 
 import utils
-from build_rss_feed import build_rss_feed_from_job, get_rss_feed_jobs
 from models import ComicBuildResult
+from rss import build_rss_feed_from_job, get_rss_feed_jobs
 from utils import read_info, web_path, checkpoint, print_processing_times
 
 VERSION = "1.0.9"
@@ -795,7 +795,7 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
     comic_results.append(main_comic_result)
 
     # Build the RSS feed
-    for feed_job in get_rss_feed_jobs(comic_info, comic_results):
+    for feed_job in get_rss_feed_jobs(comic_results):
         build_rss_feed_from_job(feed_job)
     checkpoint("Build RSS feed")
 

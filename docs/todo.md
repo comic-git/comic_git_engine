@@ -1,0 +1,25 @@
+# TODO
+
+## High Priority
+
+* Extra comics should be included in the RSS feed (option for separate RSS feeds for each extra?)
+
+## Medium Priority
+
+* Improve Social Media Previews https://github.com/comic-git/comic_git/issues/40
+* Add "Move sections to end" option for the Archive
+* Look into "smart" upload to Neocities, where it only uploads changed files
+* Get updated comic images from Caytlin for the showcase
+* Update comic_git_showcase
+* Keyboard controls https://github.com/comic-git/comic_git/issues/75
+* Option to put all extra comics/main comic into one RSS feed
+* What happened to NEOCITIES_CLEAR param work?
+* Make 404.html path configurable
+* Compile and minify CSS files
+
+## Docs updates needed based on recent code updates
+
+* How to deploy to Neocities
+* How to use submodules
+* Update "Build locally" docs to specify that the action will use whatever branch is in .gitmodules (test this)
+* Social Media previews

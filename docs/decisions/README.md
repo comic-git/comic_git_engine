@@ -29,6 +29,10 @@ Use [`_template.md`](_template.md) to create a new doc. Name files `YYYY-MM-DD-s
 
 ## Index
 
+- [Host repo root discovery and execution context](2026-04-12-host-repo-root-discovery-and-execution-context.md) - Discover the host repo root via `your_content/` and treat host-repo execution as the real runtime context, `active`
+- [Low-friction page publishing](2026-04-12-low-friction-page-publishing.md) - Reduce page-publishing effort with image and title fallbacks that match common creator workflows, `active`
+- [Public output filtering and metadata exposure](2026-04-12-public-output-filtering-and-metadata-exposure.md) - Publish machine-readable metadata intentionally while keeping `!`-prefixed fields private, `active`
+- [CSS layering versus template and JS overrides](2026-04-12-css-layering-vs-template-and-js-overrides.md) - Use layered CSS customization but override-based template and JS customization, `active`
 - [Engine and host repo boundary](2026-04-12-engine-and-host-repo-boundary.md) - Centralize implementation in `comic_git_engine` and keep host repos thin, `active`
 - [User data and configuration model](2026-04-12-user-data-and-configuration-model.md) - Keep user-facing data file-based, simple, and conservative, `active`
 - [Compatibility and release policy](2026-04-12-compatibility-and-release-policy.md) - Treat patch compatibility and release discipline as product requirements, `active`

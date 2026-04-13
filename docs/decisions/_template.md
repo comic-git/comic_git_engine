@@ -5,11 +5,11 @@
 
 # [Short title]
 
-| Field | Value |
-|---|---|
-| **Date** | YYYY-MM-DD |
-| **Status** | `active` / `superseded` / `deprecated` |
-| **Supersedes** | <!-- link to older decision this replaces, if any --> |
+| Field             | Value                                                            |
+|-------------------|------------------------------------------------------------------|
+| **Date**          | YYYY-MM-DD                                                       |
+| **Status**        | `active` / `superseded` / `deprecated`                           |
+| **Supersedes**    | <!-- link to older decision this replaces, if any -->            |
 | **Superseded by** | <!-- link to newer decision, if this one is no longer active --> |
 
 ## Context

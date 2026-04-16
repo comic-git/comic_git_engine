@@ -8,7 +8,7 @@
 
 ### Run build scripts from the host repo root
 
-[`scripts/build_site.py`](../scripts/build_site.py) and [`scripts/dev_server.py`](../scripts/dev_server.py) are meant to be run with the current working directory set to the root of the host `comic_git` repo, not the root of `comic_git_engine`.
+[`src/build/build_site.py`](../src/build/build_site.py) and [`src/scripts/dev_server.py`](../src/scripts/dev_server.py) are meant to be run with the current working directory set to the root of the host `comic_git` repo, not the root of `comic_git_engine`.
 
 If you run them from the wrong directory, project-root discovery and file loading can fail in confusing ways. When doing manual builds, always start from the loading repo.
 

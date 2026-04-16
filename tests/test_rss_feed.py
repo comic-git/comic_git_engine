@@ -5,8 +5,8 @@ from unittest import TestCase
 from unittest.mock import mock_open, patch
 from xml.etree import ElementTree
 
-import models
-from scripts import rss
+import core.models as models
+from integrations import rss
 
 
 class TestRssFeed(TestCase):

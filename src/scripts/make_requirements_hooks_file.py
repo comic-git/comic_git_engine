@@ -1,8 +1,8 @@
 import os
 from typing import Set
 
-from build_site import get_extra_comics_list, get_extra_comic_info
-from utils import find_project_root, str_to_list, read_info
+from build.site_config import get_extra_comics_list, get_extra_comic_info
+from core.utils import find_project_root, read_info, str_to_list
 
 
 def get_requirements(theme: str) -> Set[str]:

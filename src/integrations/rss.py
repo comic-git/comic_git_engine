@@ -10,8 +10,8 @@ from xml.dom import minidom
 from xml.etree import ElementTree
 from xml.etree.ElementTree import register_namespace
 
-from models import ComicBuildResult
-from utils import get_comic_url
+from core.models import ComicBuildResult
+from core.utils import get_comic_url
 
 DEFAULT_RSS_LANGUAGE = "en-us"
 DEFAULT_RSS_IMAGE = "your_content/images/banner.png"

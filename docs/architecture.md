@@ -14,16 +14,18 @@
 
 | Component                   | Location                                                                    | Responsibility                                                                                                                            |
 |-----------------------------|-----------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| Build entry point           | [`scripts/build_site.py`](../scripts/build_site.py)                         | Main orchestration entry point. Reads host-repo config and content, builds pages, writes output, and triggers RSS generation.             |
-| Shared utilities            | [`scripts/utils.py`](../scripts/utils.py)                                   | Common helpers for config parsing, path/url building, templating, markdown parsing, social media data, and build checkpoints.             |
-| RSS generation              | [`scripts/rss.py`](../scripts/rss.py)                                       | Builds RSS feed jobs and serializes RSS XML for the main comic and Extra Comics.                                                          |
-| Data models                 | [`scripts/models.py`](../scripts/models.py)                                 | Small shared dataclasses used to pass build results between steps.                                                                        |
+| Build entry point           | [`src/build/build_site.py`](../src/build/build_site.py)                     | Thin orchestration entry point. Handles env input setup, host-root discovery, hook boundaries, main/extra comic coordination, and RSS.    |
+| Build pipeline modules      | [`src/build/`](../src/build/)                                               | Purpose-built modules for the build pipeline, including site config, page discovery, comic data assembly, rendering, output handling, and image/transcript helpers. |
+| Shared utilities            | [`src/core/utils.py`](../src/core/utils.py)                                 | Cross-cutting helpers for root discovery, config parsing, path/url building, templating, social media data, and build checkpoints.        |
+| RSS generation              | [`src/integrations/rss.py`](../src/integrations/rss.py)                     | Builds RSS feed jobs and serializes RSS XML for the main comic and Extra Comics.                                                          |
+| Data models                 | [`src/core/models.py`](../src/core/models.py)                               | Small shared dataclasses used to pass build results between steps.                                                                        |
+| Hooks and external data     | [`src/integrations/`](../src/integrations/)                                 | Theme hooks, RSS integration logic, and webring loading.                                                                                  |
 | Built-in presentation layer | [`templates/`](../templates/), [`css/`](../css/), [`js/`](../js/)           | Default templates, CSS, and JavaScript shipped with the engine. These provide the default site behavior and appearance.                   |
 | Host-repo content layer     | `your_content/` in the loading `comic_git` repo                             | User-controlled data source: comic config, page metadata, images, themes, transcripts, home page content, and Extra Comic content.        |
 | Theme extension layer       | `your_content/themes/...` in the loading repo                               | Optional theme-level templates, CSS, images, and Python hook scripts that override or extend default engine behavior.                     |
 | Reusable build workflow     | [`.github/workflows/build_site.yaml`](../.github/workflows/build_site.yaml) | Reusable GitHub Actions workflow intended to be called from host `comic_git` repos to build and deploy sites with shared engine behavior. |
 | Release workflow            | [`.github/workflows/main.yaml`](../.github/workflows/main.yaml)             | Maintainer-only workflow for version bumps, tags, branches, and GitHub releases for `comic_git_engine` itself.                            |
-| Test suite                  | [`tests/`](../tests/)                                                       | Unit tests for engine behavior. This is the primary long-term safety net for refactors and bug fixes.                                     |
+| Test suite                  | [`tests/`](../tests/)                                                       | Unit tests for engine behavior, split by module so refactors can lock down behavior before moving code.                                   |
 
 ## Host Repo Data Model
 
@@ -67,14 +69,14 @@ This structure is intentionally file-based and low-friction:
 ## Data Flow
 
 1. A host `comic_git` repo invokes the engine locally or through the reusable [`build_site.yaml`](../.github/workflows/build_site.yaml) workflow.
-2. [`scripts/build_site.py`](../scripts/build_site.py) finds the project root, reads `your_content/comic_info.ini`, resolves the site URL, and loads any theme hook behavior.
-3. The build scans `your_content/comics/` and any configured Extra Comics for page folders and page metadata.
-4. Page metadata is normalized into full comic data dictionaries, including post text, transcripts, navigation IDs, derived titles, and other template variables.
-5. A generated `page_info_list.json` file is written into the built `comic/` output tree as a page index and metadata source. It is used by features such as infinite scroll and is also useful to external scrapers.
-6. The engine optionally creates thumbnails and other image derivatives.
-7. Jinja templates from the built-in template set and any theme overrides are rendered into HTML output.
-8. [`scripts/rss.py`](../scripts/rss.py) builds any enabled RSS feeds for the main comic and Extra Comics.
-9. The final output is written either directly into the host repo root or into `OUTPUT_DIR`, depending on environment configuration.
+2. [`src/build/build_site.py`](../src/build/build_site.py) finds the project root, reads `your_content/comic_info.ini`, resolves the site URL, loads theme hooks, and orchestrates the build order for Extra Comics and the main comic.
+3. [`src/build/site_builder.py`](../src/build/site_builder.py) coordinates the per-comic build pipeline using the lower-level modules.
+4. [`src/build/page_discovery.py`](../src/build/page_discovery.py) scans `your_content/comics/` and any configured Extra Comics for page folders, scheduling state, and page metadata, then writes `page_info_list.json`.
+5. [`src/build/comic_data.py`](../src/build/comic_data.py) normalizes page metadata into full comic data dictionaries, including post text, transcripts, navigation IDs, derived titles, and other template variables.
+6. [`src/build/images.py`](../src/build/images.py) optionally creates thumbnails and other image derivatives.
+7. [`src/build/rendering.py`](../src/build/rendering.py) renders Jinja templates from the built-in template set and any theme overrides into HTML output.
+8. [`src/integrations/rss.py`](../src/integrations/rss.py) builds any enabled RSS feeds for the main comic and Extra Comics.
+9. [`src/build/site_output.py`](../src/build/site_output.py) handles cleanup and optional staging into `OUTPUT_DIR`.
 10. The host repo then publishes that output, typically to GitHub Pages and optionally to Neocities.
 
 ## Key Dependencies
@@ -93,7 +95,7 @@ This structure is intentionally file-based and low-friction:
 ## API / Data Model
 
 - API spec: none; this repo does not expose a network API
-- Data models: [`scripts/models.py`](../scripts/models.py)
+- Data models: [`src/core/models.py`](../src/core/models.py)
 - Primary host-repo config/data inputs:
   - `your_content/comic_info.ini`
   - `your_content/comics/*/info.ini`

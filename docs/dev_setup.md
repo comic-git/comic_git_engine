@@ -65,7 +65,7 @@ For a quick manual build inside a host repo such as `comic_git_dev`:
 ```powershell
 # Run from the root of the host comic_git repo
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-python comic_git_engine\scripts\build_site.py
+python comic_git_engine\src\build\build_site.py
 ```
 
 If you want generated files written to a separate directory:
@@ -74,7 +74,7 @@ If you want generated files written to a separate directory:
 # Run from the root of the host comic_git repo
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
 $env:OUTPUT_DIR='output'
-python comic_git_engine\scripts\build_site.py
+python comic_git_engine\src\build\build_site.py
 ```
 
 If you want to preview pages that have future `Post date` values without deleting anything:
@@ -82,7 +82,7 @@ If you want to preview pages that have future `Post date` values without deletin
 ```powershell
 # Run from the root of the host comic_git repo
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-python comic_git_engine\scripts\build_site.py --publish-all-comics
+python comic_git_engine\src\build\build_site.py --publish-all-comics
 ```
 
 For an auto-rebuilding local preview server:
@@ -91,7 +91,7 @@ For an auto-rebuilding local preview server:
 # Run from the root of the host comic_git repo
 pip install watchdog
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-python comic_git_engine\scripts\dev_server.py
+python comic_git_engine\src\scripts\dev_server.py
 ```
 
 `dev_server.py` serves the site at `http://localhost:8000` and rebuilds when `.tpl`, `.txt`, `.html`, `.md`, and `.ini` files change.
@@ -103,14 +103,14 @@ Do not use `--delete-scheduled-posts` during normal local development. That flag
 Run tests from the `comic_git_engine` repo root:
 
 ```powershell
-$env:PYTHONPATH='scripts'
-.\venv\Scripts\python.exe -m unittest
+$env:PYTHONPATH='src'
+.\venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
 Run a single test file:
 
 ```powershell
-$env:PYTHONPATH='scripts'
+$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m unittest tests.test_rss_feed
 ```
 

@@ -11,20 +11,20 @@ Run tests from the `comic_git_engine` repo root.
 
 ```powershell
 # Run the full test suite
-$env:PYTHONPATH='scripts'
-.\venv\Scripts\python.exe -m unittest
+$env:PYTHONPATH='src'
+.\venv\Scripts\python.exe -m unittest discover -s tests
 
 # Run tests for a specific file
-$env:PYTHONPATH='scripts'
+$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m unittest tests.test_rss_feed
 
 # Run tests matching a specific test class or test method
-$env:PYTHONPATH='scripts'
+$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m unittest tests.test_build_site.TestMain
 
 # Run with coverage
-$env:PYTHONPATH='scripts'
-.\venv\Scripts\python.exe -m coverage run -m unittest
+$env:PYTHONPATH='src'
+.\venv\Scripts\python.exe -m coverage run -m unittest discover -s tests
 .\venv\Scripts\python.exe -m coverage report -m
 ```
 
@@ -34,7 +34,15 @@ Tests live in the top-level [`tests/`](../tests/) directory.
 
 ```text
 tests/
-  test_build_site.py  - build-site orchestration and a few remaining build helpers
+  test_build_site.py  - top-level build orchestration in `main()`
+  test_site_config.py - config parsing and extra-comic config merging
+  test_transcripts.py - transcript loading and ordering
+  test_comic_data.py  - comic page data construction
+  test_page_discovery.py - page discovery, scheduling, and page_info JSON output
+  test_images.py      - resize and thumbnail/image processing behavior
+  test_rendering.py   - template/page-writing orchestration
+  test_webring.py     - webring data loading and validation
+  test_site_output.py - output cleanup and staged-output copying
   test_rss_feed.py    - RSS XML output and RSS job-selection behavior
   test_utils.py       - shared utility functions
 ```
@@ -45,7 +53,7 @@ Naming conventions:
 - test classes use `Test...`
 - test methods use `test_...`
 
-This repo is in the middle of a broader modularization effort. As code is extracted from [`scripts/build_site.py`](../scripts/build_site.py), the test layout should become more granular rather than continuing to grow `test_build_site.py`.
+The modularized build pipeline now has module-specific unit tests. Keep [`tests/test_build_site.py`](../tests/test_build_site.py) focused on `main()` and other top-level orchestration seams rather than adding lower-level behavior back into it.
 
 ## Testing Philosophy
 
@@ -127,6 +135,7 @@ Examples:
 
 - RSS logic belongs in [`tests/test_rss_feed.py`](../tests/test_rss_feed.py)
 - shared utility behavior belongs in [`tests/test_utils.py`](../tests/test_utils.py)
+- build pipeline behavior should usually go in the module-specific test file that matches the extracted script, such as [`tests/test_page_discovery.py`](../tests/test_page_discovery.py) or [`tests/test_rendering.py`](../tests/test_rendering.py)
 
 ### What to mock
 
@@ -148,7 +157,7 @@ Do not mock:
 Representative example from the current suite:
 
 ```python
-@patch("scripts.utils.os.environ", {"GITHUB_REPOSITORY": "cvilbrandt/tamberlane"})
+@patch("core.utils.os.environ", {"GITHUB_REPOSITORY": "cvilbrandt/tamberlane"})
 def test_get_comic_url_on_github(self):
     comic_info = RawConfigParser()
     comic_info.add_section("Comic Settings")
@@ -180,8 +189,8 @@ What they cover:
 How to run:
 
 ```powershell
-$env:PYTHONPATH='scripts'
-.\venv\Scripts\python.exe -m unittest
+$env:PYTHONPATH='src'
+.\venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
 ### Manual integration testing

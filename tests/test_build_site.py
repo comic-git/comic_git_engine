@@ -1,274 +1,37 @@
 from configparser import RawConfigParser
 from unittest import TestCase
-from unittest.mock import patch, MagicMock
+from unittest.mock import call, patch
 
-import models
-from build_site import resize
-from scripts import build_site
+import core.models as models
+from build import build_site
 
-MUT = "scripts.build_site."
 
 COMIC_URL = "https://ryanvilbrandt.github.io/comic_git_dev"
-WEBRING_JSON = {
-    "version": 1,
-    "name": "Our Comics Webring!",
-    "home": {
-        "name": "Home",
-        "url": "https://my.webring.com/",
-        "image": "https://my.webring.com/icon.png"
-    },
-    "members": [
-        {
-            "id": "comic_a",
-            "name": "Albert's Atrium",
-            "url": "https://comic.albert.net/",
-            "image": "https://comic.albert.net/icon.png"
-        },
-        {
-            "id": "comic_b",
-            "name": "Bertrand's Barn",
-            "url": "https://bertrand.github.io/my_barn",
-            "image": "https://bertrand.github.io/my_barn/your_content/images/webring.jpg"
-        },
-        {
-            "id": "comic_c",
-            "name": "Clara's Cliffside",
-            "url": "https://clara-is-cool.neocities.org/",
-            "image": "https://images.ctfassets.net/hrltx12pl8hq/7JnR6tVVwDyUM8Cbci3GtJ/bf74366cff2ba271471725d0b0ef418c/shutterstock_376532611-og.jpg"
-        }
-    ]
-}
 
 
-class TestImageUtils(TestCase):
-
-    def test_resize_set_size(self):
-        im = MagicMock()
-        im.size = 100, 200
-        self.assertEqual(im.resize.return_value, resize(im, " 150, 350 "))
-        im.resize.assert_called_once_with((150, 350))
-
-    def test_resize_percentage(self):
-        im = MagicMock()
-        im.size = 100, 200
-        self.assertEqual(im.resize.return_value, resize(im, "50%"))
-        im.resize.assert_called_once_with((50, 100))
-
-    def test_resize_set_height(self):
-        im = MagicMock()
-        im.size = 100, 200
-        self.assertEqual(im.resize.return_value, resize(im, "220h"))
-        im.resize.assert_called_once_with((110, 220))
-
-    def test_resize_set_width(self):
-        im = MagicMock()
-        im.size = 100, 200
-        self.assertEqual(im.resize.return_value, resize(im, "110w"))
-        im.resize.assert_called_once_with((110, 220))
-
-    def test_resize_exception(self):
-        im = MagicMock()
-        im.size = 100, 200
-        with self.assertRaisesRegex(ValueError, "Unknown resize value:"):
-            resize(im, "farts lol")
-        im.resize.assert_not_called()
-
-
-@patch(MUT + "json.load", return_value=WEBRING_JSON)
-@patch(MUT + "urlopen")
-class TestLoadWebringData(TestCase):
-    def setUp(self):
-        # Create a mock RawConfigParser
-        self.comic_info = RawConfigParser()
-        self.comic_info.add_section("Webring")
-        self.comic_info.set("Webring", "Enable webring", "True")
-        self.comic_info.set("Webring", "Endpoint", "https://webring.example.com/api")
-        self.comic_info.set("Webring", "Webring ID", "comic_b")
-
-    def test_enable_webring_false(self, _mock_urlopen, _mock_json_load):
-        """If Enable webring is False, should return {"enable_webring": False}"""
-        self.comic_info.set("Webring", "Enable webring", "False")
-        self.assertEqual(
-            {"enable_webring": False},
-            build_site.load_webring_data(self.comic_info, COMIC_URL),
-        )
-        _mock_urlopen.assert_not_called()
-
-    def test_undefined_endpoint(self, _mock_urlopen, _mock_json_load):
-        """If Endpoint is not defined, should raise ValueError"""
-        self.comic_info.set("Webring", "Endpoint", "")
-        msg = r"The 'Endpoint' option in the \[Webring\] section must be defined when 'Enable webring' is enabled."
-        with self.assertRaisesRegex(ValueError, msg):
-            build_site.load_webring_data(self.comic_info, COMIC_URL)
-        _mock_urlopen.assert_not_called()
-
-    def test_invalid_version(self, _mock_urlopen, _mock_json_load):
-        """Raises ValueError on an invalid version"""
-        webring_json = deepcopy(WEBRING_JSON)
-        webring_json["version"] = 10
-        _mock_json_load.return_value = webring_json
-        with self.assertRaisesRegex(ValueError, "Unknown webring data version: 10"):
-            build_site.load_webring_data(self.comic_info, COMIC_URL)
-
-    def test_invalid_webring_id(self, _mock_urlopen, _mock_json_load):
-        """Raises ValueError when Webring ID isn't defined"""
-        self.comic_info.set("Webring", "Webring ID", "")
-        msg = r"The 'Webring ID' option in the \[Webring\] section must be defined when 'Enable webring' is enabled and 'Show all members' is False."
-        with self.assertRaisesRegex(ValueError, msg):
-            build_site.load_webring_data(self.comic_info, COMIC_URL)
-
-    def test_webring_id_not_found(self, _mock_urlopen, _mock_json_load):
-        """Raises ValueError when Webring ID isn't found in the list of members"""
-        self.comic_info.set("Webring", "Webring ID", "not_a_real_id")
-        msg = r"Couldn't find 'not_a_real_id' in the list of members. See the logs for the webring data that was received."
-        with self.assertRaisesRegex(ValueError, msg):
-            build_site.load_webring_data(self.comic_info, COMIC_URL)
-
-    def test_assert_urlopen(self, _mock_urlopen, _mock_json_load):
-        """Should call urlopen with the correct endpoint and return the JSON data"""
-        self.assertEqual(
-            {
-                "enable_webring": True,
-                "webring_name": "Our Comics Webring!",
-                "webring_home": {
-                    "name": "Home",
-                    "url": "https://my.webring.com/",
-                    "image": "https://my.webring.com/icon.png"
-                },
-                "show_all_members": False,
-                "webring_prev": {
-                    "id": "comic_a",
-                    "name": "Albert's Atrium",
-                    "url": "https://comic.albert.net/",
-                    "image": "https://comic.albert.net/icon.png"
-                },
-                "webring_next": {
-                    "id": "comic_c",
-                    "name": "Clara's Cliffside",
-                    "url": "https://clara-is-cool.neocities.org/",
-                    "image": "https://images.ctfassets.net/hrltx12pl8hq/7JnR6tVVwDyUM8Cbci3GtJ/bf74366cff2ba271471725d0b0ef418c/shutterstock_376532611-og.jpg"
-                }
-            },
-            build_site.load_webring_data(self.comic_info, COMIC_URL),
-        )
-        _mock_urlopen.assert_called_once_with("https://webring.example.com/api")
-
-    def test_relative_path(self, _mock_urlopen, _mock_json_load):
-        """"""
-        self.comic_info.set("Webring", "Endpoint", "/your_content/webring.json")
-        build_site.load_webring_data(self.comic_info, COMIC_URL)
-        _mock_urlopen.assert_called_once_with("https://ryanvilbrandt.github.io/comic_git_dev/your_content/webring.json")
-
-    def test_first_member(self, _mock_urlopen, _mock_json_load):
-        """If we're the first member in the list, prev should wrap to the end"""
-        self.comic_info.set("Webring", "Webring ID", "comic_a")
-        self.assertEqual(
-            {
-                "enable_webring": True,
-                "webring_name": "Our Comics Webring!",
-                "webring_home": {
-                    "name": "Home",
-                    "url": "https://my.webring.com/",
-                    "image": "https://my.webring.com/icon.png"
-                },
-                "show_all_members": False,
-                "webring_prev": {
-                    "id": "comic_c",
-                    "name": "Clara's Cliffside",
-                    "url": "https://clara-is-cool.neocities.org/",
-                    "image": "https://images.ctfassets.net/hrltx12pl8hq/7JnR6tVVwDyUM8Cbci3GtJ/bf74366cff2ba271471725d0b0ef418c/shutterstock_376532611-og.jpg"
-                },
-                "webring_next": {
-                    "id": "comic_b",
-                    "name": "Bertrand's Barn",
-                    "url": "https://bertrand.github.io/my_barn",
-                    "image": "https://bertrand.github.io/my_barn/your_content/images/webring.jpg"
-                }
-            },
-            build_site.load_webring_data(self.comic_info, COMIC_URL),
-        )
-
-    def test_last_member(self, _mock_urlopen, _mock_json_load):
-        """If we're the last member in the list, next should wrap to the start"""
-        self.comic_info.set("Webring", "Webring ID", "comic_c")
-        self.assertEqual(
-            {
-                "enable_webring": True,
-                "webring_name": "Our Comics Webring!",
-                "webring_home": {
-                    "name": "Home",
-                    "url": "https://my.webring.com/",
-                    "image": "https://my.webring.com/icon.png"
-                },
-                "show_all_members": False,
-                "webring_prev": {
-                    "id": "comic_b",
-                    "name": "Bertrand's Barn",
-                    "url": "https://bertrand.github.io/my_barn",
-                    "image": "https://bertrand.github.io/my_barn/your_content/images/webring.jpg"
-                },
-                "webring_next": {
-                    "id": "comic_a",
-                    "name": "Albert's Atrium",
-                    "url": "https://comic.albert.net/",
-                    "image": "https://comic.albert.net/icon.png"
-                }
-            },
-            build_site.load_webring_data(self.comic_info, COMIC_URL),
-        )
-
-    def test_show_all_members(self, _mock_urlopen, _mock_json_load):
-        """If Show all members is True, should return all members and not prev/next"""
-        self.comic_info.set("Webring", "Show all members", "True")
-        self.assertEqual(
-            {
-                "enable_webring": True,
-                "webring_name": "Our Comics Webring!",
-                "webring_home": {
-                    "name": "Home",
-                    "url": "https://my.webring.com/",
-                    "image": "https://my.webring.com/icon.png"
-                },
-                "show_all_members": True,
-                "webring_members": [
-                    {
-                        "id": "comic_a",
-                        "name": "Albert's Atrium",
-                        "url": "https://comic.albert.net/",
-                        "image": "https://comic.albert.net/icon.png"
-                    },
-                    {
-                        "id": "comic_b",
-                        "name": "Bertrand's Barn",
-                        "url": "https://bertrand.github.io/my_barn",
-                        "image": "https://bertrand.github.io/my_barn/your_content/images/webring.jpg"
-                    },
-                    {
-                        "id": "comic_c",
-                        "name": "Clara's Cliffside",
-                        "url": "https://clara-is-cool.neocities.org/",
-                        "image": "https://images.ctfassets.net/hrltx12pl8hq/7JnR6tVVwDyUM8Cbci3GtJ/bf74366cff2ba271471725d0b0ef418c/shutterstock_376532611-og.jpg"
-                    }
-                ]
-            },
-            build_site.load_webring_data(self.comic_info, COMIC_URL),
-        )
-
-
-@patch(MUT + "print_processing_times")
-@patch(MUT + "checkpoint")
-@patch(MUT + "build_rss_feed_from_job")
-@patch(MUT + "get_rss_feed_jobs")
-@patch(MUT + "build_and_publish_comic_pages")
-@patch(MUT + "get_extra_comics_list", return_value=[])
-@patch(MUT + "setup_output_file_space")
-@patch(MUT + "run_hook")
-@patch(MUT + "utils.get_comic_url", return_value=(COMIC_URL, "/comic_git_dev"))
-@patch(MUT + "read_info")
-@patch(MUT + "utils.find_project_root")
-@patch(MUT + "add_inputs_to_env_vars")
 class TestMain(TestCase):
 
+    def make_comic_info(self):
+        comic_info = RawConfigParser()
+        comic_info.add_section("Comic Settings")
+        comic_info.set("Comic Settings", "Theme", "default")
+        comic_info.add_section("RSS Feed")
+        comic_info.set("RSS Feed", "Build RSS feed", "True")
+        return comic_info
+
+    @patch("build.build_site.print_processing_times")
+    @patch("build.build_site.checkpoint")
+    @patch("build.build_site.copy_output_assets")
+    @patch("build.build_site.build_rss_feed_from_job")
+    @patch("build.build_site.get_rss_feed_jobs")
+    @patch("build.build_site.build_and_publish_comic_pages")
+    @patch("build.build_site.get_extra_comics_list", return_value=[])
+    @patch("build.build_site.setup_output_file_space")
+    @patch("build.build_site.run_hook")
+    @patch("build.build_site.utils.get_comic_url", return_value=(COMIC_URL, "/comic_git_dev"))
+    @patch("build.build_site.read_info")
+    @patch("build.build_site.utils.find_project_root")
+    @patch("build.build_site.add_inputs_to_env_vars")
     def test_main_builds_rss_feed_job_from_main_comic(
             self,
             _mock_add_inputs_to_env_vars,
@@ -281,14 +44,11 @@ class TestMain(TestCase):
             mock_build_and_publish_comic_pages,
             mock_get_rss_feed_jobs,
             mock_build_rss_feed_from_job,
+            mock_copy_output_assets,
             _mock_checkpoint,
             _mock_print_processing_times,
     ):
-        comic_info = RawConfigParser()
-        comic_info.add_section("Comic Settings")
-        comic_info.set("Comic Settings", "Theme", "default")
-        comic_info.add_section("RSS Feed")
-        comic_info.set("RSS Feed", "Build RSS feed", "True")
+        comic_info = self.make_comic_info()
         mock_read_info.return_value = comic_info
         mock_run_hook.return_value = None
         comic_data_dicts = [{"page_name": "Page 1"}]
@@ -299,10 +59,131 @@ class TestMain(TestCase):
 
         build_site.main()
 
-        mock_get_rss_feed_jobs.assert_called_once()
-        self.assertEqual(
-            ([models.ComicBuildResult("", comic_info, comic_data_dicts, global_values)],),
-            mock_get_rss_feed_jobs.call_args.args,
+        mock_get_rss_feed_jobs.assert_called_once_with(
+            [models.ComicBuildResult("", comic_info, comic_data_dicts, global_values)]
         )
         mock_build_rss_feed_from_job.assert_called_once_with(feed_job)
+        mock_copy_output_assets.assert_not_called()
 
+    @patch("build.build_site.print_processing_times")
+    @patch("build.build_site.checkpoint")
+    @patch("build.build_site.copy_output_assets")
+    @patch("build.build_site.build_rss_feed_from_job")
+    @patch("build.build_site.get_rss_feed_jobs", return_value=[])
+    @patch("build.build_site.build_and_publish_comic_pages")
+    @patch("build.build_site.get_extra_comic_info")
+    @patch("build.build_site.get_extra_comics_list", return_value=["extras/story"])
+    @patch("build.build_site.setup_output_file_space")
+    @patch("build.build_site.run_hook")
+    @patch("build.build_site.utils.get_comic_url", return_value=(COMIC_URL, "/comic_git_dev"))
+    @patch("build.build_site.read_info")
+    @patch("build.build_site.utils.find_project_root")
+    @patch("build.build_site.add_inputs_to_env_vars")
+    def test_main_builds_extra_comics_before_main_comic(
+            self,
+            _mock_add_inputs_to_env_vars,
+            _mock_find_project_root,
+            mock_read_info,
+            _mock_get_comic_url,
+            mock_run_hook,
+            _mock_setup_output_file_space,
+            _mock_get_extra_comics_list,
+            mock_get_extra_comic_info,
+            mock_build_and_publish_comic_pages,
+            _mock_get_rss_feed_jobs,
+            _mock_build_rss_feed_from_job,
+            _mock_copy_output_assets,
+            _mock_checkpoint,
+            _mock_print_processing_times,
+    ):
+        comic_info = self.make_comic_info()
+        extra_comic_info = self.make_comic_info()
+        mock_read_info.return_value = comic_info
+        mock_get_extra_comic_info.return_value = extra_comic_info
+        mock_run_hook.return_value = None
+        mock_build_and_publish_comic_pages.side_effect = [
+            ([{"page_name": "Extra 1"}], {"theme": "default"}),
+            ([{"page_name": "Main 1"}], {"theme": "default"}),
+        ]
+
+        build_site.main()
+
+        self.assertEqual(
+            [
+                call(COMIC_URL, "extras/story/", extra_comic_info, False, False),
+                call(COMIC_URL, "", comic_info, False, False, {"extras/story": {"page_name": "Extra 1"}}),
+            ],
+            mock_build_and_publish_comic_pages.call_args_list,
+        )
+
+    @patch("build.build_site.print_processing_times")
+    @patch("build.build_site.checkpoint")
+    @patch("build.build_site.copy_output_assets")
+    @patch("build.build_site.build_rss_feed_from_job")
+    @patch("build.build_site.get_rss_feed_jobs", return_value=[])
+    @patch("build.build_site.build_and_publish_comic_pages", return_value=([{"page_name": "Page 1"}], {"theme": "default"}))
+    @patch("build.build_site.get_extra_comics_list", return_value=[])
+    @patch("build.build_site.setup_output_file_space")
+    @patch("build.build_site.run_hook")
+    @patch("build.build_site.utils.get_comic_url", return_value=(COMIC_URL, "/comic_git_dev"))
+    @patch("build.build_site.read_info")
+    @patch("build.build_site.utils.find_project_root")
+    @patch("build.build_site.add_inputs_to_env_vars")
+    def test_main_copies_output_assets_when_output_dir_is_set(
+            self,
+            _mock_add_inputs_to_env_vars,
+            _mock_find_project_root,
+            mock_read_info,
+            _mock_get_comic_url,
+            mock_run_hook,
+            _mock_setup_output_file_space,
+            _mock_get_extra_comics_list,
+            _mock_build_and_publish_comic_pages,
+            _mock_get_rss_feed_jobs,
+            _mock_build_rss_feed_from_job,
+            mock_copy_output_assets,
+            _mock_checkpoint,
+            _mock_print_processing_times,
+    ):
+        mock_read_info.return_value = self.make_comic_info()
+        mock_run_hook.return_value = None
+
+        with patch.dict("os.environ", {"OUTPUT_DIR": "output"}, clear=False):
+            build_site.main()
+
+        mock_copy_output_assets.assert_called_once_with("output")
+
+    @patch("build.build_site.print_processing_times")
+    @patch("build.build_site.checkpoint")
+    @patch("build.build_site.copy_output_assets")
+    @patch("build.build_site.build_rss_feed_from_job")
+    @patch("build.build_site.get_rss_feed_jobs", return_value=[])
+    @patch("build.build_site.build_and_publish_comic_pages", side_effect=RuntimeError("build failed"))
+    @patch("build.build_site.get_extra_comics_list", return_value=[])
+    @patch("build.build_site.setup_output_file_space")
+    @patch("build.build_site.run_hook")
+    @patch("build.build_site.utils.get_comic_url", return_value=(COMIC_URL, "/comic_git_dev"))
+    @patch("build.build_site.read_info")
+    @patch("build.build_site.utils.find_project_root")
+    @patch("build.build_site.add_inputs_to_env_vars")
+    def test_main_surfaces_build_failures(
+            self,
+            _mock_add_inputs_to_env_vars,
+            _mock_find_project_root,
+            mock_read_info,
+            _mock_get_comic_url,
+            mock_run_hook,
+            _mock_setup_output_file_space,
+            _mock_get_extra_comics_list,
+            _mock_build_and_publish_comic_pages,
+            _mock_get_rss_feed_jobs,
+            _mock_build_rss_feed_from_job,
+            _mock_copy_output_assets,
+            _mock_checkpoint,
+            _mock_print_processing_times,
+    ):
+        mock_read_info.return_value = self.make_comic_info()
+        mock_run_hook.return_value = None
+
+        with self.assertRaisesRegex(RuntimeError, "build failed"):
+            build_site.main()

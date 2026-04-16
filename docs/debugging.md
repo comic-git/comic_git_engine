@@ -18,11 +18,11 @@ This repo does not have a separate application log system for local development.
 ```powershell
 # Run a local build and read the console output directly
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-python comic_git_engine\scripts\build_site.py
+python comic_git_engine\src\build\build_site.py
 
 # Run the local preview server and watch rebuild output live
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-python comic_git_engine\scripts\dev_server.py
+python comic_git_engine\src\scripts\dev_server.py
 ```
 
 ## Common Failures
@@ -42,7 +42,7 @@ Example:
 
 ```powershell
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-python comic_git_engine\scripts\build_site.py
+python comic_git_engine\src\build\build_site.py
 ```
 
 ### Wrong working directory
@@ -57,7 +57,7 @@ By default, future-dated pages are not published. If you need to inspect them lo
 
 ```powershell
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-python comic_git_engine\scripts\build_site.py --publish-all-comics
+python comic_git_engine\src\build\build_site.py --publish-all-comics
 ```
 
 Do not use `--delete-scheduled-posts` for normal local debugging. That flag is for deployment-oriented builds and can delete future-dated content from the host repo.
@@ -72,11 +72,11 @@ Get-Location
 Get-ChildItem your_content
 
 # Run one focused test file while debugging a specific area
-$env:PYTHONPATH='scripts'
+$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m unittest tests.test_rss_feed
 
 # Run build orchestration tests
-$env:PYTHONPATH='scripts'
+$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m unittest tests.test_build_site
 ```
 

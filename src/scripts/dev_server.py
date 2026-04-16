@@ -10,8 +10,9 @@ import traceback
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from typing import Any
 
-import build_site
-import utils
+from build import build_site
+from build.site_output import delete_output_file_space
+import core.utils as utils
 
 try:
     from watchdog.observers import Observer
@@ -127,7 +128,7 @@ def main():
     observer.stop()
     print("\nWeb server stopped. Deleting auto-generated files...")
     os.chdir(SRC_ROOT)
-    build_site.delete_output_file_space()
+    delete_output_file_space()
 
 
 if __name__ == "__main__":

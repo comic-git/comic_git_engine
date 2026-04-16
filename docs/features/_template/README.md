@@ -4,8 +4,8 @@
 
 # [Feature Name]
 
-| Field | Value |
-|---|---|
+| Field      | Value                                             |
+|------------|---------------------------------------------------|
 | **Status** | `active` / `shipped` / `superseded` / `abandoned` |
 
 ## Summary
@@ -22,5 +22,5 @@
 <!-- Links to other files in this folder. Add entries as documents are created. -->
 
 | Document | Contents |
-|---|---|
-| | |
+|----------|----------|
+|          |          |

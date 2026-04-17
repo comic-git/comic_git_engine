@@ -4,7 +4,7 @@ from configparser import RawConfigParser
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from build import images
+from build.output import images
 
 
 class TestImageUtils(TestCase):
@@ -51,7 +51,7 @@ class TestImageUtils(TestCase):
         im.convert.assert_called_once_with("RGB")
         converted.save.assert_called_once_with("page.jpg")
 
-    @patch("build.images.Image.new")
+    @patch("build.output.images.Image.new")
     def test_save_image_uses_transparency_fallback(self, mock_new):
         im = MagicMock()
         im.mode = "RGB"
@@ -73,9 +73,9 @@ class TestImageUtils(TestCase):
         comic_info.set("Image Reprocessing", "Thumbnail size", "50%")
         return comic_info
 
-    @patch("build.images.save_image")
-    @patch("build.images.resize")
-    @patch("build.images.Image.open")
+    @patch("build.output.images.save_image")
+    @patch("build.output.images.resize")
+    @patch("build.output.images.Image.open")
     def test_create_comic_thumbnail_respects_overwrite_setting(self, mock_open_image, mock_resize, mock_save_image):
         comic_info = self.make_comic_info(overwrite=False)
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -98,7 +98,7 @@ class TestImageUtils(TestCase):
         mock_resize.assert_called_once()
         mock_save_image.assert_called_once()
 
-    @patch("build.images.create_comic_thumbnail")
+    @patch("build.output.images.create_comic_thumbnail")
     def test_process_comic_images_calls_thumbnail_on_first_image_only(self, mock_create_thumbnail):
         comic_info = self.make_comic_info()
         comic_data_dicts = [

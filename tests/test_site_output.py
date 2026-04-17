@@ -4,7 +4,7 @@ from configparser import RawConfigParser
 from unittest import TestCase
 from unittest.mock import patch
 
-from build import site_output
+from build.output import site_output
 
 
 class TestSiteOutput(TestCase):
@@ -55,7 +55,7 @@ class TestSiteOutput(TestCase):
             self.assertFalse(os.path.exists(os.path.join(temp_dir, "index.html")))
             self.assertFalse(os.path.exists(os.path.join(temp_dir, "404.html")))
 
-    @patch("build.site_output.delete_output_file_space")
+    @patch("build.output.site_output.delete_output_file_space")
     def test_setup_output_file_space_delegates_to_delete(self, mock_delete_output_file_space):
         comic_info = self.make_comic_info()
 
@@ -63,8 +63,8 @@ class TestSiteOutput(TestCase):
 
         mock_delete_output_file_space.assert_called_once_with(comic_info)
 
-    @patch("build.site_output.shutil.copy")
-    @patch("build.site_output.shutil.copytree")
+    @patch("build.output.site_output.shutil.copy")
+    @patch("build.output.site_output.shutil.copytree")
     def test_copy_output_assets_only_runs_when_output_dir_is_set(self, mock_copytree, mock_copy):
         site_output.copy_output_assets("")
         mock_copytree.assert_not_called()

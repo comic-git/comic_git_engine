@@ -7,7 +7,7 @@ from typing import Dict, List
 
 from markdown2 import Markdown
 
-from build.transcripts import get_transcripts
+from build.content.transcripts import get_transcripts
 from integrations.hooks import run_hook
 
 

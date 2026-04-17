@@ -3,7 +3,7 @@ from configparser import RawConfigParser
 from unittest import TestCase
 from unittest.mock import call, patch
 
-from build import rendering
+from build.output import rendering
 
 
 class TestRendering(TestCase):
@@ -14,16 +14,16 @@ class TestRendering(TestCase):
         comic_info.set("Comic Settings", "Theme", "theme-name")
         return comic_info
 
-    @patch("build.rendering.utils.write_to_template")
-    @patch("build.rendering.utils.get_social_media_data", side_effect=lambda *_args: {"path": _args[3]})
-    @patch("build.rendering.get_pages_list", return_value=[
+    @patch("build.output.rendering.utils.write_to_template")
+    @patch("build.output.rendering.utils.get_social_media_data", side_effect=lambda *_args: {"path": _args[3]})
+    @patch("build.output.rendering.get_pages_list", return_value=[
         {"template_name": "index", "title": ""},
         {"template_name": "404", "title": ""},
         {"template_name": "latest", "title": "Latest Page"},
         {"template_name": "about", "title": "About"},
         {"template_name": "tagged", "title": ""},
     ])
-    @patch("build.rendering.write_tagged_pages")
+    @patch("build.output.rendering.write_tagged_pages")
     def test_write_other_pages_handles_root_pages_extra_comics_and_title_overrides(
             self,
             mock_write_tagged_pages,
@@ -49,9 +49,9 @@ class TestRendering(TestCase):
         )
         self.assertEqual(4, mock_social_media.call_count)
 
-    @patch("build.rendering.utils.write_to_template")
-    @patch("build.rendering.utils.get_social_media_data", return_value={"x": 1})
-    @patch("build.rendering.get_pages_list", return_value=[
+    @patch("build.output.rendering.utils.write_to_template")
+    @patch("build.output.rendering.utils.get_social_media_data", return_value={"x": 1})
+    @patch("build.output.rendering.get_pages_list", return_value=[
         {"template_name": "latest", "title": ""},
         {"template_name": "index", "title": ""},
     ])
@@ -71,8 +71,8 @@ class TestRendering(TestCase):
         self.assertEqual("index.html", args[1])
         self.assertEqual("Index", args[2]["_title"])
 
-    @patch("build.rendering.utils.write_to_template", side_effect=[None, RuntimeError("boom"), None])
-    @patch("build.rendering.utils.get_social_media_data", return_value={"x": 1})
+    @patch("build.output.rendering.utils.write_to_template", side_effect=[None, RuntimeError("boom"), None])
+    @patch("build.output.rendering.utils.get_social_media_data", return_value={"x": 1})
     def test_write_tagged_pages_groups_characters_and_tags_and_handles_write_failures(
             self,
             _mock_social_media,
@@ -97,12 +97,12 @@ class TestRendering(TestCase):
             filenames,
         )
 
-    @patch("build.rendering.run_hook")
-    @patch("build.rendering.write_other_pages")
-    @patch("build.rendering.utils.write_to_template")
-    @patch("build.rendering.utils.get_social_media_data", return_value={"card": "ok"})
-    @patch("build.rendering.utils.build_markdown_parser")
-    @patch("build.rendering.utils.build_jinja_environment")
+    @patch("build.output.rendering.run_hook")
+    @patch("build.output.rendering.write_other_pages")
+    @patch("build.output.rendering.utils.write_to_template")
+    @patch("build.output.rendering.utils.get_social_media_data", return_value={"card": "ok"})
+    @patch("build.output.rendering.utils.build_markdown_parser")
+    @patch("build.output.rendering.utils.build_jinja_environment")
     def test_write_html_files_uses_theme_template_precedence_and_custom_social_media_path(
             self,
             mock_build_jinja_environment,

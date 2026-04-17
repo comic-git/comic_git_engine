@@ -5,7 +5,7 @@ from configparser import RawConfigParser
 from unittest import TestCase
 from unittest.mock import patch
 
-from build import page_discovery
+from build.content import page_discovery
 
 
 class TestPageDiscovery(TestCase):
@@ -38,8 +38,8 @@ class TestPageDiscovery(TestCase):
         with self.assertRaisesRegex(ValueError, "Invalid timezone specified"):
             page_discovery.get_page_info_list("", comic_info, False, False)
 
-    @patch("build.page_discovery.run_hook", return_value=None)
-    @patch("build.page_discovery.get_transcripts", side_effect=lambda *_args: {"English": "<p>x</p>\n"})
+    @patch("build.content.page_discovery.run_hook", return_value=None)
+    @patch("build.content.page_discovery.get_transcripts", side_effect=lambda *_args: {"English": "<p>x</p>\n"})
     def test_get_page_info_list_filters_and_normalizes_metadata(self, _mock_get_transcripts, _mock_run_hook):
         comic_info = self.make_comic_info()
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -95,8 +95,8 @@ class TestPageDiscovery(TestCase):
         self.assertNotIn("!Draft note", page_info_list[1])
         self.assertEqual(["English"], page_info_list[1]["transcript_languages"])
 
-    @patch("build.page_discovery.run_hook", side_effect=lambda theme, func, args: {**args[-1], "hooked": True})
-    @patch("build.page_discovery.get_transcripts", return_value={})
+    @patch("build.content.page_discovery.run_hook", side_effect=lambda theme, func, args: {**args[-1], "hooked": True})
+    @patch("build.content.page_discovery.get_transcripts", return_value={})
     def test_get_page_info_list_deletes_future_posts_and_respects_explicit_filenames(self, _mock_get_transcripts, _mock_run_hook):
         comic_info = self.make_comic_info()
         with tempfile.TemporaryDirectory() as temp_dir:

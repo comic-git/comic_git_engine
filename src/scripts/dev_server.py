@@ -11,7 +11,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from typing import Any
 
 from build import build_site
-from build.site_output import delete_output_file_space
+from build.output.site_output import delete_output_file_space
 import core.utils as utils
 
 try:

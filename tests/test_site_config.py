@@ -2,7 +2,7 @@ from configparser import RawConfigParser
 from unittest import TestCase
 from unittest.mock import patch
 
-from build import site_config
+from build.content import site_config
 
 
 class TestSiteConfig(TestCase):
@@ -14,7 +14,7 @@ class TestSiteConfig(TestCase):
         comic_info.add_section("Pages")
         return comic_info
 
-    @patch("build.site_config.web_path", side_effect=lambda path: path)
+    @patch("build.content.site_config.web_path", side_effect=lambda path: path)
     def test_get_links_list_with_text_and_image_links(self, _mock_web_path):
         comic_info = self.make_comic_info()
         comic_info.set("Links Bar", "Home", "/")

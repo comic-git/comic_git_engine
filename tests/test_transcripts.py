@@ -4,7 +4,7 @@ from collections import OrderedDict
 from configparser import RawConfigParser
 from unittest import TestCase
 
-from build import transcripts
+from build.content import transcripts
 
 
 class TestTranscripts(TestCase):

@@ -5,7 +5,7 @@ from configparser import RawConfigParser
 from unittest import TestCase
 from unittest.mock import patch
 
-from build import comic_data
+from build.content import comic_data
 
 
 class TestComicData(TestCase):
@@ -61,8 +61,8 @@ class TestComicData(TestCase):
             comic_data.get_ids(pages, 2),
         )
 
-    @patch("build.comic_data.run_hook", return_value=None)
-    @patch("build.comic_data.get_transcripts", return_value=OrderedDict({"English": "<p>Transcript</p>\n"}))
+    @patch("build.content.comic_data.run_hook", return_value=None)
+    @patch("build.content.comic_data.get_transcripts", return_value=OrderedDict({"English": "<p>Transcript</p>\n"}))
     def test_create_comic_data_builds_expected_fields(self, mock_get_transcripts, _mock_run_hook):
         comic_info = self.make_comic_info()
         page_info = {
@@ -107,8 +107,8 @@ class TestComicData(TestCase):
         )
         mock_get_transcripts.assert_called_once_with("", comic_info, "001")
 
-    @patch("build.comic_data.run_hook", return_value=None)
-    @patch("build.comic_data.get_transcripts", return_value=OrderedDict())
+    @patch("build.content.comic_data.run_hook", return_value=None)
+    @patch("build.content.comic_data.get_transcripts", return_value=OrderedDict())
     def test_create_comic_data_uses_filename_and_existing_title_overrides(self, _mock_get_transcripts, _mock_run_hook):
         comic_info = self.make_comic_info()
         page_info = {
@@ -125,8 +125,8 @@ class TestComicData(TestCase):
         self.assertEqual("Explicit Internal Title", data["_title"])
         self.assertEqual("first comic", data["_on_comic_click"])
 
-    @patch("build.comic_data.run_hook", side_effect=lambda *_args: {"hooked": True, **_args[2][-1]})
-    @patch("build.comic_data.get_transcripts", return_value=OrderedDict())
+    @patch("build.content.comic_data.run_hook", side_effect=lambda *_args: {"hooked": True, **_args[2][-1]})
+    @patch("build.content.comic_data.get_transcripts", return_value=OrderedDict())
     def test_create_comic_data_applies_hook_result(self, _mock_get_transcripts, _mock_run_hook):
         comic_info = self.make_comic_info()
         page_info = {
@@ -140,7 +140,7 @@ class TestComicData(TestCase):
         self.assertTrue(data["hooked"])
         self.assertEqual("", data["page_title"])
 
-    @patch("build.comic_data.create_comic_data")
+    @patch("build.content.comic_data.create_comic_data")
     def test_build_comic_data_dicts_preserves_order_and_navigation_ids(self, mock_create_comic_data):
         comic_info = self.make_comic_info()
         page_info_list = [

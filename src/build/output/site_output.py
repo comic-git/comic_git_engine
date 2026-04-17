@@ -2,7 +2,7 @@ import os
 import shutil
 from configparser import RawConfigParser
 
-from build.site_config import get_extra_comics_list, get_pages_list
+from build.content.site_config import get_extra_comics_list, get_pages_list
 from core.utils import read_info
 
 

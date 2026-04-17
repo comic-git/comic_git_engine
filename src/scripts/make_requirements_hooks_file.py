@@ -1,7 +1,7 @@
 import os
 from typing import Set
 
-from build.site_config import get_extra_comics_list, get_extra_comic_info
+from build.content.site_config import get_extra_comics_list, get_extra_comic_info
 from core.utils import find_project_root, read_info, str_to_list
 
 

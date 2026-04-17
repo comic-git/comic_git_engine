@@ -11,7 +11,7 @@ from configparser import RawConfigParser
 from pytz import timezone
 
 import core.utils as utils
-from build.transcripts import get_transcripts
+from build.content.transcripts import get_transcripts
 from core.utils import read_info
 from integrations.hooks import run_hook
 

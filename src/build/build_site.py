@@ -4,8 +4,8 @@ import traceback
 
 import core.utils as utils
 from build.site_builder import build_and_publish_comic_pages
-from build.site_config import get_extra_comic_info, get_extra_comics_list
-from build.site_output import copy_output_assets, setup_output_file_space
+from build.content.site_config import get_extra_comic_info, get_extra_comics_list
+from build.output.site_output import copy_output_assets, setup_output_file_space
 from core.models import ComicBuildResult
 from core.utils import checkpoint, print_processing_times, read_info
 from integrations.hooks import run_hook

@@ -6,7 +6,7 @@ from configparser import RawConfigParser
 from typing import Dict, List
 
 import core.utils as utils
-from build.site_config import get_pages_list
+from build.content.site_config import get_pages_list
 from integrations.hooks import run_hook
 
 

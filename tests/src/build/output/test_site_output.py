@@ -7,6 +7,9 @@ from unittest.mock import patch
 from build.output import site_output
 
 
+MUT = "build.output.site_output."
+
+
 class TestSiteOutput(TestCase):
 
     def make_comic_info(self):
@@ -69,7 +72,7 @@ class TestSiteOutput(TestCase):
             self.assertFalse(os.path.exists(os.path.join(temp_dir, "index.html")))
             self.assertFalse(os.path.exists(os.path.join(temp_dir, "404.html")))
 
-    @patch("build.output.site_output.delete_output_file_space")
+    @patch(MUT + "delete_output_file_space")
     def test_setup_output_file_space_delegates_to_delete(self, mock_delete_output_file_space):
         comic_info = self.make_comic_info()
 
@@ -77,7 +80,7 @@ class TestSiteOutput(TestCase):
 
         mock_delete_output_file_space.assert_called_once_with(comic_info)
 
-    @patch("build.output.site_output.shutil.copytree")
+    @patch(MUT + "shutil.copytree")
     def test_copy_output_assets_only_runs_when_output_dir_is_set(self, mock_copytree):
         site_output.copy_output_assets("")
         mock_copytree.assert_not_called()

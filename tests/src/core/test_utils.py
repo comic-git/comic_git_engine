@@ -7,9 +7,12 @@ from unittest.mock import patch, mock_open, call
 from core import utils
 
 
+MUT = "core.utils."
+
+
 class TestGetComicUrl(TestCase):
 
-    @patch("core.utils.os.environ", {"GITHUB_REPOSITORY": "cvilbrandt/tamberlane"})
+    @patch(MUT + "os.environ", {"GITHUB_REPOSITORY": "cvilbrandt/tamberlane"})
     def test_get_comic_url_on_github(self):
         comic_info = RawConfigParser()
         comic_info.add_section("Comic Settings")
@@ -63,8 +66,8 @@ class TestGetComicUrl(TestCase):
             utils.get_comic_url(comic_info)
         )
 
-    @patch("core.utils.os.environ", {"GITHUB_REPOSITORY": "cvilbrandt/tamberlane"})
-    @patch("core.utils.os.path.isfile", return_value=True)
+    @patch(MUT + "os.environ", {"GITHUB_REPOSITORY": "cvilbrandt/tamberlane"})
+    @patch(MUT + "os.path.isfile", return_value=True)
     @patch("builtins.open", new_callable=mock_open, read_data="tamberlanecomic.com")
     def test_get_comic_url_with_cname(self, *m):
         comic_info = RawConfigParser()
@@ -82,7 +85,7 @@ class TestGetComicUrl(TestCase):
             utils.get_comic_url(comic_info)
         )
 
-    @patch("core.utils.os.environ", {"GITHUB_REPOSITORY": "cvilbrandt/cvilbrandt.github.io"})
+    @patch(MUT + "os.environ", {"GITHUB_REPOSITORY": "cvilbrandt/cvilbrandt.github.io"})
     def test_get_comic_url_on_github_special_repo_name(self):
         comic_info = RawConfigParser()
         comic_info.add_section("Comic Settings")
@@ -99,7 +102,7 @@ class TestGetComicUrl(TestCase):
             utils.get_comic_url(comic_info)
         )
 
-    @patch("core.utils.os.environ", {})
+    @patch(MUT + "os.environ", {})
     def test_get_comic_url_local(self):
         comic_info = RawConfigParser()
         comic_info.add_section("Comic Settings")
@@ -233,7 +236,7 @@ class TestGetSocialMediaData(TestCase):
         )
         self.assertEqual(expected, actual)
 
-    @patch("core.utils.os.path.isfile", return_value=True)
+    @patch(MUT + "os.path.isfile", return_value=True)
     @patch("builtins.open", new_callable=mock_open, read_data='{"comic": {"og:type": "video", "og:site_name": "_title"}}')
     def test_read_from_file(self, open_mock, isfile_mock):
         """Test that it will use data in the social_media.json file if it's present."""
@@ -251,7 +254,7 @@ class TestGetSocialMediaData(TestCase):
         isfile_mock.assert_called_once_with("your_content/social_media.json")
         open_mock.assert_called_once_with("your_content/social_media.json")
 
-    @patch("core.utils.os.path.isfile", return_value=True)
+    @patch(MUT + "os.path.isfile", return_value=True)
     @patch("builtins.open", new_callable=mock_open, read_data='{"comic": {"og:type": "video", "og:site_name": "_title"}}')
     def test_read_from_file_cached(self, open_mock, isfile_mock):
         """Tests that loaded social media info is cached and so files are only read from once."""
@@ -285,7 +288,7 @@ class TestGetSocialMediaData(TestCase):
         isfile_mock.assert_called_once_with("your_content/social_media.json")
         open_mock.assert_called_once_with("your_content/social_media.json")
 
-    @patch("core.utils.os.path.isfile", return_value=False)
+    @patch(MUT + "os.path.isfile", return_value=False)
     @patch("builtins.open", new_callable=mock_open, read_data='{"comic": {"og:type": "video", "og:site_name": "_title"}}')
     def test_extra_comic_folders(self, open_mock, isfile_mock):
         """Test that extra comics can define their own social_media.json, and they will be cached differently than
@@ -353,7 +356,7 @@ class TestGetSocialMediaData(TestCase):
         ])
         open_mock.assert_called_once_with(r"extra_comic_1\your_content/social_media.json")
 
-    @patch("core.utils.os.path.isfile", side_effect=lambda path: path == "your_content/social_media.json")
+    @patch(MUT + "os.path.isfile", side_effect=lambda path: path == "your_content/social_media.json")
     @patch("builtins.open", new_callable=mock_open, read_data='{"comic": {"og:type": "video", "og:site_name": "_title"}}')
     def test_extra_comic_inherits_main_social_media_file(self, open_mock, isfile_mock):
         """Test that an Extra Comic falls back to the main comic social_media.json if it has no local file."""
@@ -379,7 +382,7 @@ class TestGetSocialMediaData(TestCase):
         ])
         open_mock.assert_called_once_with("your_content/social_media.json")
 
-    @patch("core.utils.os.path.isfile", return_value=True)
+    @patch(MUT + "os.path.isfile", return_value=True)
     @patch("builtins.open", new_callable=mock_open, read_data=json.dumps({
         "base": {
             "og:type": "audio",

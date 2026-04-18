@@ -5,6 +5,9 @@ from unittest.mock import patch
 from build.content import site_config
 
 
+MUT = "build.content.site_config."
+
+
 class TestSiteConfig(TestCase):
 
     def make_comic_info(self):
@@ -14,7 +17,7 @@ class TestSiteConfig(TestCase):
         comic_info.add_section("Pages")
         return comic_info
 
-    @patch("build.content.site_config.web_path", side_effect=lambda path: path)
+    @patch(MUT + "web_path", side_effect=lambda path: path)
     def test_get_links_list_with_text_and_image_links(self, _mock_web_path):
         comic_info = self.make_comic_info()
         comic_info.set("Links Bar", "Home", "/")

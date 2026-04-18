@@ -8,6 +8,7 @@ from integrations import webring
 
 
 COMIC_URL = "https://ryanvilbrandt.github.io/comic_git_dev"
+MUT = "integrations.webring."
 WEBRING_JSON = {
     "version": 1,
     "name": "Our Comics Webring!",
@@ -39,8 +40,8 @@ WEBRING_JSON = {
 }
 
 
-@patch("integrations.webring.json.load", return_value=WEBRING_JSON)
-@patch("integrations.webring.urlopen")
+@patch(MUT + "json.load", return_value=WEBRING_JSON)
+@patch(MUT + "urlopen")
 class TestWebring(TestCase):
     def setUp(self):
         self.comic_info = RawConfigParser()

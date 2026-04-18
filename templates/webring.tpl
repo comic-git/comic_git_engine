@@ -1,6 +1,6 @@
 <nav class="webring">
     {%- if webring_label %}
-    <h2>{{ webring_label }}</h2>
+    <h2 class="webring-header">{{ webring_label }}</h2>
     {%- endif %}
 
     {%- if show_all_members %}

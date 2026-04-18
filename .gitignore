@@ -4,4 +4,6 @@ __pycache__/
 
 *.pyc
 
+requirements_hooks.txt
+
 specs/

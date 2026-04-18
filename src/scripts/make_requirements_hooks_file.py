@@ -27,7 +27,7 @@ def main():
         if theme:
             requirements.update(get_requirements(theme))
             print(requirements)
-    with open("comic_git_engine/scripts/requirements_hooks.txt", "w") as f:
+    with open("comic_git_engine/requirements_hooks.txt", "w") as f:
         f.write("\n".join(requirements))
 
 

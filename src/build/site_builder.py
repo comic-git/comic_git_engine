@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 
 from markdown2 import Markdown
 
-import core.utils as utils
+from core import utils
 from build.content.comic_data import build_comic_data_dicts
 from build.content.page_discovery import get_page_info_list, save_page_info_json_file
 from build.content.site_config import get_links_list

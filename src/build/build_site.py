@@ -1,11 +1,14 @@
 import argparse
 import os
+import sys
 import traceback
 
-import core.utils as utils
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from build.site_builder import build_and_publish_comic_pages
 from build.content.site_config import get_extra_comic_info, get_extra_comics_list
 from build.output.site_output import copy_output_assets, copy_site_root_files, setup_output_file_space
+from core import utils
 from core.models import ComicBuildResult
 from core.utils import checkpoint, print_processing_times, read_info
 from integrations.hooks import run_hook

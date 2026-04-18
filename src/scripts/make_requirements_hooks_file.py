@@ -1,21 +1,24 @@
 import os
+import sys
 from typing import Set
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from build.content.site_config import get_extra_comics_list, get_extra_comic_info
-from core.utils import find_project_root, read_info, str_to_list
+from core import utils
 
 
 def get_requirements(theme: str) -> Set[str]:
     requirements_path = f"your_content/themes/{theme}/scripts/requirements.txt"
     if os.path.exists(requirements_path):
         with open(requirements_path) as f:
-            return set(str_to_list(f.read().replace("\r", ""), delimiter="\n"))
+            return set(utils.str_to_list(f.read().replace("\r", ""), delimiter="\n"))
     return set()
 
 
 def main():
-    find_project_root()
-    comic_info = read_info("your_content/comic_info.ini")
+    utils.find_project_root()
+    comic_info = utils.read_info("your_content/comic_info.ini")
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
     requirements = get_requirements(theme)
     print(requirements)

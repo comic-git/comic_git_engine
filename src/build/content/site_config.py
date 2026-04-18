@@ -3,7 +3,7 @@ from configparser import RawConfigParser
 from copy import deepcopy
 from typing import Any, List
 
-import core.utils as utils
+from core import utils
 from core.utils import web_path
 
 

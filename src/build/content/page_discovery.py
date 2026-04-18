@@ -10,9 +10,8 @@ from typing import Dict, List, Tuple
 from configparser import RawConfigParser
 from pytz import timezone
 
-import core.utils as utils
 from build.content.transcripts import get_transcripts
-from core.utils import read_info
+from core import utils
 from integrations.hooks import run_hook
 
 
@@ -38,7 +37,7 @@ def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_sc
         if not os.path.exists(f"{page_path}info.ini"):
             print(f"{page_path} is missing its info.ini file. Skipping")
             continue
-        page_info = read_info(filepath, to_dict=True)
+        page_info = utils.read_info(filepath, to_dict=True)
         try:
             post_date = tz_info.localize(datetime.strptime(page_info["Post date"], date_format))
         except ValueError as e:

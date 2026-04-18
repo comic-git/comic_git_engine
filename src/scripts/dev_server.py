@@ -10,9 +10,11 @@ import traceback
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from typing import Any
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from build import build_site
 from build.output.site_output import delete_output_file_space
-import core.utils as utils
+from core import utils
 
 try:
     from watchdog.observers import Observer

@@ -4,7 +4,7 @@ from copy import deepcopy
 from unittest import TestCase
 from unittest.mock import patch, mock_open, call
 
-import core.utils as utils
+from core import utils
 
 
 class TestGetComicUrl(TestCase):

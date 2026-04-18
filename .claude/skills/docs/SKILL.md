@@ -19,7 +19,7 @@ Read `docs/documentation.md` to understand the docs structure and where new cont
 
 1. **Find the branch point**
    ```bash
-   git merge-base main HEAD
+   git merge-base master HEAD
    ```
    Use that commit hash with `git diff <hash>..HEAD` to get the full picture of everything that changed.
 

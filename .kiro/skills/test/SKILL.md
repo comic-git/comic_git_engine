@@ -11,7 +11,7 @@ Read `AGENTS.md` and `docs/testing.md`. The testing doc defines the frameworks, 
 
 1. **Find the branch point**
    ```bash
-   git merge-base main HEAD
+   git merge-base master HEAD
    ```
    Use that commit hash with `git diff <hash>..HEAD` to see everything that changed on this branch.
 

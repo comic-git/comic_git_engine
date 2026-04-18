@@ -53,7 +53,7 @@ The symlinked workflow is usually more flexible when you need to edit both repos
 
 | Variable            | Purpose                                                                                                                                              | How to get the value                                                                                                            |
 |---------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
-| `OUTPUT_DIR`        | If set, writes generated site files into a separate output directory instead of mixing build output into the repo root.                              | Choose any local output folder path when you want isolated build output. Leave unset to use the legacy in-place build behavior. |
+| `OUTPUT_DIR`        | Controls where generated site files are written. By default, builds go into `build/`.                                                              | Usually leave unset for local builds and prefer `--output-dir` on the command line when you want a one-off override. Set it manually for workflow-style testing or set it to an empty value for legacy in-place output. |
 | `GITHUB_REPOSITORY` | Lets local builds emulate the GitHub Actions environment when the host repo should keep `comic_info.ini` close to what end users receive by default. | Set this manually for local development in host repos like `comic_git_dev`, for example `ryanvilbrandt/comic_git_dev`.          |
 | `INPUTS`            | Optional GitHub Actions-style multiline input string consumed by `build_site.py`.                                                                    | Usually not needed for normal local development. Set manually only when reproducing workflow behavior.                          |
 | `SECRETS`           | Optional GitHub Actions-style multiline secret string consumed by `build_site.py`.                                                                   | Usually not needed for normal local development. Set manually only when reproducing workflow behavior.                          |
@@ -68,13 +68,12 @@ $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
 python comic_git_engine\src\build\build_site.py
 ```
 
-If you want generated files written to a separate directory:
+By default, generated files are written to `build/`. If you want a different output directory:
 
 ```powershell
 # Run from the root of the host comic_git repo
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-$env:OUTPUT_DIR='output'
-python comic_git_engine\src\build\build_site.py
+python comic_git_engine\src\build\build_site.py --output-dir output
 ```
 
 If you want to preview pages that have future `Post date` values without deleting anything:
@@ -124,3 +123,4 @@ See [`docs/testing.md`](testing.md) for more detail on test structure and conven
 - **PyCharm can show the same file through multiple paths when this repo is symlinked into another repo.** If the duplicate views become confusing, mark the symlinked copy as `Excluded` in PyCharm so you only work from one visible path.
 - **Be careful about setting `Comic domain` or `Comic subdirectory` directly in a host repo during local development.** For repos intended to be distributed to end users, prefer setting `GITHUB_REPOSITORY` locally instead so `comic_info.ini` stays close to the fresh-install defaults.
 - **`requirements_hooks.txt` is generated during the GitHub Action, not hand-maintained.** Do not create or commit this file to the repo. If you need to install custom dependencies from a custom theme, install directly from the requirements.txt in that theme.
+- If you want the old in-place build behavior for debugging or ad-hoc previewing, set `OUTPUT_DIR` to an empty value before running the build script. `--output-dir` is the cleaner option for normal one-off local overrides.

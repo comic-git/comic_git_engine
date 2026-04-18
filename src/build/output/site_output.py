@@ -3,11 +3,11 @@ import shutil
 from configparser import RawConfigParser
 
 from build.content.site_config import get_extra_comics_list, get_pages_list
-from core.utils import read_info
+from core.utils import get_output_dir, read_info
 
 
 def delete_output_file_space(comic_info: RawConfigParser = None):
-    output_dir = os.getenv("OUTPUT_DIR", "")
+    output_dir = get_output_dir()
     if output_dir:
         shutil.rmtree(output_dir, ignore_errors=True)
         return

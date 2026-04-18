@@ -60,7 +60,9 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
     for extra_comic in get_extra_comics_list(comic_info):
         print(extra_comic)
         extra_comic_info = get_extra_comic_info(extra_comic, comic_info)
-        os.makedirs(extra_comic, exist_ok=True)
+        extra_comic_output_dir = os.path.join(utils.get_output_dir(), extra_comic)
+        if extra_comic_output_dir:
+            os.makedirs(extra_comic_output_dir, exist_ok=True)
         comic_data_dicts, extra_global_values = build_and_publish_comic_pages(
             comic_url, extra_comic.strip("/") + "/", extra_comic_info, delete_scheduled_posts,
             publish_all_comics
@@ -93,7 +95,7 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
         build_rss_feed_from_job(feed_job)
     checkpoint("Build RSS feed")
 
-    output_dir = os.getenv("OUTPUT_DIR", "")
+    output_dir = utils.get_output_dir()
     if output_dir:
         copy_output_assets(output_dir)
         checkpoint("Copy extra files to output directory")
@@ -105,7 +107,7 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
     print_processing_times()
 
 
-def parse_args():
+def parse_args(argv: list[str] | None = None):
     parser = argparse.ArgumentParser(description='Manual build of comic_git')
     parser.add_argument(
         "-d",
@@ -120,11 +122,23 @@ def parse_args():
         action="store_true",
         help="Will publish all comics, even ones with a publish date set in the future."
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        help="Override the output directory for this build. Defaults to the OUTPUT_DIR environment variable, "
+             "or 'build' if OUTPUT_DIR is unset."
+    )
+    return parser.parse_args(argv)
+
+
+def apply_cli_environment_overrides(args: argparse.Namespace) -> None:
+    if args.output_dir is not None:
+        os.environ["OUTPUT_DIR"] = args.output_dir
 
 
 if __name__ == "__main__":
     args = parse_args()
+    apply_cli_environment_overrides(args)
     try:
         main(args.delete_scheduled_posts, args.publish_all_comics)
     except Exception as e:

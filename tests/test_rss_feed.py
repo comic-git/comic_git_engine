@@ -61,8 +61,9 @@ class TestRssFeed(TestCase):
             comic_data_dicts = [self.make_comic_data()]
         if comic_info is None:
             comic_info = deepcopy(self.comic_info)
+        env_patch = {} if output_dir is None else {"OUTPUT_DIR": output_dir}
         with patch("builtins.open", new_callable=mock_open) as open_mock:
-            with patch.dict(os.environ, {"OUTPUT_DIR": output_dir}, clear=False):
+            with patch.dict(os.environ, env_patch, clear=False):
                 rss.build_rss_feed(
                     comic_info,
                     comic_data_dicts,
@@ -194,6 +195,12 @@ class TestRssFeed(TestCase):
         feed_path, _, _ = self.build_feed_output(output_dir="output")
 
         self.assertEqual(os.path.join("output", "feed.xml"), feed_path)
+
+    def test_build_rss_feed_defaults_to_build_output_dir(self):
+        with patch.dict(os.environ, {}, clear=True):
+            feed_path, _, _ = self.build_feed_output(output_dir=None)
+
+        self.assertEqual(os.path.join("build", "feed.xml"), feed_path)
 
     def test_build_rss_feed_uses_custom_feed_relative_path(self):
         feed_path, output, _ = self.build_feed_output(

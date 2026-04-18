@@ -84,7 +84,7 @@ $env:PYTHONPATH='src'
 
 - Local manual builds are most useful when run through a host repo such as `comic_git_dev`, not by treating `comic_git_engine` as a standalone app.
 - If `comic_git_engine` is symlinked into a host repo and both repos are open in PyCharm, the same file may appear at multiple paths.
-- `OUTPUT_DIR` changes where generated files are written. If output seems to be missing, check whether it was written into a separate directory instead of the host repo root.
+- Builds now default to writing generated files into `build/`. If output seems to be missing, check that folder first, or verify whether `OUTPUT_DIR` was set to a different value.
 
 ## Related
 

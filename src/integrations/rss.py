@@ -11,7 +11,7 @@ from xml.etree import ElementTree
 from xml.etree.ElementTree import register_namespace
 
 from core.models import ComicBuildResult
-from core.utils import get_comic_url
+from core.utils import get_comic_url, get_output_dir
 
 DEFAULT_RSS_LANGUAGE = "en-us"
 DEFAULT_RSS_IMAGE = "your_content/images/banner.png"
@@ -165,7 +165,7 @@ def normalize_channel_context(
     return {
         "comic_url": comic_url,
         "feed_relative_path": feed_relative_path,
-        "feed_output_path": os.path.join(os.getenv("OUTPUT_DIR", ""), feed_relative_path),
+        "feed_output_path": os.path.join(get_output_dir(), feed_relative_path),
         "feed_self_url": urljoin(comic_url, feed_relative_path),
         "channel_title": comic_info.get("Comic Info", "Comic name"),
         "channel_description": comic_info.get(

@@ -28,6 +28,20 @@ class TestSiteOutput(TestCase):
 
             self.assertFalse(os.path.exists(output_dir))
 
+    def test_delete_output_file_space_defaults_to_build_dir(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cwd = os.getcwd()
+            build_dir = os.path.join(temp_dir, "build")
+            os.makedirs(build_dir)
+            try:
+                os.chdir(temp_dir)
+                with patch.dict(os.environ, {}, clear=True):
+                    site_output.delete_output_file_space(self.make_comic_info())
+            finally:
+                os.chdir(cwd)
+
+            self.assertFalse(os.path.exists(build_dir))
+
     def test_delete_output_file_space_deletes_root_outputs_and_extra_comics(self):
         comic_info = self.make_comic_info()
         with tempfile.TemporaryDirectory() as temp_dir:

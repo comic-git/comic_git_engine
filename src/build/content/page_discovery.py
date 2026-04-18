@@ -99,7 +99,7 @@ def save_page_info_json_file(comic_folder: str, page_info_list: List, scheduled_
         "page_info_list": page_info_list,
         "scheduled_post_count": scheduled_post_count
     }
-    output_dir = os.getenv("OUTPUT_DIR", "")
+    output_dir = utils.get_output_dir()
     os.makedirs(os.path.join(output_dir, f"{comic_folder}comic"), exist_ok=True)
     with open(os.path.join(output_dir, f"{comic_folder}comic/page_info_list.json"), "w") as f:
         f.write(json.dumps(d))

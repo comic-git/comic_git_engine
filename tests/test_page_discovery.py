@@ -148,3 +148,22 @@ class TestPageDiscovery(TestCase):
 
         self.assertEqual(2, data["scheduled_post_count"])
         self.assertEqual("001", data["page_info_list"][0]["page_name"])
+
+    def test_save_page_info_json_file_defaults_to_build_output_dir(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cwd = os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                page_discovery.save_page_info_json_file(
+                    "",
+                    [{"page_name": "001"}],
+                    1,
+                )
+                output_path = os.path.join(temp_dir, "build", "comic", "page_info_list.json")
+                with open(output_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            finally:
+                os.chdir(cwd)
+
+        self.assertEqual(1, data["scheduled_post_count"])
+        self.assertEqual("001", data["page_info_list"][0]["page_name"])

@@ -24,6 +24,10 @@ def web_path(rel_path: str) -> str:
     return rel_path
 
 
+def get_output_dir() -> str:
+    return os.getenv("OUTPUT_DIR", "build")
+
+
 def build_jinja_environment(comic_info: RawConfigParser, template_folders: list[str]) -> None:
     global jinja_environment
     try:
@@ -173,7 +177,7 @@ def write_to_template(template_name: str, html_path: str, data_dict: dict | None
                 f"and that the filename matches (case-sensitive)."
             )
 
-    output_dir = os.getenv("OUTPUT_DIR", "")
+    output_dir = get_output_dir()
     if output_dir:
         html_path = os.path.join(output_dir, html_path)
     dir_name = os.path.dirname(html_path)

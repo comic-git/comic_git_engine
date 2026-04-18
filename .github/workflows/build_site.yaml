@@ -23,6 +23,7 @@ on:
       OUTPUT_DIR:
         required: false
         type: string
+        default: build
       NEOCITIES_CLEAN:
         description: "If true, will destructively delete files found on Neocities not found in your OUTPUT_DIR."
         required: false
@@ -115,7 +116,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: site
-          path: .
+          path: ${{ inputs.OUTPUT_DIR || '.' }}
 
   deploy-github-pages:
     if: ${{ inputs.DEPLOY_TARGET == 'github-pages' }}

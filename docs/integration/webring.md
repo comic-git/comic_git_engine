@@ -2,7 +2,7 @@
 
 **Version / API version:** JSON format version `1`
 **Used for:** Loading webring member data into templates so comics can render previous/next member links or a full member list
-**Canonical docs:** No formal external API spec is bundled in this repo. The effective contract is defined by [`build_site.py`](../../src/build/build_site.py), the integration tests in [`tests/src/integrations/test_webring.py`](../../tests/src/integrations/test_webring.py), and example JSON such as `your_content/webring.json` in host repos
+**Canonical docs:** No formal external API spec is bundled in this repo. The effective contract is defined by [`build_site.py`](../../src/build/build_site.py), the integration tests in [`tests/integrations/test_webring.py`](../../tests/integrations/test_webring.py), and example JSON such as `your_content/webring.json` in host repos
 
 ## Authentication
 
@@ -68,7 +68,7 @@ For unit tests:
 - mock `open` for local-mode reads
 - mock `json.load`
 
-Current test coverage for this integration lives in [`tests/src/integrations/test_webring.py`](../../tests/src/integrations/test_webring.py).
+Current test coverage for this integration lives in [`tests/integrations/test_webring.py`](../../tests/integrations/test_webring.py).
 
 ## Gotchas
 

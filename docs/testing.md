@@ -12,21 +12,21 @@ Run tests from the `comic_git_engine` repo root.
 ```powershell
 # Run the full test suite
 $env:PYTHONPATH='src'
-.\venv\Scripts\python.exe -m unittest discover -s tests
+.\venv\Scripts\python.exe -m unittest discover -s tests -t .
 
 # Run tests for a specific file
 $env:PYTHONPATH='src'
-.\venv\Scripts\python.exe -m unittest tests.src.integrations.test_rss
+.\venv\Scripts\python.exe -m unittest tests.integrations.test_rss
 
 # Run a specific test class or test method
 $env:PYTHONPATH='src'
-.\venv\Scripts\python.exe -m unittest tests.src.build.test_build_site.TestMain
+.\venv\Scripts\python.exe -m unittest tests.build.test_build_site.TestMain
 $env:PYTHONPATH='src'
-.\venv\Scripts\python.exe -m unittest tests.src.scripts.test_entrypoints.TestEntrypoints.test_build_site_can_be_run_directly_by_path
+.\venv\Scripts\python.exe -m unittest tests.scripts.test_entrypoints.TestEntrypoints.test_build_site_can_be_run_directly_by_path
 
 # Run with coverage
 $env:PYTHONPATH='src'
-.\venv\Scripts\python.exe -m coverage run -m unittest discover -s tests
+.\venv\Scripts\python.exe -m coverage run -m unittest discover -s tests -t .
 .\venv\Scripts\python.exe -m coverage report -m
 ```
 
@@ -36,25 +36,24 @@ Tests live in the top-level [`tests/`](../tests/) directory.
 
 ```text
 tests/
-  src/
-    build/
-      test_build_site.py         - top-level build orchestration in `main()`
-      content/
-        test_comic_data.py       - comic page data construction
-        test_page_discovery.py   - page discovery, scheduling, and page_info JSON output
-        test_site_config.py      - config parsing and extra-comic config merging
-        test_transcripts.py      - transcript loading and ordering
-      output/
-        test_images.py           - resize and thumbnail/image processing behavior
-        test_rendering.py        - template/page-writing orchestration
-        test_site_output.py      - output cleanup and site_root/output copying
-    core/
-      test_utils.py              - shared utility functions
-    integrations/
-      test_rss.py                - RSS XML output and RSS job-selection behavior
-      test_webring.py            - webring data loading and validation
-    scripts/
-      test_entrypoints.py        - direct script execution by file path
+  build/
+    test_build_site.py         - top-level build orchestration in `main()`
+    content/
+      test_comic_data.py       - comic page data construction
+      test_page_discovery.py   - page discovery, scheduling, and page_info JSON output
+      test_site_config.py      - config parsing and extra-comic config merging
+      test_transcripts.py      - transcript loading and ordering
+    output/
+      test_images.py           - resize and thumbnail/image processing behavior
+      test_rendering.py        - template/page-writing orchestration
+      test_site_output.py      - output cleanup and site_root/output copying
+  core/
+    test_utils.py              - shared utility functions
+  integrations/
+    test_rss.py                - RSS XML output and RSS job-selection behavior
+    test_webring.py            - webring data loading and validation
+  scripts/
+    test_entrypoints.py        - direct script execution by file path
   extras/                      - fixture data used by a subset of tests
 ```
 
@@ -64,7 +63,7 @@ Naming conventions:
 - test classes use `Test...`
 - test methods use `test_...`
 
-Keep [`tests/src/build/test_build_site.py`](../tests/src/build/test_build_site.py) focused on `main()` and other top-level orchestration seams. New lower-level behavior should usually be covered in the module-specific test file that matches the module being changed.
+Keep [`tests/build/test_build_site.py`](../tests/build/test_build_site.py) focused on `main()` and other top-level orchestration seams. New lower-level behavior should usually be covered in the module-specific test file that matches the module being changed.
 
 ## Testing Philosophy
 
@@ -142,11 +141,11 @@ Put tests in [`tests/`](../tests/) and name files `test_<module>.py`.
 
 Mirror the runtime module name rather than adding behavior to a generic catch-all file. Examples from this repo:
 
-- [`src/core/utils.py`](../src/core/utils.py) -> [`tests/src/core/test_utils.py`](../tests/src/core/test_utils.py)
-- [`src/integrations/rss.py`](../src/integrations/rss.py) -> [`tests/src/integrations/test_rss.py`](../tests/src/integrations/test_rss.py)
-- [`src/build/output/site_output.py`](../src/build/output/site_output.py) -> [`tests/src/build/output/test_site_output.py`](../tests/src/build/output/test_site_output.py)
+- [`src/core/utils.py`](../src/core/utils.py) -> [`tests/core/test_utils.py`](../tests/core/test_utils.py)
+- [`src/integrations/rss.py`](../src/integrations/rss.py) -> [`tests/integrations/test_rss.py`](../tests/integrations/test_rss.py)
+- [`src/build/output/site_output.py`](../src/build/output/site_output.py) -> [`tests/build/output/test_site_output.py`](../tests/build/output/test_site_output.py)
 
-For extracted modules, prefer the module-specific test file over adding more coverage to [`tests/src/build/test_build_site.py`](../tests/src/build/test_build_site.py). Directly runnable entrypoints can share [`tests/src/scripts/test_entrypoints.py`](../tests/src/scripts/test_entrypoints.py) when the behavior under test is "does this script run correctly by path?"
+For extracted modules, prefer the module-specific test file over adding more coverage to [`tests/build/test_build_site.py`](../tests/build/test_build_site.py). Directly runnable entrypoints can share [`tests/scripts/test_entrypoints.py`](../tests/scripts/test_entrypoints.py) when the behavior under test is "does this script run correctly by path?"
 
 ### Test class structure
 
@@ -160,8 +159,8 @@ This layout makes it easy to:
 
 Example patterns already in this repo include:
 
-- helper builders like `make_comic_info()` in [`tests/src/build/test_build_site.py`](../tests/src/build/test_build_site.py)
-- `setUpClass()` for shared RSS config in [`tests/src/integrations/test_rss.py`](../tests/src/integrations/test_rss.py)
+- helper builders like `make_comic_info()` in [`tests/build/test_build_site.py`](../tests/build/test_build_site.py)
+- `setUpClass()` for shared RSS config in [`tests/integrations/test_rss.py`](../tests/integrations/test_rss.py)
 
 If a test class needs to reset module-level state before each test, do that in `setUp()`.
 
@@ -178,7 +177,7 @@ class TestMain(TestCase):
     ...
 ```
 
-This keeps patch targets short and makes it obvious which module is under test. It is especially helpful in orchestration-heavy files like [`tests/src/build/test_build_site.py`](../tests/src/build/test_build_site.py), where the same module path is repeated many times.
+This keeps patch targets short and makes it obvious which module is under test. It is especially helpful in orchestration-heavy files like [`tests/build/test_build_site.py`](../tests/build/test_build_site.py), where the same module path is repeated many times.
 
 ### Patch decorator placement
 
@@ -255,7 +254,7 @@ assert not any("unexpected message" in msg for msg in cm.output)
 
 For directly runnable scripts under `src/build/` and `src/scripts/`, prefer subprocess-based tests that execute the file by path from a temporary working directory.
 
-See [`tests/src/scripts/test_entrypoints.py`](../tests/src/scripts/test_entrypoints.py) for the current pattern:
+See [`tests/scripts/test_entrypoints.py`](../tests/scripts/test_entrypoints.py) for the current pattern:
 
 - run `subprocess.run([sys.executable, script_path, ...])`
 - clear `PYTHONPATH` in the subprocess environment
@@ -281,7 +280,7 @@ How to run:
 
 ```powershell
 $env:PYTHONPATH='src'
-.\venv\Scripts\python.exe -m unittest discover -s tests
+.\venv\Scripts\python.exe -m unittest discover -s tests -t .
 ```
 
 ### Manual integration testing

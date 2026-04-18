@@ -103,14 +103,14 @@ Run tests from the `comic_git_engine` repo root:
 
 ```powershell
 $env:PYTHONPATH='src'
-.\venv\Scripts\python.exe -m unittest discover -s tests
+.\venv\Scripts\python.exe -m unittest discover -s tests -t .
 ```
 
 Run a single test file:
 
 ```powershell
 $env:PYTHONPATH='src'
-.\venv\Scripts\python.exe -m unittest tests.src.integrations.test_rss
+.\venv\Scripts\python.exe -m unittest tests.integrations.test_rss
 ```
 
 See [`docs/testing.md`](testing.md) for more detail on test structure and conventions.

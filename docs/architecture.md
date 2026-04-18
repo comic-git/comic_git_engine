@@ -76,7 +76,7 @@ This structure is intentionally file-based and low-friction:
 6. [`src/build/images.py`](../src/build/images.py) optionally creates thumbnails and other image derivatives.
 7. [`src/build/rendering.py`](../src/build/rendering.py) renders Jinja templates from the built-in template set and any theme overrides into HTML output.
 8. [`src/integrations/rss.py`](../src/integrations/rss.py) builds any enabled RSS feeds for the main comic and Extra Comics.
-9. [`src/build/site_output.py`](../src/build/site_output.py) handles cleanup and optional staging into `OUTPUT_DIR`.
+9. [`src/build/output/site_output.py`](../src/build/output/site_output.py) handles cleanup and staging into the configured output directory, which now defaults to `build/`.
 10. The host repo then publishes that output, typically to GitHub Pages and optionally to Neocities.
 
 ## Key Dependencies

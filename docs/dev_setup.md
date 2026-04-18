@@ -31,7 +31,7 @@ python -m venv venv
 .\venv\Scripts\Activate.ps1
 
 pip install --upgrade pip
-pip install -r scripts/requirements.txt
+pip install -r requirements.txt
 ```
 
 If you are testing a custom theme that has Python hook dependencies, also run:
@@ -40,7 +40,7 @@ If you are testing a custom theme that has Python hook dependencies, also run:
 pip install -r path/to/custom/theme/requirements.txt
 ```
 
-That second step is optional for normal engine development. Most work only needs `scripts/requirements.txt`.
+That second step is optional for normal engine development. Most work only needs `requirements.txt`.
 
 For manual site testing, load this repo into a host `comic_git` repo such as `comic_git_dev`:
 

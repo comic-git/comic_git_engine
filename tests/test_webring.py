@@ -1,7 +1,8 @@
+import json
 from configparser import RawConfigParser
 from copy import deepcopy
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 
 from integrations import webring
 
@@ -72,7 +73,7 @@ class TestWebring(TestCase):
 
     def test_invalid_webring_id(self, _mock_urlopen, _mock_json_load):
         self.comic_info.set("Webring", "Webring ID", "")
-        msg = r"The 'Webring ID' option in the \[Webring\] section must be defined when 'Enable webring' is enabled and 'Show all members' is False."
+        msg = r"The 'Webring ID' option in the \[Webring\] section must be defined when 'Enable webring' is enabled."
         with self.assertRaisesRegex(ValueError, msg):
             webring.load_webring_data(self.comic_info, COMIC_URL)
 
@@ -110,10 +111,13 @@ class TestWebring(TestCase):
         )
         _mock_urlopen.assert_called_once_with("https://webring.example.com/api")
 
-    def test_relative_path(self, _mock_urlopen, _mock_json_load):
-        self.comic_info.set("Webring", "Endpoint", "/your_content/webring.json")
-        webring.load_webring_data(self.comic_info, COMIC_URL)
-        _mock_urlopen.assert_called_once_with("https://ryanvilbrandt.github.io/comic_git_dev/your_content/webring.json")
+    @patch("builtins.open", new_callable=mock_open, read_data=json.dumps(WEBRING_JSON))
+    def test_local_endpoint(self, open_mock, _mock_urlopen, _mock_json_load):
+        self.comic_info.set("Webring", "Endpoint", "local")
+        data = webring.load_webring_data(self.comic_info, COMIC_URL)
+        self.assertEqual("comic_a", data["webring_prev"]["id"])
+        open_mock.assert_called_once_with("your_content\\webring.json")
+        _mock_urlopen.assert_not_called()
 
     def test_first_member(self, _mock_urlopen, _mock_json_load):
         self.comic_info.set("Webring", "Webring ID", "comic_a")

@@ -27,7 +27,7 @@ Important current behavior:
 - preview metadata is generated as part of normal page rendering
 - comic pages default to article-like metadata, including page text and thumbnail-based image fields
 - fallback metadata still exists when no custom JSON file is provided
-- Extra Comics can have different social-media metadata because data is scoped per comic folder
+- Extra Comics can override social-media metadata with their own `social_media.json`, and otherwise fall back to the main comic's `social_media.json`
 
 This feature is stable in purpose, but changes here are externally visible and can affect how pages appear when shared across third-party platforms.
 

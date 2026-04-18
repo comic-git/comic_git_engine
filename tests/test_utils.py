@@ -349,8 +349,35 @@ class TestGetSocialMediaData(TestCase):
             call("your_content/social_media.json"),
             call(r"extra_comic_1\your_content/social_media.json"),
             call(r"extra_comic_2\your_content/social_media.json"),
+            call("your_content/social_media.json"),
         ])
         open_mock.assert_called_once_with(r"extra_comic_1\your_content/social_media.json")
+
+    @patch("core.utils.os.path.isfile", side_effect=lambda path: path == "your_content/social_media.json")
+    @patch("builtins.open", new_callable=mock_open, read_data='{"comic": {"og:type": "video", "og:site_name": "_title"}}')
+    def test_extra_comic_inherits_main_social_media_file(self, open_mock, isfile_mock):
+        """Test that an Extra Comic falls back to the main comic social_media.json if it has no local file."""
+        comic_data_dict = deepcopy(self.comic_data_dict)
+        comic_data_dict["comic_folder"] = "extra_comic_2"
+        comic_data_dict["_title"] = "Extra Comic Page 2"
+
+        expected = {
+            "og:type": "video",
+            "og:site_name": "Extra Comic Page 2",
+        }
+        actual = utils.get_social_media_data(
+            self.comic_info,
+            comic_data_dict,
+            "comic",
+            "comic/002/index.html",
+        )
+        self.assertEqual(expected, actual)
+
+        isfile_mock.assert_has_calls([
+            call(r"extra_comic_2\your_content/social_media.json"),
+            call("your_content/social_media.json"),
+        ])
+        open_mock.assert_called_once_with("your_content/social_media.json")
 
     @patch("core.utils.os.path.isfile", return_value=True)
     @patch("builtins.open", new_callable=mock_open, read_data=json.dumps({

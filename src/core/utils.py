@@ -269,10 +269,16 @@ def get_social_media_data(
         social_media_data = social_media_data_by_comic.get(comic_data_dict["comic_folder"])
     # Load social media data from the file if it's not loaded yet, or create default data
     if not social_media_data:
-        filepath = os.path.join(comic_data_dict["comic_folder"], "your_content/social_media.json")
-        if os.path.isfile(filepath):
-            with open(filepath) as f:
-                social_media_data = json.load(f)
+        filepaths = [os.path.join(comic_data_dict["comic_folder"], "your_content/social_media.json")]
+        if comic_data_dict["comic_folder"]:
+            # Extra Comics inherit the main comic's config when they do not define their own override.
+            filepaths.append("your_content/social_media.json")
+
+        for filepath in filepaths:
+            if os.path.isfile(filepath):
+                with open(filepath) as f:
+                    social_media_data = json.load(f)
+                break
         else:
             social_media_data = {
                 "base": {

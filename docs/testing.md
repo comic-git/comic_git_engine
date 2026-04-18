@@ -16,11 +16,13 @@ $env:PYTHONPATH='src'
 
 # Run tests for a specific file
 $env:PYTHONPATH='src'
-.\venv\Scripts\python.exe -m unittest tests.test_rss_feed
+.\venv\Scripts\python.exe -m unittest tests.src.integrations.test_rss
 
-# Run tests matching a specific test class or test method
+# Run a specific test class or test method
 $env:PYTHONPATH='src'
-.\venv\Scripts\python.exe -m unittest tests.test_build_site.TestMain
+.\venv\Scripts\python.exe -m unittest tests.src.build.test_build_site.TestMain
+$env:PYTHONPATH='src'
+.\venv\Scripts\python.exe -m unittest tests.src.scripts.test_entrypoints.TestEntrypoints.test_build_site_can_be_run_directly_by_path
 
 # Run with coverage
 $env:PYTHONPATH='src'
@@ -34,17 +36,26 @@ Tests live in the top-level [`tests/`](../tests/) directory.
 
 ```text
 tests/
-  test_build_site.py  - top-level build orchestration in `main()`
-  test_site_config.py - config parsing and extra-comic config merging
-  test_transcripts.py - transcript loading and ordering
-  test_comic_data.py  - comic page data construction
-  test_page_discovery.py - page discovery, scheduling, and page_info JSON output
-  test_images.py      - resize and thumbnail/image processing behavior
-  test_rendering.py   - template/page-writing orchestration
-  test_webring.py     - webring data loading and validation
-  test_site_output.py - output cleanup and staged-output copying
-  test_rss_feed.py    - RSS XML output and RSS job-selection behavior
-  test_utils.py       - shared utility functions
+  src/
+    build/
+      test_build_site.py         - top-level build orchestration in `main()`
+      content/
+        test_comic_data.py       - comic page data construction
+        test_page_discovery.py   - page discovery, scheduling, and page_info JSON output
+        test_site_config.py      - config parsing and extra-comic config merging
+        test_transcripts.py      - transcript loading and ordering
+      output/
+        test_images.py           - resize and thumbnail/image processing behavior
+        test_rendering.py        - template/page-writing orchestration
+        test_site_output.py      - output cleanup and site_root/output copying
+    core/
+      test_utils.py              - shared utility functions
+    integrations/
+      test_rss.py                - RSS XML output and RSS job-selection behavior
+      test_webring.py            - webring data loading and validation
+    scripts/
+      test_entrypoints.py        - direct script execution by file path
+  extras/                      - fixture data used by a subset of tests
 ```
 
 Naming conventions:
@@ -53,7 +64,7 @@ Naming conventions:
 - test classes use `Test...`
 - test methods use `test_...`
 
-The modularized build pipeline now has module-specific unit tests. Keep [`tests/test_build_site.py`](../tests/test_build_site.py) focused on `main()` and other top-level orchestration seams rather than adding lower-level behavior back into it.
+Keep [`tests/src/build/test_build_site.py`](../tests/src/build/test_build_site.py) focused on `main()` and other top-level orchestration seams. New lower-level behavior should usually be covered in the module-specific test file that matches the module being changed.
 
 ## Testing Philosophy
 
@@ -127,51 +138,131 @@ A failing test is evidence of a bug regression, not a broken test. Do not update
 
 ### File naming
 
-- Put tests in [`tests/`](../tests/)
-- Name files `test_<module>.py`
-- Prefer placing tests with the module they exercise, not under a generic catch-all file, when creating new coverage for extracted modules
+Put tests in [`tests/`](../tests/) and name files `test_<module>.py`.
 
-Examples:
+Mirror the runtime module name rather than adding behavior to a generic catch-all file. Examples from this repo:
 
-- RSS logic belongs in [`tests/test_rss_feed.py`](../tests/test_rss_feed.py)
-- shared utility behavior belongs in [`tests/test_utils.py`](../tests/test_utils.py)
-- build pipeline behavior should usually go in the module-specific test file that matches the extracted script, such as [`tests/test_page_discovery.py`](../tests/test_page_discovery.py) or [`tests/test_rendering.py`](../tests/test_rendering.py)
+- [`src/core/utils.py`](../src/core/utils.py) -> [`tests/src/core/test_utils.py`](../tests/src/core/test_utils.py)
+- [`src/integrations/rss.py`](../src/integrations/rss.py) -> [`tests/src/integrations/test_rss.py`](../tests/src/integrations/test_rss.py)
+- [`src/build/output/site_output.py`](../src/build/output/site_output.py) -> [`tests/src/build/output/test_site_output.py`](../tests/src/build/output/test_site_output.py)
 
-### What to mock
+For extracted modules, prefer the module-specific test file over adding more coverage to [`tests/src/build/test_build_site.py`](../tests/src/build/test_build_site.py). Directly runnable entrypoints can share [`tests/src/scripts/test_entrypoints.py`](../tests/src/scripts/test_entrypoints.py) when the behavior under test is "does this script run correctly by path?"
 
-Mock:
+### Test class structure
 
-- network access
-- file writes
-- environment variables when behavior depends on them
-- high-level orchestration collaborators when testing one orchestration layer in isolation
+Tests are organized into `unittest.TestCase` classes, usually one class per logical unit or feature area under test, such as `TestGetComicUrl`, `TestRssFeed`, `TestSiteOutput`, or `TestEntrypoints`.
 
-Do not mock:
+This layout makes it easy to:
 
-- pure transformation logic
-- serialization logic you are directly asserting on
-- internal helper behavior when that helper is itself the thing under test
+- keep helper methods close to the tests that use them
+- apply class-level `@patch(...)` decorators when many tests share the same defaults
+- use `setUp()` or `setUpClass()` for shared state that should be reset before each test or once per class
 
-### Example test
+Example patterns already in this repo include:
 
-Representative example from the current suite:
+- helper builders like `make_comic_info()` in [`tests/src/build/test_build_site.py`](../tests/src/build/test_build_site.py)
+- `setUpClass()` for shared RSS config in [`tests/src/integrations/test_rss.py`](../tests/src/integrations/test_rss.py)
+
+If a test class needs to reset module-level state before each test, do that in `setUp()`.
+
+### Module under test constant
+
+When a test file patches the same runtime module repeatedly, define a `MUT` constant at the top of the file and build patch targets from it.
 
 ```python
-@patch("core.utils.os.environ", {"GITHUB_REPOSITORY": "cvilbrandt/tamberlane"})
-def test_get_comic_url_on_github(self):
-    comic_info = RawConfigParser()
-    comic_info.add_section("Comic Settings")
-    self.assertEqual(
-        ("https://cvilbrandt.github.io/tamberlane", "/tamberlane"),
-        utils.get_comic_url(comic_info)
-    )
+MUT = "build.build_site."
+
+@patch(MUT + "read_info")
+@patch(MUT + "utils.get_comic_url", return_value=(COMIC_URL, "/comic_git_dev"))
+class TestMain(TestCase):
+    ...
 ```
 
-Why this fits the repo style:
+This keeps patch targets short and makes it obvious which module is under test. It is especially helpful in orchestration-heavy files like [`tests/src/build/test_build_site.py`](../tests/src/build/test_build_site.py), where the same module path is repeated many times.
 
-- it tests a real internal function directly
-- it mocks only the environment boundary the function depends on
-- it asserts on the concrete behavior, not on implementation details
+### Patch decorator placement
+
+Use `@patch` at two levels:
+
+- class-level for mocks that should apply to every test in the class with a sensible default
+- method-level for mocks whose `return_value` or `side_effect` varies meaningfully between tests
+
+```python
+MUT = "build.build_site."
+
+@patch(MUT + "print_processing_times")
+@patch(MUT + "checkpoint")
+class TestMain(TestCase):
+
+    @patch(MUT + "read_info")
+    @patch(MUT + "get_extra_comics_list", return_value=[])
+    def test_main_builds_rss_feed_job_from_main_comic(self, *_mocks):
+        ...
+```
+
+Patch where the code looks up the symbol, not where the symbol was originally defined. For example:
+
+- patch `build.build_site.read_info` when testing [`build.build_site`](../src/build/build_site.py)
+- patch `build.output.site_output.shutil.copytree` when testing [`build.output.site_output`](../src/build/output/site_output.py)
+- patch `core.utils.os.environ` or use `patch.dict(os.environ, ...)` when testing environment-sensitive helpers in [`core.utils`](../src/core/utils.py)
+
+If you patch the wrong import path, the real dependency will still run.
+
+### Mock access via a helper dict
+
+Once a test mixes class-level and method-level patches, long positional mock argument lists become hard to read. Prefer `def test_x(self, *_mocks)` over a large list of named positional arguments, then access mocks by name through a helper dict.
+
+The template guidance for this repo uses a `get_mock_dict` helper. `comic_git_engine` does not currently ship a shared one, so if a new test file grows large enough to need this pattern, add a small helper in that file or a shared helper under `tests/` before adopting it broadly.
+
+Illustrative pattern:
+
+```python
+def get_mock_dict(mocks):
+    return {mock._mock_name: mock for mock in mocks}
+
+
+MUT = "build.build_site."
+
+@patch(MUT + "read_info")
+class TestMain(TestCase):
+
+    @patch(MUT + "get_extra_comics_list", return_value=[])
+    def test_main_builds_rss_feed_job_from_main_comic(self, *_mocks):
+        m = get_mock_dict(_mocks)
+        m["read_info"].return_value = self.make_comic_info()
+        m["get_extra_comics_list"].assert_not_called()
+```
+
+Mock names come from the last component of the patch target. If two patches would produce the same name, they will collide in the dict; in that case use distinct patch targets or access one of them positionally.
+
+### Log assertions
+
+`caplog` is a pytest fixture and does not apply inside `unittest.TestCase` methods. If a test in this repo needs to assert on logging output, use `assertLogs` instead.
+
+```python
+with self.assertLogs("build.build_site", level=logging.WARNING) as cm:
+    build_site.main()
+assert any("expected message" in msg for msg in cm.output)
+
+with self.assertLogs("build.build_site", level=logging.DEBUG) as cm:
+    build_site.main()
+assert not any("unexpected message" in msg for msg in cm.output)
+```
+
+`assertLogs` requires at least one record at or above the capture level. If the code under test emits debug logs unconditionally, capturing at `DEBUG` is the safe way to assert that a warning was not emitted.
+
+### Writing script-entrypoint tests
+
+For directly runnable scripts under `src/build/` and `src/scripts/`, prefer subprocess-based tests that execute the file by path from a temporary working directory.
+
+See [`tests/src/scripts/test_entrypoints.py`](../tests/src/scripts/test_entrypoints.py) for the current pattern:
+
+- run `subprocess.run([sys.executable, script_path, ...])`
+- clear `PYTHONPATH` in the subprocess environment
+- assert that the script does not fail with `ModuleNotFoundError`
+- assert on the real CLI output or failure message
+
+These tests cover the host-repo runtime path that unit imports alone will miss.
 
 ## Test Categories
 

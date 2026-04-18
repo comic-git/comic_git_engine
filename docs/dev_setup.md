@@ -110,7 +110,7 @@ Run a single test file:
 
 ```powershell
 $env:PYTHONPATH='src'
-.\venv\Scripts\python.exe -m unittest tests.test_rss_feed
+.\venv\Scripts\python.exe -m unittest tests.src.integrations.test_rss
 ```
 
 See [`docs/testing.md`](testing.md) for more detail on test structure and conventions.

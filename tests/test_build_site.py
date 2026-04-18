@@ -22,6 +22,7 @@ class TestMain(TestCase):
 
     @patch("build.build_site.print_processing_times")
     @patch("build.build_site.checkpoint")
+    @patch("build.build_site.copy_site_root_files")
     @patch("build.build_site.copy_output_assets")
     @patch("build.build_site.build_rss_feed_from_job")
     @patch("build.build_site.get_rss_feed_jobs")
@@ -46,6 +47,7 @@ class TestMain(TestCase):
             mock_get_rss_feed_jobs,
             mock_build_rss_feed_from_job,
             mock_copy_output_assets,
+            mock_copy_site_root_files,
             _mock_checkpoint,
             _mock_print_processing_times,
     ):
@@ -65,9 +67,11 @@ class TestMain(TestCase):
         )
         mock_build_rss_feed_from_job.assert_called_once_with(feed_job)
         mock_copy_output_assets.assert_called_once_with("build")
+        mock_copy_site_root_files.assert_called_once_with("build")
 
     @patch("build.build_site.print_processing_times")
     @patch("build.build_site.checkpoint")
+    @patch("build.build_site.copy_site_root_files")
     @patch("build.build_site.copy_output_assets")
     @patch("build.build_site.build_rss_feed_from_job")
     @patch("build.build_site.get_rss_feed_jobs", return_value=[])
@@ -96,6 +100,7 @@ class TestMain(TestCase):
             _mock_get_rss_feed_jobs,
             _mock_build_rss_feed_from_job,
             _mock_copy_output_assets,
+            mock_copy_site_root_files,
             _mock_checkpoint,
             _mock_print_processing_times,
     ):
@@ -119,9 +124,11 @@ class TestMain(TestCase):
             mock_build_and_publish_comic_pages.call_args_list,
         )
         mock_os_makedirs.assert_called_once_with(os.path.join("build", "extras/story"), exist_ok=True)
+        mock_copy_site_root_files.assert_called_once_with("build")
 
     @patch("build.build_site.print_processing_times")
     @patch("build.build_site.checkpoint")
+    @patch("build.build_site.copy_site_root_files")
     @patch("build.build_site.copy_output_assets")
     @patch("build.build_site.build_rss_feed_from_job")
     @patch("build.build_site.get_rss_feed_jobs", return_value=[])
@@ -146,6 +153,7 @@ class TestMain(TestCase):
             _mock_get_rss_feed_jobs,
             _mock_build_rss_feed_from_job,
             mock_copy_output_assets,
+            mock_copy_site_root_files,
             _mock_checkpoint,
             _mock_print_processing_times,
     ):
@@ -155,9 +163,11 @@ class TestMain(TestCase):
         build_site.main()
 
         mock_copy_output_assets.assert_called_once_with("build")
+        mock_copy_site_root_files.assert_called_once_with("build")
 
     @patch("build.build_site.print_processing_times")
     @patch("build.build_site.checkpoint")
+    @patch("build.build_site.copy_site_root_files")
     @patch("build.build_site.copy_output_assets")
     @patch("build.build_site.build_rss_feed_from_job")
     @patch("build.build_site.get_rss_feed_jobs", return_value=[])
@@ -182,6 +192,7 @@ class TestMain(TestCase):
             _mock_get_rss_feed_jobs,
             _mock_build_rss_feed_from_job,
             mock_copy_output_assets,
+            mock_copy_site_root_files,
             _mock_checkpoint,
             _mock_print_processing_times,
     ):
@@ -192,9 +203,11 @@ class TestMain(TestCase):
             build_site.main()
 
         mock_copy_output_assets.assert_called_once_with("output")
+        mock_copy_site_root_files.assert_called_once_with("output")
 
     @patch("build.build_site.print_processing_times")
     @patch("build.build_site.checkpoint")
+    @patch("build.build_site.copy_site_root_files")
     @patch("build.build_site.copy_output_assets")
     @patch("build.build_site.build_rss_feed_from_job")
     @patch("build.build_site.get_rss_feed_jobs", return_value=[])
@@ -219,6 +232,7 @@ class TestMain(TestCase):
             _mock_get_rss_feed_jobs,
             _mock_build_rss_feed_from_job,
             mock_copy_output_assets,
+            mock_copy_site_root_files,
             _mock_checkpoint,
             _mock_print_processing_times,
     ):
@@ -229,9 +243,87 @@ class TestMain(TestCase):
             build_site.main()
 
         mock_copy_output_assets.assert_not_called()
+        mock_copy_site_root_files.assert_called_once_with("")
 
     @patch("build.build_site.print_processing_times")
     @patch("build.build_site.checkpoint")
+    @patch("build.build_site.copy_site_root_files")
+    @patch("build.build_site.copy_output_assets")
+    @patch("build.build_site.build_rss_feed_from_job")
+    @patch("build.build_site.get_rss_feed_jobs", return_value=[])
+    @patch("build.build_site.build_and_publish_comic_pages", return_value=([{"page_name": "Page 1"}], {"theme": "default"}))
+    @patch("build.build_site.get_extra_comics_list", return_value=[])
+    @patch("build.build_site.setup_output_file_space")
+    @patch("build.build_site.run_hook")
+    @patch("build.build_site.utils.get_comic_url", return_value=(COMIC_URL, "/comic_git_dev"))
+    @patch("build.build_site.read_info")
+    @patch("build.build_site.utils.find_project_root")
+    @patch("build.build_site.add_inputs_to_env_vars")
+    def test_main_records_checkpoint_after_copying_site_root_files(
+            self,
+            _mock_add_inputs_to_env_vars,
+            _mock_find_project_root,
+            mock_read_info,
+            _mock_get_comic_url,
+            mock_run_hook,
+            _mock_setup_output_file_space,
+            _mock_get_extra_comics_list,
+            _mock_build_and_publish_comic_pages,
+            _mock_get_rss_feed_jobs,
+            _mock_build_rss_feed_from_job,
+            _mock_copy_output_assets,
+            mock_copy_site_root_files,
+            mock_checkpoint,
+            _mock_print_processing_times,
+    ):
+        mock_read_info.return_value = self.make_comic_info()
+        mock_run_hook.return_value = None
+
+        build_site.main()
+
+        mock_copy_site_root_files.assert_called_once_with("build")
+        self.assertIn(call("Copy site_root files"), mock_checkpoint.call_args_list)
+
+    @patch("build.build_site.print_processing_times")
+    @patch("build.build_site.checkpoint")
+    @patch("build.build_site.copy_site_root_files", side_effect=FileNotFoundError("your_content/site_root"))
+    @patch("build.build_site.copy_output_assets")
+    @patch("build.build_site.build_rss_feed_from_job")
+    @patch("build.build_site.get_rss_feed_jobs", return_value=[])
+    @patch("build.build_site.build_and_publish_comic_pages", return_value=([{"page_name": "Page 1"}], {"theme": "default"}))
+    @patch("build.build_site.get_extra_comics_list", return_value=[])
+    @patch("build.build_site.setup_output_file_space")
+    @patch("build.build_site.run_hook")
+    @patch("build.build_site.utils.get_comic_url", return_value=(COMIC_URL, "/comic_git_dev"))
+    @patch("build.build_site.read_info")
+    @patch("build.build_site.utils.find_project_root")
+    @patch("build.build_site.add_inputs_to_env_vars")
+    def test_main_surfaces_missing_site_root_folder(
+            self,
+            _mock_add_inputs_to_env_vars,
+            _mock_find_project_root,
+            mock_read_info,
+            _mock_get_comic_url,
+            mock_run_hook,
+            _mock_setup_output_file_space,
+            _mock_get_extra_comics_list,
+            _mock_build_and_publish_comic_pages,
+            _mock_get_rss_feed_jobs,
+            _mock_build_rss_feed_from_job,
+            _mock_copy_output_assets,
+            _mock_copy_site_root_files,
+            _mock_checkpoint,
+            _mock_print_processing_times,
+    ):
+        mock_read_info.return_value = self.make_comic_info()
+        mock_run_hook.return_value = None
+
+        with self.assertRaisesRegex(FileNotFoundError, "your_content/site_root"):
+            build_site.main()
+
+    @patch("build.build_site.print_processing_times")
+    @patch("build.build_site.checkpoint")
+    @patch("build.build_site.copy_site_root_files")
     @patch("build.build_site.copy_output_assets")
     @patch("build.build_site.build_rss_feed_from_job")
     @patch("build.build_site.get_rss_feed_jobs", return_value=[])
@@ -256,6 +348,7 @@ class TestMain(TestCase):
             _mock_get_rss_feed_jobs,
             _mock_build_rss_feed_from_job,
             _mock_copy_output_assets,
+            _mock_copy_site_root_files,
             _mock_checkpoint,
             _mock_print_processing_times,
     ):

@@ -5,7 +5,7 @@ import traceback
 import core.utils as utils
 from build.site_builder import build_and_publish_comic_pages
 from build.content.site_config import get_extra_comic_info, get_extra_comics_list
-from build.output.site_output import copy_output_assets, setup_output_file_space
+from build.output.site_output import copy_output_assets, copy_site_root_files, setup_output_file_space
 from core.models import ComicBuildResult
 from core.utils import checkpoint, print_processing_times, read_info
 from integrations.hooks import run_hook
@@ -99,6 +99,8 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
     if output_dir:
         copy_output_assets(output_dir)
         checkpoint("Copy extra files to output directory")
+    copy_site_root_files(output_dir)
+    checkpoint("Copy site_root files")
 
     run_hook(theme, "postprocess", [comic_info, comic_data_dicts, global_values])
 

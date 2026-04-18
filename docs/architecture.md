@@ -37,6 +37,9 @@ Typical structure:
 your_content/
   comic_info.ini
   home page.txt|html
+  site_root/
+    .nojekyll
+    favicon.ico
   webring.json
   images/
   comics/
@@ -65,6 +68,7 @@ This structure is intentionally file-based and low-friction:
 - creators edit `.ini`, `.txt`, and image files directly
 - most configuration is designed to be understandable in a text editor on Windows
 - adding or changing content is usually done by creating, renaming, moving, or deleting files and folders
+- `your_content/site_root/` is part of the expected 1.1 host-repo layout, and should contain at minimum a `favicon.ico` and `.nojekyll` file.
 
 ## Data Flow
 
@@ -76,7 +80,7 @@ This structure is intentionally file-based and low-friction:
 6. [`src/build/images.py`](../src/build/images.py) optionally creates thumbnails and other image derivatives.
 7. [`src/build/rendering.py`](../src/build/rendering.py) renders Jinja templates from the built-in template set and any theme overrides into HTML output.
 8. [`src/integrations/rss.py`](../src/integrations/rss.py) builds any enabled RSS feeds for the main comic and Extra Comics.
-9. [`src/build/output/site_output.py`](../src/build/output/site_output.py) handles cleanup and staging into the configured output directory, which now defaults to `build/`.
+9. [`src/build/output/site_output.py`](../src/build/output/site_output.py) handles cleanup, staging into the configured output directory, and copying any host-managed root files from `your_content/site_root/` into the built site root.
 10. The host repo then publishes that output, typically to GitHub Pages and optionally to Neocities.
 
 ## Key Dependencies

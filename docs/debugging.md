@@ -85,6 +85,8 @@ $env:PYTHONPATH='src'
 - Local manual builds are most useful when run through a host repo such as `comic_git_dev`, not by treating `comic_git_engine` as a standalone app.
 - If `comic_git_engine` is symlinked into a host repo and both repos are open in PyCharm, the same file may appear at multiple paths.
 - Builds now default to writing generated files into `build/`. If output seems to be missing, check that folder first, or verify whether `OUTPUT_DIR` was set to a different value.
+- In 1.1, host repos are expected to contain `your_content/site_root/`. If the build fails complaining that the folder is missing, create it even if you do not have any custom root-level files yet.
+- If expected root-level files such as `favicon.ico`, `robots.txt`, or `CNAME` are missing from the built site, check `your_content/site_root/` in the host repo. Those files are copied into the site root late in the build.
 
 ## Related
 

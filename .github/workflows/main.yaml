@@ -12,14 +12,16 @@ jobs:
     steps:
       - name: Load repository
         uses: actions/checkout@v2
-      - name: Update version in build_site.py
+        with:
+          ref: master
+      - name: Update version in site_builder.py
         run: |
-          sed -i 's/VERSION = ".*"/VERSION = "${{ github.event.inputs.version }}"/' scripts/build_site.py
+          sed -i 's/VERSION = ".*"/VERSION = "${{ github.event.inputs.version }}"/' src/build/site_builder.py
           git config --local user.name "Github Action"
           git config --local user.email "action@github.com"
           git add --all
           git commit -m "Version ${{ github.event.inputs.version }}"
-          git push
+          git push origin HEAD:master
       - name: Update version branches and tags
         run: |
           VERSION=${{ github.event.inputs.version }}
@@ -61,6 +63,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
+          ref: master
           fetch-depth: 0
       - name: Get previous tag
         id: prev_tag

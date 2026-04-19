@@ -38,8 +38,8 @@ It also means:
 
 ## Files Affected
 
-- `scripts/build_site.py`
-- `scripts/*.py`
+- `src/build/build_site.py`
+- `src/scripts/*.py`
 - `.github/workflows/build_site.yaml`
 - `.github/workflows/main.yaml`
 - `README.md`

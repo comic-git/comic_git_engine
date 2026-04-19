@@ -43,9 +43,9 @@ It also means:
 ## Files Affected
 
 - `your_content/`
-- `scripts/utils.py`
-- `scripts/build_site.py`
-- `scripts/rss.py`
+- `src/core/utils.py`
+- `src/build/build_site.py`
+- `src/integrations/rss.py`
 - `templates/`
 - `default_files/`
 - `docs/architecture.md`

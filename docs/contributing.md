@@ -82,6 +82,7 @@ Before a real release:
 
 - run a full manual test pass, preferably through `comic_git_dev`
 - update `comic_git_docs` completely for the released behavior
+- verify `.github/workflows/main.yaml` still bumps the version in `src/build/site_builder.py` and that the requested version will match the resulting branches and tags
 - then run the release workflow that updates version numbers, tags, and branches
 - finally announce the release in Discord
 

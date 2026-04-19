@@ -42,7 +42,7 @@ It also means:
 
 ## Files Affected
 
-- `scripts/build_site.py`
+- `src/build/build_site.py`
 - `your_content/comics/*/info.ini`
 - `docs/architecture.md`
 - `docs/coding-principles.md`

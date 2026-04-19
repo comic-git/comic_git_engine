@@ -35,7 +35,7 @@ It also means:
 
 ## Files Affected
 
-- `scripts/build_site.py`
+- `src/build/build_site.py`
 - `comic/page_info_list.json`
 - `docs/architecture.md`
 - `docs/integration/`

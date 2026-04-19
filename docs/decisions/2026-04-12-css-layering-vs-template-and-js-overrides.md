@@ -44,6 +44,6 @@ It also means:
 - `default_files/js/`
 - `templates/`
 - `your_content/themes/`
-- `scripts/build_site.py`
+- `src/build/build_site.py`
 - `docs/architecture.md`
 - `docs/coding-principles.md`

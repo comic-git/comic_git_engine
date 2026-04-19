@@ -19,15 +19,30 @@
 |-----------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
 | [`.github/workflows/build_site.yaml`](../.github/workflows/build_site.yaml)             | Reusable workflow called by host `comic_git` repos to build and deploy static sites        |
 | [`.github/workflows/main.yaml`](../.github/workflows/main.yaml)                         | Maintainer workflow for version updates, branches, tags, and GitHub releases               |
-| [`scripts/requirements.txt`](../scripts/requirements.txt)                               | Core runtime Python dependencies installed during build workflow execution                 |
-| [`scripts/make_requirements_hooks_file.py`](../scripts/make_requirements_hooks_file.py) | Generates optional hook dependency requirements during the build workflow                  |
-| [`scripts/requirements_hooks.txt`](../scripts/requirements_hooks.txt)                   | Generated file used only when theme hook dependencies are needed during workflow execution |
+| [`requirements.txt`](../requirements.txt)                                               | Core runtime Python dependencies installed during build workflow execution                 |
+| [`src/scripts/make_requirements_hooks_file.py`](../src/scripts/make_requirements_hooks_file.py) | Generates optional hook dependency requirements during the build workflow                  |
+| [`requirements_hooks.txt`](../requirements_hooks.txt)                                   | Generated file used only when theme hook dependencies are needed during workflow execution |
 
 ## Non-Obvious Decisions
 
 - `build_site.yaml` is part of the product surface, not just internal CI. Host repos call it remotely via `uses: comic-git/comic_git_engine/.github/workflows/build_site.yaml@...`, so changes to that workflow affect end-user builds directly.
 - Runtime dependency changes are CI/CD-sensitive because every end-user build installs them. Treat dependency additions as product-impacting changes, not just local tooling changes.
 - `main.yaml` updates version branches and tags for the engine repo, but reusable workflow consumers may also be following the separate `v1` tag. Release and rollback thinking should include both version branches and workflow tag consumers.
+
+## Version Source Of Truth
+
+For `1.1`, the engine version source of truth is:
+
+- [`src/build/site_builder.py`](../src/build/site_builder.py)
+  - the `VERSION = "..."` constant
+
+The maintainer release workflow in [`.github/workflows/main.yaml`](../.github/workflows/main.yaml) updates that constant before it creates version branches, tags, and the GitHub release.
+
+When checking release readiness, verify these three things together:
+
+- `main.yaml` still edits `src/build/site_builder.py`
+- the requested release version matches the updated `VERSION` constant
+- the created branches and tags match that same version
 
 ## Jobs Requiring Care
 

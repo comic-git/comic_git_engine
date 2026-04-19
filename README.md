@@ -17,7 +17,7 @@ python -m venv venv
 .\venv\Scripts\Activate.ps1
 
 pip install --upgrade pip
-pip install -r scripts/requirements.txt
+pip install -r requirements.txt
 ```
 
 For normal manual build testing, do not run this repo as a standalone app. Load it into a host `comic_git` repo such as `comic_git_dev`, then run builds from the host repo root.

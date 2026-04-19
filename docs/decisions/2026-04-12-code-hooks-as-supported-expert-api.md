@@ -47,8 +47,8 @@ It also means:
 
 ## Files Affected
 
-- `scripts/build_site.py`
-- `scripts/make_requirements_hooks_file.py`
+- `src/build/build_site.py`
+- `src/scripts/make_requirements_hooks_file.py`
 - `your_content/themes/*/scripts/hooks.py`
 - `your_content/themes/*/scripts/requirements.txt`
 - `docs/architecture.md`

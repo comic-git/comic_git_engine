@@ -10,6 +10,8 @@ from typing import Dict, List, Tuple
 from configparser import RawConfigParser
 from pytz import timezone
 
+from build.content import content_paths
+from build.content.loaders import load_page_info
 from build.content.transcripts import get_transcripts
 from core import utils
 from integrations.hooks import run_hook
@@ -33,11 +35,11 @@ def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_sc
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
     for page_path in iglob(f"your_content/{comic_folder}comics/*/"):
         page_path = page_path.replace("\\", "/")
-        filepath = f"{page_path}info.ini"
-        if not os.path.exists(f"{page_path}info.ini"):
-            print(f"{page_path} is missing its info.ini file. Skipping")
+        filepath, page_info = load_page_info(page_path)
+        if page_info is None or filepath is None:
+            _, legacy_path = content_paths.get_page_info_candidates(page_path)
+            print(f"{page_path} is missing its {os.path.basename(legacy_path)} file. Skipping")
             continue
-        page_info = utils.read_info(filepath, to_dict=True)
         try:
             post_date = tz_info.localize(datetime.strptime(page_info["Post date"], date_format))
         except ValueError as e:

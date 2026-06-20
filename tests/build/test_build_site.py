@@ -26,7 +26,7 @@ def get_mock_dict(mocks):
 @patch(MUT + "setup_output_file_space")
 @patch(MUT + "run_hook", return_value=None)
 @patch(MUT + "utils.get_comic_url", return_value=(COMIC_URL, "/comic_git_dev"))
-@patch(MUT + "read_info")
+@patch(MUT + "load_main_comic_info")
 @patch(MUT + "utils.find_project_root")
 @patch(MUT + "add_inputs_to_env_vars")
 class TestMain(TestCase):
@@ -42,7 +42,7 @@ class TestMain(TestCase):
     def test_main_builds_rss_feed_job_from_main_comic(self, *_mocks):
         m = get_mock_dict(_mocks)
         comic_info = self.make_comic_info()
-        m["read_info"].return_value = comic_info
+        m["load_main_comic_info"].return_value = comic_info
         comic_data_dicts = [{"page_name": "Page 1"}]
         global_values = {"theme": "default"}
         m["build_and_publish_comic_pages"].return_value = (comic_data_dicts, global_values)
@@ -64,7 +64,7 @@ class TestMain(TestCase):
         m = get_mock_dict(_mocks)
         comic_info = self.make_comic_info()
         extra_comic_info = self.make_comic_info()
-        m["read_info"].return_value = comic_info
+        m["load_main_comic_info"].return_value = comic_info
         m["get_extra_comic_info"].return_value = extra_comic_info
         m["get_extra_comics_list"].return_value = ["extras/story"]
         m["build_and_publish_comic_pages"].side_effect = [
@@ -86,7 +86,7 @@ class TestMain(TestCase):
 
     def test_main_copies_output_assets_when_output_dir_defaults_to_build(self, *_mocks):
         m = get_mock_dict(_mocks)
-        m["read_info"].return_value = self.make_comic_info()
+        m["load_main_comic_info"].return_value = self.make_comic_info()
 
         build_site.main()
 
@@ -95,7 +95,7 @@ class TestMain(TestCase):
 
     def test_main_copies_output_assets_when_output_dir_is_set(self, *_mocks):
         m = get_mock_dict(_mocks)
-        m["read_info"].return_value = self.make_comic_info()
+        m["load_main_comic_info"].return_value = self.make_comic_info()
 
         with patch.dict("os.environ", {"OUTPUT_DIR": "output"}, clear=False):
             build_site.main()
@@ -105,7 +105,7 @@ class TestMain(TestCase):
 
     def test_main_skips_copying_output_assets_when_output_dir_is_explicitly_blank(self, *_mocks):
         m = get_mock_dict(_mocks)
-        m["read_info"].return_value = self.make_comic_info()
+        m["load_main_comic_info"].return_value = self.make_comic_info()
 
         with patch.dict("os.environ", {"OUTPUT_DIR": ""}, clear=False):
             build_site.main()
@@ -115,7 +115,7 @@ class TestMain(TestCase):
 
     def test_main_records_checkpoint_after_copying_site_root_files(self, *_mocks):
         m = get_mock_dict(_mocks)
-        m["read_info"].return_value = self.make_comic_info()
+        m["load_main_comic_info"].return_value = self.make_comic_info()
 
         build_site.main()
 
@@ -124,7 +124,7 @@ class TestMain(TestCase):
 
     def test_main_surfaces_missing_site_root_folder(self, *_mocks):
         m = get_mock_dict(_mocks)
-        m["read_info"].return_value = self.make_comic_info()
+        m["load_main_comic_info"].return_value = self.make_comic_info()
         m["copy_site_root_files"].side_effect = FileNotFoundError("your_content/site_root")
 
         with self.assertRaisesRegex(FileNotFoundError, "your_content/site_root"):
@@ -132,7 +132,7 @@ class TestMain(TestCase):
 
     def test_main_surfaces_build_failures(self, *_mocks):
         m = get_mock_dict(_mocks)
-        m["read_info"].return_value = self.make_comic_info()
+        m["load_main_comic_info"].return_value = self.make_comic_info()
         m["build_and_publish_comic_pages"].side_effect = RuntimeError("build failed")
 
         with self.assertRaisesRegex(RuntimeError, "build failed"):

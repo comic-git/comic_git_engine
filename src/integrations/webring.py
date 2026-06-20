@@ -1,9 +1,10 @@
 import json
-import os
 from configparser import RawConfigParser
 from typing import Any
 from urllib.error import HTTPError
 from urllib.request import urlopen
+
+from build.content.content_paths import WEBRING_JSON
 
 
 def load_webring_data(comic_info: RawConfigParser, comic_url: str) -> dict[str, Any]:
@@ -17,7 +18,7 @@ def load_webring_data(comic_info: RawConfigParser, comic_url: str) -> dict[str, 
         raise ValueError("The 'Webring ID' option in the [Webring] section must be defined when 'Enable webring' is enabled.")
 
     if url == "local":
-        local_path = os.path.join("your_content", "webring.json")
+        local_path = WEBRING_JSON
         try:
             with open(local_path) as response:
                 data = json.load(response)

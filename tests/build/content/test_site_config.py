@@ -83,20 +83,17 @@ class TestSiteConfig(TestCase):
         comic_info.set("Links Bar", "Home", "/")
         comic_info.set("Pages", "index", "Main Home")
 
-        def fake_read(self, path):
-            if path.endswith("extras/story/comic_info.ini"):
-                if not self.has_section("Comic Info"):
-                    self.add_section("Comic Info")
-                self.set("Comic Info", "Comic name", "Extra Comic")
-                if not self.has_section("Links Bar"):
-                    self.add_section("Links Bar")
-                self.set("Links Bar", "Cast", "/cast")
-            return [path]
+        def fake_load_extra_comic_info(folder_name, loaded_comic_info):
+            self.assertEqual("extras/story", folder_name)
+            merged = RawConfigParser()
+            merged.add_section("Comic Info")
+            merged.set("Comic Info", "Comic name", "Extra Comic")
+            merged.add_section("Links Bar")
+            merged.set("Links Bar", "Cast", "/cast")
+            return merged
 
-        with patch.object(RawConfigParser, "read", new=fake_read):
+        with patch(MUT + "load_extra_comic_info_with_precedence", side_effect=fake_load_extra_comic_info):
             extra_info = site_config.get_extra_comic_info("extras/story", comic_info)
 
         self.assertEqual("Extra Comic", extra_info.get("Comic Info", "Comic name"))
-        self.assertFalse(extra_info.has_option("Links Bar", "Home"))
         self.assertEqual("/cast", extra_info.get("Links Bar", "Cast"))
-        self.assertFalse(extra_info.has_section("Pages"))

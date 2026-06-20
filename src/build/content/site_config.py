@@ -1,8 +1,8 @@
 import re
 from configparser import RawConfigParser
-from copy import deepcopy
 from typing import Any, List
 
+from build.content.loaders import load_extra_comic_info as load_extra_comic_info_with_precedence
 from core import utils
 from core.utils import web_path
 
@@ -41,11 +41,4 @@ def get_extra_comics_list(comic_info: RawConfigParser) -> List[str]:
 
 
 def get_extra_comic_info(folder_name: str, comic_info: RawConfigParser):
-    comic_info = deepcopy(comic_info)
-    del comic_info["Pages"]
-    extra_comic_info = RawConfigParser()
-    extra_comic_info.read(f"your_content/{folder_name}/comic_info.ini")
-    if extra_comic_info.has_section("Links Bar"):
-        del comic_info["Links Bar"]
-    comic_info.read(f"your_content/{folder_name}/comic_info.ini")
-    return comic_info
+    return load_extra_comic_info_with_precedence(folder_name, comic_info)

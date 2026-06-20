@@ -6,6 +6,7 @@ from configparser import RawConfigParser
 from copy import deepcopy
 from urllib.parse import urljoin
 
+from build.content.content_paths import get_comic_social_media_paths
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateNotFound
 from markdown2 import Markdown
 from time import strftime, perf_counter_ns
@@ -273,12 +274,7 @@ def get_social_media_data(
         social_media_data = social_media_data_by_comic.get(comic_data_dict["comic_folder"])
     # Load social media data from the file if it's not loaded yet, or create default data
     if not social_media_data:
-        filepaths = [os.path.join(comic_data_dict["comic_folder"], "your_content/social_media.json")]
-        if comic_data_dict["comic_folder"]:
-            # Extra Comics inherit the main comic's config when they do not define their own override.
-            filepaths.append("your_content/social_media.json")
-
-        for filepath in filepaths:
+        for filepath in get_comic_social_media_paths(comic_data_dict["comic_folder"]):
             if os.path.isfile(filepath):
                 with open(filepath) as f:
                     social_media_data = json.load(f)

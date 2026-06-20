@@ -6,11 +6,12 @@ import traceback
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from build.site_builder import build_and_publish_comic_pages
+from build.content.loaders import load_main_comic_info
 from build.content.site_config import get_extra_comic_info, get_extra_comics_list
 from build.output.site_output import copy_output_assets, copy_site_root_files, setup_output_file_space
 from core import utils
 from core.models import ComicBuildResult
-from core.utils import checkpoint, print_processing_times, read_info
+from core.utils import checkpoint, print_processing_times
 from integrations.hooks import run_hook
 from integrations.rss import build_rss_feed_from_job, get_rss_feed_jobs
 
@@ -43,7 +44,7 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
 
     # Get site-wide settings for this comic
     utils.find_project_root()
-    comic_info = read_info("your_content/comic_info.ini")
+    comic_info = load_main_comic_info()
     comic_url, utils.BASE_DIRECTORY = utils.get_comic_url(comic_info)
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
 

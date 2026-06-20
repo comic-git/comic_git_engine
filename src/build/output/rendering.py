@@ -5,6 +5,7 @@ from collections import defaultdict
 from configparser import RawConfigParser
 from typing import Dict, List
 
+from build.content.content_paths import get_page_social_media_path
 from core import utils
 from build.content.site_config import get_pages_list
 from integrations.hooks import run_hook
@@ -23,7 +24,7 @@ def write_html_files(comic_folder: str, comic_info: RawConfigParser, comic_data_
     print("Writing {} comic pages...".format(len(comic_data_dicts)))
     for comic_data_dict in comic_data_dicts:
         html_path = f"{comic_folder}comic/{comic_data_dict['page_name']}/index.html"
-        custom_social_media_path = os.path.join(comic_data_dict["page_dir"], "social_media.json")
+        custom_social_media_path = get_page_social_media_path(comic_data_dict["page_dir"])
         comic_data_dict.update(global_values)
         comic_data_dict["social_media"] = utils.get_social_media_data(
             comic_info, comic_data_dict, "comic", html_path, custom_social_media_path

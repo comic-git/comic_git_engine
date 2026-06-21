@@ -65,6 +65,12 @@ class TestLoadExtraComicInfo(TestCase):
 
 
 class TestLoadPageInfo(TestCase):
+    def make_comic_info(self):
+        comic_info = RawConfigParser()
+        comic_info.add_section("Comic Settings")
+        comic_info.set("Comic Settings", "Date format", "%B %d, %Y")
+        return comic_info
+
     @patch(MUT + "load_legacy_page_info")
     @patch(MUT + "os.path.isfile", side_effect=lambda path: path.endswith("info.toml"))
     @patch(MUT + "load_page_info_toml")
@@ -72,7 +78,7 @@ class TestLoadPageInfo(TestCase):
         page_info = {"Post date": "January 01, 2020"}
         toml_loader.return_value = page_info
 
-        actual_path, actual_page_info = loaders.load_page_info("your_content/comics/001/")
+        actual_path, actual_page_info = loaders.load_page_info("your_content/comics/001/", self.make_comic_info())
 
         self.assertTrue(actual_path.endswith("info.toml"))
         self.assertEqual(page_info, actual_page_info)
@@ -85,7 +91,7 @@ class TestLoadPageInfo(TestCase):
         page_info = {"Post date": "January 01, 2020"}
         legacy_loader.return_value = page_info
 
-        actual_path, actual_page_info = loaders.load_page_info("your_content/comics/001/")
+        actual_path, actual_page_info = loaders.load_page_info("your_content/comics/001/", self.make_comic_info())
 
         self.assertTrue(actual_path.endswith("info.ini"))
         self.assertEqual(page_info, actual_page_info)
@@ -96,7 +102,7 @@ class TestLoadPageInfo(TestCase):
     @patch(MUT + "os.path.isfile", return_value=False)
     @patch(MUT + "load_page_info_toml")
     def test_returns_none_when_no_supported_files_exist(self, toml_loader, _mock_isfile, legacy_loader):
-        actual_path, actual_page_info = loaders.load_page_info("your_content/comics/001/")
+        actual_path, actual_page_info = loaders.load_page_info("your_content/comics/001/", self.make_comic_info())
 
         self.assertIsNone(actual_path)
         self.assertIsNone(actual_page_info)

@@ -137,6 +137,32 @@ class TestPageDiscovery(TestCase):
         self.assertEqual(["one.png", "two.png"], page_info_list[0]["image_file_names"])
         self.assertTrue(page_info_list[0]["hooked"])
 
+    def test_get_page_info_list_reads_info_toml(self):
+        comic_info = self.make_comic_info()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cwd = os.getcwd()
+            page_dir = os.path.join(temp_dir, "your_content", "comics", "001")
+            os.makedirs(page_dir, exist_ok=True)
+            with open(os.path.join(page_dir, "info.toml"), "w", encoding="utf-8") as f:
+                f.write('post_date = "2020-01-02"\n')
+                f.write('images = ["page.png"]\n')
+                f.write('post_text = """\nBody text\n"""\n')
+                f.write('\n[transcripts]\n')
+                f.write('English = """\nTranscript text\n"""\n')
+            with open(os.path.join(page_dir, "page.png"), "w", encoding="utf-8") as f:
+                f.write("x")
+            try:
+                os.chdir(temp_dir)
+                page_info_list, scheduled_count = page_discovery.get_page_info_list("", comic_info, False, False)
+            finally:
+                os.chdir(cwd)
+
+        self.assertEqual(0, scheduled_count)
+        self.assertEqual(["001"], [page["page_name"] for page in page_info_list])
+        self.assertEqual(["page.png"], page_info_list[0]["image_file_names"])
+        self.assertEqual(["English"], page_info_list[0]["transcript_languages"])
+        self.assertTrue(page_info_list[0]["_toml_managed"])
+
     def test_save_page_info_json_file_uses_output_dir(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             with patch.dict(os.environ, {"OUTPUT_DIR": temp_dir}, clear=False):

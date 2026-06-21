@@ -108,7 +108,7 @@ class TestComicData(TestCase):
             ["your_content/comics/001/page_1.png", "your_content/comics/001/page_2.png"],
             data["comic_paths"],
         )
-        mock_get_transcripts.assert_called_once_with("", comic_info, "001")
+        mock_get_transcripts.assert_called_once_with("", comic_info, "001", page_info)
 
     @patch(MUT + "run_hook", return_value=None)
     @patch(MUT + "get_transcripts", return_value=OrderedDict())
@@ -142,6 +142,24 @@ class TestComicData(TestCase):
 
         self.assertTrue(data["hooked"])
         self.assertEqual("", data["page_title"])
+
+    @patch(MUT + "run_hook", return_value=None)
+    @patch(MUT + "get_transcripts", return_value=OrderedDict({"English": "<p>Transcript</p>\n"}))
+    def test_create_comic_data_uses_inline_toml_post_text(self, _mock_get_transcripts, _mock_run_hook):
+        comic_info = self.make_comic_info()
+        page_info = {
+            "page_name": "004",
+            "Post date": "January 05, 2024",
+            "image_file_names": ["cover.png"],
+            "_toml_managed": True,
+            "_inline_post_text": "Inline body",
+            "_inline_transcripts": OrderedDict({"English": "Transcript"}),
+        }
+
+        data = comic_data.create_comic_data("", comic_info, page_info, "001", "003", "004", "004", "004")
+
+        self.assertEqual("Inline body", data["post_md"])
+        self.assertIn("<p>Inline body</p>", data["post_html"])
 
     @patch(MUT + "create_comic_data")
     def test_build_comic_data_dicts_preserves_order_and_navigation_ids(self, mock_create_comic_data):

@@ -71,3 +71,15 @@ class TestTranscripts(TestCase):
         self.assertEqual(["French", "English"], list(loaded.keys()))
         self.assertEqual("<p>french</p>\n", loaded["French"])
         self.assertEqual("<p>english</p>\n", loaded["English"])
+
+    def test_get_transcripts_uses_inline_toml_transcripts_when_present(self):
+        comic_info = self.make_comic_info()
+        page_info = {
+            "_toml_managed": True,
+            "_inline_transcripts": OrderedDict({"English": "**Hello**", "French": "Bonjour"}),
+        }
+
+        loaded = transcripts.get_transcripts("", comic_info, "page-1", page_info)
+
+        self.assertEqual(["English", "French"], list(loaded.keys()))
+        self.assertEqual("<p><strong>Hello</strong></p>\n", loaded["English"])

@@ -51,11 +51,15 @@ def create_comic_data(comic_folder: str, comic_info: RawConfigParser, page_info:
     post_text_paths = [
         f"your_content/{comic_folder}before post text.txt",
         f"your_content/{comic_folder}before post text.html",
-        page_dir + "post.txt",
+        None if page_info.get("_toml_managed") else page_dir + "post.txt",
         f"your_content/{comic_folder}after post text.txt",
         f"your_content/{comic_folder}after post text.html",
     ]
+    if page_info.get("_toml_managed"):
+        post_md.append(page_info.get("_inline_post_text", ""))
     for post_text_path in post_text_paths:
+        if not post_text_path:
+            continue
         if os.path.isfile(post_text_path):
             with open(post_text_path, "rb") as f:
                 post_md.append(f.read().decode("utf-8"))
@@ -81,7 +85,7 @@ def create_comic_data(comic_folder: str, comic_info: RawConfigParser, page_info:
         "archive_post_date": archive_post_date,
         "post_md": post_md,
         "post_html": post_html,
-        "transcripts": get_transcripts(comic_folder, comic_info, page_info["page_name"]),
+        "transcripts": get_transcripts(comic_folder, comic_info, page_info["page_name"], page_info),
     }
     d.update({format_user_variable(k): v for k, v in page_info.items()})
     if "_title" not in page_info:

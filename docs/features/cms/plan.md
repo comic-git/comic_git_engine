@@ -163,7 +163,6 @@ All comic pages should share one schema, regardless of whether they belong to th
 Initial direction:
 
 ```toml
-id = "001"
 title = "Page Title"
 post_date = "2026-04-19"
 images = ["page.png"]
@@ -189,6 +188,7 @@ Likely additional fields:
 
 - page folder ID is user-controlled
 - page folder ID should be treated as stable after creation
+- page folder ID should remain path-derived rather than duplicated into `info.toml`
 - title may remain optional if the engine can still derive it from image filenames where appropriate
 - image ordering is explicit and important
 - auto-discovery of page images remains legacy-mode behavior only

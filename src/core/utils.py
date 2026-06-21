@@ -243,7 +243,8 @@ def pick_data(social_media_data: dict, template_name: str) -> dict:
 
 def get_social_media_data(
         comic_info: RawConfigParser, comic_data_dict: dict, template_name: str, html_path: str,
-        custom_json_path: str = None
+        custom_json_path: str = None,
+        custom_social_media_data: dict | None = None,
 ) -> dict:
     """
     :param comic_info: Config data for comic_info.ini file.
@@ -255,7 +256,9 @@ def get_social_media_data(
     :return:
     """
     global social_media_data_by_comic
-    if custom_json_path and os.path.isfile(custom_json_path):
+    if custom_social_media_data is not None:
+        social_media_data = {"comic": custom_social_media_data}
+    elif custom_json_path and os.path.isfile(custom_json_path):
         try:
             with open(custom_json_path) as f:
                 social_media_data = json.load(f)

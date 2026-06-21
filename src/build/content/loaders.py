@@ -4,6 +4,7 @@ from copy import deepcopy
 from typing import Any
 
 from build.content import content_paths
+from build.content.page_sources import load_page_source_from_toml, page_source_to_legacy_page_info
 from core import utils
 
 
@@ -36,10 +37,10 @@ def load_extra_comic_info_toml(_folder_name: str, _comic_info: RawConfigParser, 
     return NOT_FOUND
 
 
-def load_page_info(page_path: str) -> tuple[str | None, dict[str, Any] | None]:
+def load_page_info(page_path: str, comic_info: RawConfigParser) -> tuple[str | None, dict[str, Any] | None]:
     toml_path, legacy_path = content_paths.get_page_info_candidates(page_path)
     if os.path.isfile(toml_path):
-        page_info = load_page_info_toml(toml_path)
+        page_info = load_page_info_toml(toml_path, comic_info)
         if page_info is not NOT_FOUND:
             return toml_path, page_info
     if os.path.isfile(legacy_path):
@@ -47,8 +48,9 @@ def load_page_info(page_path: str) -> tuple[str | None, dict[str, Any] | None]:
     return None, None
 
 
-def load_page_info_toml(_path: str) -> dict[str, Any] | object:
-    return NOT_FOUND
+def load_page_info_toml(path: str, comic_info: RawConfigParser) -> dict[str, Any] | object:
+    page_source = load_page_source_from_toml(path)
+    return page_source_to_legacy_page_info(page_source, comic_info)
 
 
 def load_legacy_page_info(path: str) -> dict[str, Any]:

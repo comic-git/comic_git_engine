@@ -35,7 +35,7 @@ def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_sc
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
     for page_path in iglob(f"your_content/{comic_folder}comics/*/"):
         page_path = page_path.replace("\\", "/")
-        filepath, page_info = load_page_info(page_path)
+        filepath, page_info = load_page_info(page_path, comic_info)
         if page_info is None or filepath is None:
             _, legacy_path = content_paths.get_page_info_candidates(page_path)
             print(f"{page_path} is missing its {os.path.basename(legacy_path)} file. Skipping")
@@ -79,7 +79,7 @@ def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_sc
             for key in page_info.copy():
                 if key.startswith("!"):
                     del page_info[key]
-            transcripts = get_transcripts(comic_folder, comic_info, page_info["page_name"])
+            transcripts = get_transcripts(comic_folder, comic_info, page_info["page_name"], page_info)
             page_info["transcript_languages"] = list(transcripts.keys())
             hook_result = run_hook(theme, "extra_page_info_processing",
                                    [comic_folder, comic_info, page_path, page_info])

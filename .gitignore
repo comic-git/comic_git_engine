@@ -6,5 +6,5 @@ __pycache__/
 
 requirements_hooks.txt
 
-.codex/tmp/
+.codex/
 specs/

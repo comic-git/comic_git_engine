@@ -1,7 +1,9 @@
 import os
 import tempfile
+from collections import OrderedDict
 from unittest import TestCase
 
+from build.content import page_sources
 from build.migration import toml_migration
 
 
@@ -84,16 +86,16 @@ class TestTomlMigration(TestCase):
             self.assertTrue(os.path.exists(toml_path))
             with open(toml_path, "r", encoding="utf-8") as f:
                 toml_text = f.read()
-            self.assertIn('post_date = "2024-01-02"', toml_text)
-            self.assertIn('images = ["first.png", "second.png"]', toml_text)
-            self.assertIn('title = "Chapter One"', toml_text)
-            self.assertIn('characters = ["Alice", "Bob"]', toml_text)
-            self.assertIn('tags = ["noir", "mystery"]', toml_text)
-            self.assertIn('post_text = """\\\nPage body"""', toml_text)
-            self.assertIn("[transcripts]", toml_text)
-            self.assertIn('English = """\\\n**Transcript**"""', toml_text)
-            self.assertIn("[extra]", toml_text)
-            self.assertIn('Mood = "tense"', toml_text)
+            loaded = page_sources.load_page_source_from_toml(toml_path)
+            self.assertEqual("2024-01-02", loaded.post_date)
+            self.assertEqual(["first.png", "second.png"], loaded.images)
+            self.assertEqual("Chapter One", loaded.title)
+            self.assertEqual("Page body", loaded.post_text)
+            self.assertEqual(["Alice", "Bob"], loaded.characters)
+            self.assertEqual(["noir", "mystery"], loaded.tags)
+            self.assertEqual(OrderedDict({"English": "**Transcript**"}), loaded.transcripts)
+            self.assertEqual({"og:title": "Override"}, loaded.social_media)
+            self.assertEqual(OrderedDict({"Mood": "tense"}), loaded.extra)
             self.assertNotIn("Private", toml_text)
 
     def test_existing_toml_is_skipped_without_overwrite(self):

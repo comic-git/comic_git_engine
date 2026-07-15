@@ -75,3 +75,25 @@ class TestPageSources(TestCase):
             loaded = page_sources.load_page_source_from_toml(path)
 
         self.assertEqual(source, loaded)
+
+    def test_page_source_toml_handles_escaped_multiline_text(self):
+        source = page_sources.PageSource(
+            post_date="2024-01-02",
+            title='Chapter "One"',
+            images=["page_1.png"],
+            post_text='Line 1\n\nPath C:\\comics\\001\nTriple quotes: """\nBackslash n: \\n\nUnicode: café 漫画',
+            alt_text='Alt text with """ and C:\\alt',
+            transcripts=OrderedDict({
+                "English": 'Transcript line\nLiteral slash: \\ and quotes: """\nEmoji: 🎨',
+            }),
+            social_media={"og:title": 'Title with "quotes" and C:\\path'},
+            extra=OrderedDict({"Mood": 'tense """ C:\\mood ñ'}),
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = os.path.join(temp_dir, "info.toml")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(page_sources.serialize_page_source_to_toml(source))
+
+            loaded = page_sources.load_page_source_from_toml(path)
+
+        self.assertEqual(source, loaded)

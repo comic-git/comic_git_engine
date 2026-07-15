@@ -34,13 +34,19 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+If you need to run the TOML migration script or the full test suite, also install the migration-only dependencies:
+
+```powershell
+pip install -r requirements_migration.txt
+```
+
 If you are testing a custom theme that has Python hook dependencies, also run:
 
 ```powershell
 pip install -r path/to/custom/theme/requirements.txt
 ```
 
-That second step is optional for normal engine development. Most work only needs `requirements.txt`.
+The migration and hook dependency steps are optional for normal site builds. Keep one-off migration tooling out of `requirements.txt` so regular build installs stay minimal.
 
 For manual site testing, load this repo into a host `comic_git` repo such as `comic_git_dev`:
 

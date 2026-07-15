@@ -105,38 +105,37 @@ def page_source_to_legacy_page_info(page_source: PageSource, comic_info) -> dict
 
 
 def serialize_page_source_to_toml(page_source: PageSource) -> str:
-    lines = [
-        f'post_date = {format_toml_string(page_source.post_date)}',
-        f'images = {format_toml_string_list(page_source.images)}',
-    ]
+    try:
+        import tomli_w
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(
+            "Writing TOML requires migration-only dependencies. Install them with "
+            "`pip install -r requirements_migration.txt`."
+        ) from e
+
+    data: OrderedDict[str, Any] = OrderedDict([
+        ("post_date", page_source.post_date),
+        ("images", page_source.images),
+    ])
     if page_source.title is not None:
-        lines.append(f'title = {format_toml_string(page_source.title)}')
+        data["title"] = page_source.title
     if page_source.alt_text is not None:
-        lines.append(f'alt_text = {format_toml_multiline_string(page_source.alt_text)}')
+        data["alt_text"] = page_source.alt_text
     if page_source.storyline:
-        lines.append(f'storyline = {format_toml_string(page_source.storyline)}')
+        data["storyline"] = page_source.storyline
     if page_source.characters:
-        lines.append(f'characters = {format_toml_string_list(page_source.characters)}')
+        data["characters"] = page_source.characters
     if page_source.tags:
-        lines.append(f'tags = {format_toml_string_list(page_source.tags)}')
+        data["tags"] = page_source.tags
     if page_source.post_text:
-        lines.append(f'post_text = {format_toml_multiline_string(page_source.post_text)}')
+        data["post_text"] = page_source.post_text
     if page_source.transcripts:
-        lines.append("")
-        lines.append("[transcripts]")
-        for language, text in page_source.transcripts.items():
-            lines.append(f"{format_toml_key(language)} = {format_toml_multiline_string(text)}")
+        data["transcripts"] = OrderedDict(page_source.transcripts)
     if page_source.social_media:
-        lines.append("")
-        lines.append("[social_media]")
-        for key, value in page_source.social_media.items():
-            lines.append(f"{format_toml_key(key)} = {format_toml_scalar(value)}")
+        data["social_media"] = dict(page_source.social_media)
     if page_source.extra:
-        lines.append("")
-        lines.append("[extra]")
-        for key, value in page_source.extra.items():
-            lines.append(f"{format_toml_key(key)} = {format_toml_string(value)}")
-    return "\n".join(lines) + "\n"
+        data["extra"] = OrderedDict(page_source.extra)
+    return tomli_w.dumps(data, multiline_strings=True)
 
 
 def extract_legacy_page_images(page_path: str, page_info: dict[str, str]) -> list[str]:
@@ -238,32 +237,3 @@ def require_toml_string_map(data: dict[str, Any], key: str) -> dict[str, str]:
     if not isinstance(value, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in value.items()):
         raise ValueError(f"Expected '{key}' to be a string-to-string table in info.toml")
     return value
-
-
-def format_toml_key(key: str) -> str:
-    if re.fullmatch(r"[A-Za-z0-9_-]+", key):
-        return key
-    return format_toml_string(key)
-
-
-def format_toml_scalar(value: Any) -> str:
-    if isinstance(value, str):
-        return format_toml_string(value)
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, int):
-        return str(value)
-    raise ValueError(f"Unsupported TOML scalar value: {value!r}")
-
-
-def format_toml_string(value: str) -> str:
-    return json.dumps(value)
-
-
-def format_toml_string_list(values: list[str]) -> str:
-    return "[" + ", ".join(format_toml_string(value) for value in values) + "]"
-
-
-def format_toml_multiline_string(value: str) -> str:
-    escaped = value.replace('"""', '\\"""')
-    return f'"""\\\n{escaped}"""'

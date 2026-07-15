@@ -9,6 +9,13 @@
 
 Run tests from the `comic_git_engine` repo root.
 
+Install both core and migration-only dependencies before running the full suite:
+
+```powershell
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
+.\venv\Scripts\python.exe -m pip install -r requirements_migration.txt
+```
+
 ```powershell
 # Run the full test suite
 $env:PYTHONPATH='src'

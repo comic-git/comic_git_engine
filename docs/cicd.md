@@ -15,18 +15,20 @@
 
 ## Key Files
 
-| File                                                                                    | Purpose                                                                                    |
-|-----------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
-| [`.github/workflows/build_site.yaml`](../.github/workflows/build_site.yaml)             | Reusable workflow called by host `comic_git` repos to build and deploy static sites        |
-| [`.github/workflows/main.yaml`](../.github/workflows/main.yaml)                         | Maintainer workflow for version updates, branches, tags, and GitHub releases               |
-| [`requirements.txt`](../requirements.txt)                                               | Core runtime Python dependencies installed during build workflow execution                 |
+| File                                                                                            | Purpose                                                                                    |
+|-------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+| [`.github/workflows/build_site.yaml`](../.github/workflows/build_site.yaml)                     | Reusable workflow called by host `comic_git` repos to build and deploy static sites        |
+| [`.github/workflows/main.yaml`](../.github/workflows/main.yaml)                                 | Maintainer workflow for version updates, branches, tags, and GitHub releases               |
+| [`requirements.txt`](../requirements.txt)                                                       | Core runtime Python dependencies installed during build workflow execution                 |
+| [`requirements_migration.txt`](../requirements_migration.txt)                                   | Migration-only Python dependencies for local one-off conversion tooling                    |
 | [`src/scripts/make_requirements_hooks_file.py`](../src/scripts/make_requirements_hooks_file.py) | Generates optional hook dependency requirements during the build workflow                  |
-| [`requirements_hooks.txt`](../requirements_hooks.txt)                                   | Generated file used only when theme hook dependencies are needed during workflow execution |
+| [`requirements_hooks.txt`](../requirements_hooks.txt)                                           | Generated file used only when theme hook dependencies are needed during workflow execution |
 
 ## Non-Obvious Decisions
 
 - `build_site.yaml` is part of the product surface, not just internal CI. Host repos call it remotely via `uses: comic-git/comic_git_engine/.github/workflows/build_site.yaml@...`, so changes to that workflow affect end-user builds directly.
 - Runtime dependency changes are CI/CD-sensitive because every end-user build installs them. Treat dependency additions as product-impacting changes, not just local tooling changes.
+- Migration-only dependencies belong in `requirements_migration.txt`, not `requirements.txt`, unless they become required for normal site builds.
 - `main.yaml` updates version branches and tags for the engine repo, but reusable workflow consumers may also be following the separate `v1` tag. Release and rollback thinking should include both version branches and workflow tag consumers.
 
 ## Version Source Of Truth

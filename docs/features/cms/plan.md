@@ -64,7 +64,7 @@ Plan to include, then remove only if implementation cost is too high:
 - transcripts
 - site-level social media config
 - page-level social media overrides
-- webring config
+- webring participation settings
 - comic image upload and image ordering
 
 Explicitly out of scope for the initial PoC:
@@ -86,7 +86,9 @@ Initial direction:
 - `comic_info.ini` -> `comic_info.toml`
 - page `info.ini` -> page `info.toml`
 - site-level `social_media.json` -> TOML-backed config, likely merged into `comic_info.toml`
-- `webring.json` -> TOML-backed config, likely merged into `comic_info.toml`
+- site webring participation settings -> TOML-backed config, likely merged into `comic_info.toml`
+
+`webring.json` should remain a separate JSON endpoint/source-of-truth file for member data. A comic_git repo may publish that file for external callers or other comics in the webring.
 
 ### Precedence Rule
 
@@ -135,7 +137,7 @@ Current direction:
 - that flag affects the whole site, including Extra Comics
 - Extra Comics do not get separate admin surfaces or separate CMS enable switches
 
-The exact config nesting is not fixed yet, but the likely shape is:
+The provisional config nesting is defined in [comic-info-toml-format.md](comic-info-toml-format.md). The CMS-specific subset is expected to look like:
 
 ```toml
 [cms]
@@ -201,13 +203,13 @@ Likely additional fields:
 
 The simplest likely starting point is to merge CMS-relevant singleton config into the main comic config rather than keep many separate singleton files.
 
-The first local migration helper is page-scoped only, but site-level config migration is still intended once the TOML schema is settled.
+The first local migration helper is page-scoped only, but site-level config migration is still intended once the provisional `comic_info.toml` schema is validated.
 
 Likely areas to merge into `comic_info.toml`:
 
 - CMS settings
 - social media defaults
-- webring settings
+- webring participation settings
 
 This should be treated as a PoC decision, not a final commitment. If the nesting becomes too awkward in Decap or too hard to maintain in engine code, splitting some parts back into separate TOML files is acceptable.
 
@@ -317,7 +319,7 @@ The hardest part of the CMS is likely not metadata editing, but media editing:
 
 ### 5. Social Media And Webring Schema Drift
 
-If those formats are redesigned for TOML/CMS friendliness, the engine and end-user docs must move together. This is likely worth doing, but it should be treated as a deliberate format revision rather than an incidental side effect of CMS work.
+If those formats are redesigned for TOML/CMS friendliness, the engine and end-user docs must move together. This is likely worth doing for social media defaults and webring participation settings, but `webring.json` member data should remain a separate endpoint contract.
 
 ### 6. Version Compatibility
 
@@ -355,7 +357,7 @@ Recommended Phase 0 refactors:
    - Extra Comic config
    - page config/content
    - site-level social media config
-   - webring config
+   - webring participation settings
 
    Each wrapper should follow the same pattern:
    - try TOML loader
@@ -374,7 +376,7 @@ Recommended Phase 0 refactors:
    The goal is for legacy and TOML loaders to produce the same internal shape so the rest of the build pipeline stays format-agnostic.
 
 4. Isolate singleton-config loading into dedicated functions/modules.
-   Social media and webring config are good candidates here. They should not remain ad hoc reads buried deep in unrelated logic if they are going to gain alternate TOML-backed sources.
+   Social media defaults and webring participation settings are good candidates here. They should not remain ad hoc reads buried deep in unrelated logic if they are going to gain alternate TOML-backed sources.
 
 5. Isolate page-folder discovery from page-file parsing.
    CMS mode will still use the same folder model, but the file set inside the folder changes. Discovery should identify candidate page folders and their owning comic; format-specific parsing should happen later.
@@ -407,7 +409,7 @@ These refactors are intentionally useful even before CMS ships. They reduce coup
 - teach the engine to read page `info.toml`
 - add explicit precedence rules over legacy files
 - add tests for TOML parsing and mixed legacy/TOML repos
-- expand migration helpers from page-level `info.toml` conversion to site-level config conversion after the `comic_info.toml` schema is stable
+- expand migration helpers from page-level `info.toml` conversion to site-level config conversion after the provisional `comic_info.toml` schema is validated
 
 ### Phase 3: Static Admin Output
 
@@ -437,7 +439,7 @@ These refactors are intentionally useful even before CMS ships. They reduce coup
 Before committing to the full build:
 
 1. Build one real Decap folder collection that writes `info.toml` into a page folder and stores uploaded images alongside it.
-2. Build one singleton collection for `comic_info.toml` with nested CMS/social/webring fields.
+2. Build one singleton collection for `comic_info.toml` with nested CMS/social/webring participation fields.
 3. Verify that the Decap UI is still usable when advanced nested groups are collapsed.
 4. Verify that a stable folder ID can be used as the identifier field without creating an awkward entry-creation flow.
 5. Verify that explicit image ordering is easy enough for multi-image comic pages.
@@ -455,10 +457,10 @@ Before committing to the full build:
 
 These are still intentionally unresolved:
 
-- Should site-level social media and webring config be merged into `comic_info.toml` permanently, or only as a PoC simplification?
+- Should site-level social media defaults and webring participation config remain merged into `comic_info.toml` permanently, or only as a PoC simplification?
 - Which current page-level fields should be omitted from the first CMS UI even if they remain in the TOML schema?
 - How aggressively should partial migration be tolerated versus rejected?
-- What exact TOML schema should replace the current social media and webring JSON structures?
+- Does the provisional `comic_info.toml` schema stay usable once tested in the real Decap CMS UI?
 - Should the local helper script for CMS setup be part of the first release or follow later?
 
 ## Notes From Decap CMS Constraints

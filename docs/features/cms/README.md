@@ -44,4 +44,5 @@ Important current behavior:
 | Document | Contents |
 |----------|----------|
 | [plan.md](plan.md) | The current Decap CMS implementation plan, scope, risks, and phased rollout direction |
+| [comic-info-toml-format.md](comic-info-toml-format.md) | The provisional comic-level TOML schema and legacy config mapping |
 | [page-toml-format.md](page-toml-format.md) | The current page-level TOML contract and legacy migration rules |

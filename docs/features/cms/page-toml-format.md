@@ -20,7 +20,7 @@ It does not yet define the final TOML schema for:
 
 - `comic_info.toml`
 - site-level social media defaults
-- webring config
+- webring participation settings
 - Extra Comic config inheritance
 
 ## Page Schema

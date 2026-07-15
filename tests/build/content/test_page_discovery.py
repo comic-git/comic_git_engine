@@ -145,11 +145,15 @@ class TestPageDiscovery(TestCase):
             os.makedirs(page_dir, exist_ok=True)
             with open(os.path.join(page_dir, "info.toml"), "w", encoding="utf-8") as f:
                 f.write('post_date = "2020-01-02"\n')
-                f.write('images = ["page.png"]\n')
+                f.write('images = ["second.png", "first.png"]\n')
+                f.write('characters = ["Alice", "Bob"]\n')
+                f.write('tags = ["mystery", "noir"]\n')
                 f.write('post_text = """\nBody text\n"""\n')
                 f.write('\n[transcripts]\n')
                 f.write('English = """\nTranscript text\n"""\n')
-            with open(os.path.join(page_dir, "page.png"), "w", encoding="utf-8") as f:
+            with open(os.path.join(page_dir, "first.png"), "w", encoding="utf-8") as f:
+                f.write("x")
+            with open(os.path.join(page_dir, "second.png"), "w", encoding="utf-8") as f:
                 f.write("x")
             try:
                 os.chdir(temp_dir)
@@ -159,7 +163,9 @@ class TestPageDiscovery(TestCase):
 
         self.assertEqual(0, scheduled_count)
         self.assertEqual(["001"], [page["page_name"] for page in page_info_list])
-        self.assertEqual(["page.png"], page_info_list[0]["image_file_names"])
+        self.assertEqual(["second.png", "first.png"], page_info_list[0]["image_file_names"])
+        self.assertEqual(["Alice", "Bob"], page_info_list[0]["Characters"])
+        self.assertEqual(["mystery", "noir"], page_info_list[0]["Tags"])
         self.assertEqual(["English"], page_info_list[0]["transcript_languages"])
         self.assertTrue(page_info_list[0]["_toml_managed"])
 

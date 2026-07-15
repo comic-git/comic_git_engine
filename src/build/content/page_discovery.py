@@ -17,6 +17,23 @@ from core import utils
 from integrations.hooks import run_hook
 
 
+def normalize_list_field(value) -> list:
+    if isinstance(value, list):
+        return value
+    return utils.str_to_list(value or "")
+
+
+def validate_page_image_files(page_path: str, page_info_path: str, image_file_names: list[str]) -> None:
+    for filename in image_file_names:
+        path = os.path.join(page_path, filename)
+        if not os.path.isfile(path):
+            raise FileNotFoundError(
+                f"Could not find comic image {path}\n"
+                f"Did you mistype the filename in the {os.path.basename(page_info_path)} file? Remember that filenames "
+                f"and extensions are case-sensitive when building on GitHub."
+            )
+
+
 def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_scheduled_posts: bool,
                        publish_all_comics: bool) -> Tuple[List[Dict], int]:
     date_format = comic_info.get("Comic Settings", "Date format")
@@ -53,29 +70,25 @@ def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_sc
                 print(f"Deleting {page_path}")
                 shutil.rmtree(page_path)
         else:
-            filenames = page_info.get("Filenames") or page_info.get("Filename", "")
-            if filenames:
-                page_info["image_file_names"] = utils.str_to_list(filenames)
-                for filename in page_info["image_file_names"]:
-                    path = os.path.join(page_path, filename)
-                    if not os.path.isfile(path):
-                        raise FileNotFoundError(
-                            f"Could not find comic image {path}\n"
-                            f"Did you mistype the filename in the info.ini file? Remember that filenames and extensions "
-                            f"are case-sensitive when building on GitHub."
-                        )
+            if "image_file_names" in page_info:
+                validate_page_image_files(page_path, filepath, page_info["image_file_names"])
             else:
-                image_files = []
-                for filename in os.listdir(page_path):
-                    if filename.startswith("_"):
-                        continue
-                    if re.search(r"\.(jpg|jpeg|png|tif|tiff|gif|bmp|webp|webv|svg|eps)$", filename):
-                        image_files.append(filename)
-                page_info["image_file_names"] = sorted(image_files)
+                filenames = page_info.get("Filenames") or page_info.get("Filename", "")
+                if filenames:
+                    page_info["image_file_names"] = utils.str_to_list(filenames)
+                    validate_page_image_files(page_path, filepath, page_info["image_file_names"])
+                else:
+                    image_files = []
+                    for filename in os.listdir(page_path):
+                        if filename.startswith("_"):
+                            continue
+                        if re.search(r"\.(jpg|jpeg|png|tif|tiff|gif|bmp|webp|webv|svg|eps)$", filename):
+                            image_files.append(filename)
+                    page_info["image_file_names"] = sorted(image_files)
             page_info["page_name"] = os.path.basename(os.path.normpath(page_path))
             page_info["Storyline"] = page_info.get("Storyline", "")
-            page_info["Characters"] = utils.str_to_list(page_info.get("Characters", ""))
-            page_info["Tags"] = utils.str_to_list(page_info.get("Tags", ""))
+            page_info["Characters"] = normalize_list_field(page_info.get("Characters", ""))
+            page_info["Tags"] = normalize_list_field(page_info.get("Tags", ""))
             for key in page_info.copy():
                 if key.startswith("!"):
                     del page_info[key]

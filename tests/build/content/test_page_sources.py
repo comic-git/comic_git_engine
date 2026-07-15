@@ -3,19 +3,36 @@ import os
 import tempfile
 from collections import OrderedDict
 from configparser import RawConfigParser
+from datetime import datetime
 from unittest import TestCase
 
 from build.content import page_sources
 
 
 class TestPageSources(TestCase):
-    def make_comic_info(self):
+    def make_comic_info(self, date_format="%B %d, %Y"):
         comic_info = RawConfigParser()
         comic_info.add_section("Comic Settings")
-        comic_info.set("Comic Settings", "Date format", "%B %d, %Y")
+        comic_info.set("Comic Settings", "Date format", date_format)
         comic_info.add_section("Transcripts")
         comic_info.set("Transcripts", "Enable transcripts", "True")
         return comic_info
+
+    def round_trip_migrated_date(self, legacy_date: str, date_format: str) -> tuple[str, str]:
+        comic_info = self.make_comic_info(date_format)
+        source = page_sources.PageSource(
+            post_date=page_sources.legacy_date_to_iso(legacy_date, date_format),
+            images=["page.png"],
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = os.path.join(temp_dir, "info.toml")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(page_sources.serialize_page_source_to_toml(source))
+
+            loaded = page_sources.load_page_source_from_toml(path)
+
+        page_info = page_sources.page_source_to_legacy_page_info(loaded, comic_info)
+        return page_info["Post date"], loaded.post_date
 
     def test_load_legacy_page_source_collects_page_folder_content(self):
         comic_info = self.make_comic_info()
@@ -97,3 +114,33 @@ class TestPageSources(TestCase):
             loaded = page_sources.load_page_source_from_toml(path)
 
         self.assertEqual(source, loaded)
+
+    def test_migrated_display_date_formats_remain_equivalent(self):
+        cases = [
+            ("August 01, 2000", "%B %d, %Y"),
+            ("Aug 01, 2000", "%b %d, %Y"),
+        ]
+        for legacy_date, date_format in cases:
+            with self.subTest(date_format=date_format):
+                round_tripped_date, iso_date = self.round_trip_migrated_date(legacy_date, date_format)
+
+            self.assertEqual("2000-08-01", iso_date)
+            self.assertEqual(
+                datetime.strptime(legacy_date, date_format).date(),
+                datetime.strptime(round_tripped_date, date_format).date(),
+            )
+
+    def test_migrated_fixed_width_date_formats_round_trip_exactly(self):
+        cases = [
+            ("2000-08-01", "%Y-%m-%d"),
+            ("2000/08/01", "%Y/%m/%d"),
+            ("08/01/2000", "%m/%d/%Y"),
+            ("01/08/2000", "%d/%m/%Y"),
+            ("20000801", "%Y%m%d"),
+        ]
+        for legacy_date, date_format in cases:
+            with self.subTest(date_format=date_format):
+                round_tripped_date, iso_date = self.round_trip_migrated_date(legacy_date, date_format)
+
+            self.assertEqual("2000-08-01", iso_date)
+            self.assertEqual(legacy_date, round_tripped_date)

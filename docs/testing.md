@@ -95,12 +95,28 @@ Use targeted manual integration testing in a host repo such as `comic_git_dev` w
 - checking generated HTML/RSS output in a browser or reader
 - verifying that multiple engine changes still work together as expected
 
+Use automated end-to-end tests in `e2e_tests` (usually at `../e2e_tests`) when:
+
+- the risk depends on realistic host-repo execution
+- behavior only appears when multiple engine subsystems run together across a full build
+- validating entrypoint, submodule, or host-layout behavior that unit imports cannot catch
+- checking generated site output that depends on real files, templates, assets, and config together
+- preventing recurrence of a bug that escaped unit tests because it only appeared in full-build context
+
+Do not add an end-to-end case by default. First ask whether the behavior can be covered with focused unit tests in this repo. Every new end-to-end test should have a clear reason why unit tests alone are insufficient, and the underlying engine logic should still get unit coverage where practical.
+
+Because `e2e_tests` is a separate repo, usually located next to this repo at `../e2e_tests`, do not modify it unless the current task explicitly asks for cross-repo test updates or the user confirms that e2e harness changes are in scope.
+
+Before finishing a behavioral engine change, explicitly report one of:
+
+- `e2e_tests updated` with a short reason
+- `e2e_tests not needed` with the reason unit coverage is sufficient
+- `e2e_tests recommended but not changed` with the blocker or required human decision
+
 Use a release-level manual regression pass when:
 
 - preparing a real `comic_git_engine` release
 - confirming changes against the live manual-test workflow before users receive the update
-
-There is interest in adding a fuller automated end-to-end regression suite later, but that is not the current default testing layer.
 
 ### Mocking strategy
 
@@ -297,6 +313,24 @@ How to run:
 - load `comic_git_engine` into a host `comic_git` repo
 - build with `build_site.py` or preview with `dev_server.py`
 - inspect the generated output directly
+
+### Automated end-to-end tests
+
+What they cover:
+
+- full-build regressions that require realistic host-repo execution
+- interactions among engine subsystems that are not meaningful as isolated unit tests
+- generated-output regressions where a focused golden case is justified
+
+Where they live:
+
+- `e2e_tests`, usually at `../e2e_tests`
+
+Current expectation:
+
+- keep most behavior covered by unit tests in this repo
+- add e2e cases only when the integration risk is real and documented
+- do not modify `e2e_tests` without explicit task scope or user confirmation
 
 ### Release-level manual regression testing
 

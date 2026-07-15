@@ -10,7 +10,7 @@ Planning document only. This is not an implementation commitment and should be r
 
 ## Summary
 
-The goal is to add Decap CMS to `comic_git` as an optional site-wide feature that exposes a built `/admin/` interface for editing comic content over the web. The engine side of the work lives in `comic_git_engine`: it will generate the static admin files, emit a Decap config during builds, and read a new TOML-backed content format alongside the existing legacy INI/TXT/JSON format. The authentication and first-time repository migration flow will be handled primarily by a separate GitHub App and hosted OAuth backend, but the engine must be designed so it can integrate cleanly with that service.
+The goal is to add Decap CMS to `comic_git` as an optional site-wide feature that exposes a built `/admin/` interface for editing comic content over the web. The engine side of the work lives in `comic_git_engine`: it will generate the static admin files, emit a Decap config during builds, provide deterministic local migration helpers, and read a new TOML-backed content format alongside the existing legacy INI/TXT/JSON format. Authentication and hosted orchestration may be handled by a separate GitHub App and OAuth backend, but the exact migration boundary will be decided after testing the integration.
 
 The current direction is a one-way migration: when CMS is enabled, migrated TOML files become the source of truth and legacy files are ignored for the same logical item. The TOML format is intended to remain human-readable so creators can still edit files locally without the CMS if they want to.
 
@@ -113,11 +113,15 @@ This avoids any need for reverse migration logic and keeps "CMS enabled" focused
 
 Migration is one-way.
 
-The GitHub App should:
+The engine should own the deterministic file conversion rules through local scripts/helpers. The hosted GitHub App or another external service may orchestrate those helpers later, but should not be the only source of migration behavior.
+
+The full migration flow should:
 
 - convert all supported content at once
-- remove the replaced legacy config/content files in the same migration commit
+- remove the replaced legacy config/content files before the migration is considered complete
 - avoid committing anything if migration fails partway through
+
+Local tooling may support a two-step workflow: generate TOML first, let the user review it, then run explicit legacy cleanup later. Cleanup must remain opt-in because it deletes source files.
 
 If a repo somehow ends up partially migrated anyway, the engine may tolerate that on a per-item basis if that keeps the implementation simpler, but the intended product state is a fully migrated repo.
 
@@ -197,6 +201,8 @@ Likely additional fields:
 
 The simplest likely starting point is to merge CMS-relevant singleton config into the main comic config rather than keep many separate singleton files.
 
+The first local migration helper is page-scoped only, but site-level config migration is still intended once the TOML schema is settled.
+
 Likely areas to merge into `comic_info.toml`:
 
 - CMS settings
@@ -258,11 +264,11 @@ The separate repo/service is expected to handle:
 - GitHub App installation
 - repo authorization
 - OAuth backend for Decap CMS GitHub auth
-- first-time migration from legacy files to TOML
+- orchestration of first-time migration from legacy files to TOML, if testing shows that belongs outside local tooling
 - initial CMS enablement/config seeding
 - compatibility checks against the engine version the host repo will use
 
-The engine side must be designed so it can consume that setup cleanly but should not absorb those responsibilities.
+The engine side must be designed so it can consume that setup cleanly while still owning deterministic local conversion behavior.
 
 ## Local Editing Direction
 
@@ -401,6 +407,7 @@ These refactors are intentionally useful even before CMS ships. They reduce coup
 - teach the engine to read page `info.toml`
 - add explicit precedence rules over legacy files
 - add tests for TOML parsing and mixed legacy/TOML repos
+- expand migration helpers from page-level `info.toml` conversion to site-level config conversion after the `comic_info.toml` schema is stable
 
 ### Phase 3: Static Admin Output
 
@@ -411,7 +418,8 @@ These refactors are intentionally useful even before CMS ships. They reduce coup
 
 ### Phase 4: GitHub App Migration Flow
 
-- implement first-time migration in the separate repo/service
+- decide whether first-time migration is locally run, externally orchestrated, or both
+- reuse engine-owned deterministic conversion helpers rather than duplicating migration logic in a hosted service
 - convert all supported content at once
 - remove replaced legacy files
 - seed CMS defaults and backend config

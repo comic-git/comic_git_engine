@@ -101,11 +101,19 @@ class TestWorkflowEntrypoints(TestCase):
         self.assertEqual(0, result.returncode, msg=result.stderr)
         self.assertEqual("1.3", result.stdout.strip())
 
-    def test_build_workflow_defaults_engine_version_to_current_minor_release(self):
-        result = self.run_engine_version_script({})
+    def test_build_workflow_defaults_engine_version_when_toml_omits_it(self):
+        result = self.run_engine_version_script({
+            "your_content/comic_info.toml": "[comic]\nname = \"No Engine Version\"\n",
+        })
 
         self.assertEqual(0, result.returncode, msg=result.stderr)
         self.assertEqual("1.1", result.stdout.strip())
+
+    def test_build_workflow_fails_when_config_file_is_missing(self):
+        result = self.run_engine_version_script({})
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Expected your_content/comic_info.toml or your_content/comic_info.ini", result.stderr)
 
     def test_release_workflow_updates_build_workflow_engine_version_fallback(self):
         with open(RELEASE_WORKFLOW, "r", encoding="utf-8") as f:

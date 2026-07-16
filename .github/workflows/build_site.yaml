@@ -107,7 +107,7 @@ jobs:
               parser.read(ini_path, encoding="utf-8")
               version = parser.get("Comic Settings", "Engine version", fallback=DEFAULT_ENGINE_VERSION)
           else:
-              version = DEFAULT_ENGINE_VERSION
+              raise SystemExit("Expected your_content/comic_info.toml or your_content/comic_info.ini")
 
           print(version.strip() or DEFAULT_ENGINE_VERSION)
           PY

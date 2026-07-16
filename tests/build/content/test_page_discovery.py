@@ -184,6 +184,28 @@ class TestPageDiscovery(TestCase):
         self.assertEqual(2, data["scheduled_post_count"])
         self.assertEqual("001", data["page_info_list"][0]["page_name"])
 
+    def test_save_page_info_json_file_filters_toml_internal_fields(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict(os.environ, {"OUTPUT_DIR": temp_dir}, clear=False):
+                page_discovery.save_page_info_json_file(
+                    "",
+                    [{
+                        "page_name": "001",
+                        "_inline_post_text": "Body text",
+                        "_inline_transcripts": {"English": "Transcript"},
+                        "_social_media": {"og:title": "Override"},
+                        "_toml_managed": True,
+                        "_public_custom": "keep",
+                    }],
+                    0,
+                )
+            output_path = os.path.join(temp_dir, "comic", "page_info_list.json")
+            with open(output_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+        public_page = data["page_info_list"][0]
+        self.assertEqual({"page_name": "001", "_public_custom": "keep"}, public_page)
+
     def test_save_page_info_json_file_defaults_to_build_output_dir(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             cwd = os.getcwd()

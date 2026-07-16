@@ -19,6 +19,13 @@ from integrations.hooks import run_hook
 
 logger = logging.getLogger(__name__)
 
+INTERNAL_PAGE_INFO_FIELDS = {
+    "_inline_post_text",
+    "_inline_transcripts",
+    "_social_media",
+    "_toml_managed",
+}
+
 
 def normalize_list_field(value) -> list:
     if isinstance(value, list):
@@ -111,9 +118,17 @@ def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_sc
     return page_info_list, scheduled_post_count
 
 
+def public_page_info(page_info: Dict) -> Dict:
+    return {
+        key: value
+        for key, value in page_info.items()
+        if key not in INTERNAL_PAGE_INFO_FIELDS
+    }
+
+
 def save_page_info_json_file(comic_folder: str, page_info_list: List, scheduled_post_count: int):
     d = {
-        "page_info_list": page_info_list,
+        "page_info_list": [public_page_info(page_info) for page_info in page_info_list],
         "scheduled_post_count": scheduled_post_count
     }
     output_dir = utils.get_output_dir()

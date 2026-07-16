@@ -82,16 +82,14 @@ def load_page_source_from_toml(path: str) -> PageSource:
 
 
 def page_source_to_legacy_page_info(page_source: PageSource, comic_info) -> dict[str, Any]:
-    page_info: dict[str, Any] = {
-        "Post date": iso_date_to_legacy(page_source.post_date, comic_info.get("Comic Settings", "Date format")),
-        "image_file_names": list(page_source.images),
-        "_toml_managed": True,
-        "_inline_post_text": page_source.post_text,
-        "_inline_transcripts": OrderedDict(page_source.transcripts),
-        "_social_media": dict(page_source.social_media),
-    }
+    page_info: dict[str, Any] = {}
     if page_source.title is not None:
         page_info["Title"] = page_source.title
+    page_info["Post date"] = iso_date_to_legacy(page_source.post_date, comic_info.get("Comic Settings", "Date format"))
+    if len(page_source.images) == 1:
+        page_info["Filename"] = page_source.images[0]
+    elif len(page_source.images) > 1:
+        page_info["Filenames"] = ", ".join(page_source.images)
     if page_source.alt_text is not None:
         page_info["Alt text"] = page_source.alt_text
     if page_source.storyline:
@@ -100,6 +98,12 @@ def page_source_to_legacy_page_info(page_source: PageSource, comic_info) -> dict
         page_info["Characters"] = list(page_source.characters)
     if page_source.tags:
         page_info["Tags"] = list(page_source.tags)
+    page_info["image_file_names"] = list(page_source.images)
+    page_info["_toml_managed"] = True
+    page_info["_inline_post_text"] = page_source.post_text
+    page_info["_inline_transcripts"] = OrderedDict(page_source.transcripts)
+    if page_source.social_media:
+        page_info["_social_media"] = dict(page_source.social_media)
     page_info.update(page_source.extra)
     return page_info
 

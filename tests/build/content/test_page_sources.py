@@ -93,6 +93,55 @@ class TestPageSources(TestCase):
 
         self.assertEqual(source, loaded)
 
+    def test_page_source_to_legacy_page_info_keeps_single_image_compatibility_field(self):
+        comic_info = self.make_comic_info()
+        source = page_sources.PageSource(
+            post_date="2024-01-02",
+            images=["page.png"],
+        )
+
+        page_info = page_sources.page_source_to_legacy_page_info(source, comic_info)
+
+        self.assertEqual("page.png", page_info["Filename"])
+        self.assertEqual(["page.png"], page_info["image_file_names"])
+        self.assertNotIn("Filenames", page_info)
+
+    def test_page_source_to_legacy_page_info_keeps_multi_image_compatibility_field(self):
+        comic_info = self.make_comic_info()
+        source = page_sources.PageSource(
+            post_date="2024-01-02",
+            images=["page_1.png", "page_2.png"],
+        )
+
+        page_info = page_sources.page_source_to_legacy_page_info(source, comic_info)
+
+        self.assertEqual("page_1.png, page_2.png", page_info["Filenames"])
+        self.assertEqual(["page_1.png", "page_2.png"], page_info["image_file_names"])
+        self.assertNotIn("Filename", page_info)
+
+    def test_page_source_to_legacy_page_info_omits_empty_social_override(self):
+        comic_info = self.make_comic_info()
+        source = page_sources.PageSource(
+            post_date="2024-01-02",
+            images=["page.png"],
+        )
+
+        page_info = page_sources.page_source_to_legacy_page_info(source, comic_info)
+
+        self.assertNotIn("_social_media", page_info)
+
+    def test_page_source_to_legacy_page_info_keeps_social_override_when_present(self):
+        comic_info = self.make_comic_info()
+        source = page_sources.PageSource(
+            post_date="2024-01-02",
+            images=["page.png"],
+            social_media={"og:title": "Override"},
+        )
+
+        page_info = page_sources.page_source_to_legacy_page_info(source, comic_info)
+
+        self.assertEqual({"og:title": "Override"}, page_info["_social_media"])
+
     def test_page_source_toml_handles_escaped_multiline_text(self):
         source = page_sources.PageSource(
             post_date="2024-01-02",

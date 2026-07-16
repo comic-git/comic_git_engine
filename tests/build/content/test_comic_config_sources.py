@@ -1,5 +1,6 @@
 import os
 import tempfile
+from configparser import RawConfigParser
 from unittest import TestCase
 
 from build.content import comic_config_sources
@@ -135,3 +136,29 @@ url = "/about/"
 
         with self.assertRaisesRegex(ValueError, "links\\[0\\]"):
             comic_config_sources.load_comic_config_from_toml(path)
+
+    def test_legacy_parser_serializes_to_sparse_toml_and_round_trips(self):
+        comic_info = RawConfigParser()
+        comic_info.optionxform = str
+        comic_info.add_section("Comic Info")
+        comic_info.set("Comic Info", "Comic name", "Test Comic")
+        comic_info.add_section("Comic Settings")
+        comic_info.set("Comic Settings", "Extra comics", "extras/story, bonus")
+        comic_info.add_section("Links Bar")
+        comic_info.set("Links Bar", "About", "/about/")
+        comic_info.set("Links Bar", "cdn.example.com/button.png", "^https://example.com/")
+        comic_info.add_section("Pages")
+        comic_info.set("Pages", "cast", "Cast")
+        comic_info.add_section("Custom Section")
+        comic_info.set("Custom Section", "Custom Option", "Custom Value")
+
+        toml_text = comic_config_sources.serialize_comic_config_to_toml(comic_info)
+        path = self.write_toml(toml_text)
+
+        loaded = comic_config_sources.load_comic_config_from_toml(path)
+        self.assertEqual("Test Comic", loaded.get("Comic Info", "Comic name"))
+        self.assertEqual("extras/story, bonus", loaded.get("Comic Settings", "Extra comics"))
+        self.assertEqual("/about/", loaded.get("Links Bar", "About"))
+        self.assertEqual("^https://example.com/", loaded.get("Links Bar", "cdn.example.com/button.png"))
+        self.assertEqual("Cast", loaded.get("Pages", "cast"))
+        self.assertEqual("Custom Value", loaded.get("Custom Section", "Custom Option"))

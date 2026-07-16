@@ -211,4 +211,5 @@ exclude_own_comic_from_members = false
 - `pages` uses an array of tables so page order remains explicit.
 - Empty strings and default-looking values in the example represent supported keys and legacy-compatible values, not required file contents.
 - Optional values may be omitted when the engine can provide the same behavior from code defaults.
+- Migration may preserve unmapped legacy config values under a `[legacy]` table of section tables. That is a compatibility escape hatch for existing custom data, not the preferred home for new CMS-owned settings.
 - The final CMS UI may hide many of these fields even if the TOML schema supports them.

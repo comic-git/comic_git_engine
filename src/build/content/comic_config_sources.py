@@ -1,6 +1,9 @@
 import tomllib
+from collections import OrderedDict
 from configparser import RawConfigParser
 from typing import Any
+
+from core import utils
 
 
 STRING_OPTIONS = {
@@ -15,6 +18,8 @@ STRING_OPTIONS = {
     ("site", "comic_subdirectory"): ("Comic Settings", "Comic subdirectory"),
     ("site", "on_comic_click"): ("Comic Settings", "On comic click"),
     ("archive", "date_format"): ("Archive", "Date format"),
+    ("transcripts", "folder"): ("Transcripts", "Transcripts folder"),
+    ("transcripts", "default_language"): ("Transcripts", "Default language"),
     ("image_processing", "thumbnail_size"): ("Image Reprocessing", "Thumbnail size"),
     ("analytics", "google_analytics_id"): ("Google Analytics", "Tracking ID"),
     ("rss", "language"): ("RSS Feed", "Language"),
@@ -59,6 +64,17 @@ def load_comic_config_from_toml(path: str) -> RawConfigParser:
     return comic_config_data_to_legacy_parser(data)
 
 
+def serialize_comic_config_to_toml(comic_info: RawConfigParser) -> str:
+    try:
+        import tomli_w
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(
+            "Writing TOML requires migration-only dependencies. Install them with "
+            "`pip install -r requirements_migration.txt`."
+        ) from e
+    return tomli_w.dumps(legacy_parser_to_comic_config_data(comic_info), multiline_strings=True)
+
+
 def comic_config_data_to_legacy_parser(data: dict[str, Any]) -> RawConfigParser:
     if not isinstance(data, dict):
         raise ValueError("Expected comic_info.toml to contain TOML tables")
@@ -69,7 +85,20 @@ def comic_config_data_to_legacy_parser(data: dict[str, Any]) -> RawConfigParser:
     apply_list_options(parser, data)
     apply_links(parser, data)
     apply_pages(parser, data)
+    apply_legacy_options(parser, data)
     return parser
+
+
+def legacy_parser_to_comic_config_data(comic_info: RawConfigParser) -> OrderedDict[str, Any]:
+    data: OrderedDict[str, Any] = OrderedDict()
+    handled_options: set[tuple[str, str]] = set()
+    write_legacy_scalar_options(comic_info, data, handled_options)
+    write_legacy_bool_options(comic_info, data, handled_options)
+    write_legacy_list_options(comic_info, data, handled_options)
+    write_legacy_links(comic_info, data)
+    write_legacy_pages(comic_info, data)
+    write_unmapped_legacy_options(comic_info, data, handled_options)
+    return data
 
 
 def apply_scalar_options(parser: RawConfigParser, data: dict[str, Any]) -> None:
@@ -135,6 +164,110 @@ def apply_pages(parser: RawConfigParser, data: dict[str, Any]) -> None:
         parser.set("Pages", template_name, title)
 
 
+def apply_legacy_options(parser: RawConfigParser, data: dict[str, Any]) -> None:
+    legacy = data.get("legacy")
+    if legacy is None:
+        return
+    if not isinstance(legacy, dict):
+        raise ValueError("Expected legacy in comic_info.toml to be a table")
+    for section, options in legacy.items():
+        if not isinstance(section, str) or not isinstance(options, dict):
+            raise ValueError("Expected legacy in comic_info.toml to be a table of section tables")
+        ensure_section(parser, section)
+        for option, value in options.items():
+            if not isinstance(option, str) or not isinstance(value, str):
+                raise ValueError(f"Expected legacy.{section} in comic_info.toml to contain string values")
+            parser.set(section, option, value)
+
+
+def write_legacy_scalar_options(
+        comic_info: RawConfigParser,
+        data: OrderedDict[str, Any],
+        handled_options: set[tuple[str, str]],
+) -> None:
+    for (table_name, key), (section, option) in STRING_OPTIONS.items():
+        if not comic_info.has_option(section, option):
+            continue
+        ensure_toml_table(data, table_name)[key] = comic_info.get(section, option)
+        handled_options.add((section, option))
+
+
+def write_legacy_bool_options(
+        comic_info: RawConfigParser,
+        data: OrderedDict[str, Any],
+        handled_options: set[tuple[str, str]],
+) -> None:
+    for (table_name, key), (section, option) in BOOL_OPTIONS.items():
+        if not comic_info.has_option(section, option):
+            continue
+        ensure_toml_table(data, table_name)[key] = comic_info.getboolean(section, option)
+        handled_options.add((section, option))
+
+
+def write_legacy_list_options(
+        comic_info: RawConfigParser,
+        data: OrderedDict[str, Any],
+        handled_options: set[tuple[str, str]],
+) -> None:
+    for (table_name, key), (section, option) in LIST_OPTIONS.items():
+        if not comic_info.has_option(section, option):
+            continue
+        ensure_toml_table(data, table_name)[key] = utils.str_to_list(comic_info.get(section, option))
+        handled_options.add((section, option))
+
+
+def write_legacy_links(comic_info: RawConfigParser, data: OrderedDict[str, Any]) -> None:
+    if not comic_info.has_section("Links Bar"):
+        return
+    links = []
+    for option in comic_info.options("Links Bar"):
+        url = comic_info.get("Links Bar", option)
+        link: OrderedDict[str, Any] = OrderedDict()
+        if is_image_link_option(option):
+            link["image_url"] = option
+        else:
+            link["name"] = option
+        if url.startswith("^"):
+            link["url"] = url[1:]
+            link["open_in_new_tab"] = True
+        else:
+            link["url"] = url
+        links.append(link)
+    if links:
+        data["links"] = links
+
+
+def write_legacy_pages(comic_info: RawConfigParser, data: OrderedDict[str, Any]) -> None:
+    if not comic_info.has_section("Pages"):
+        return
+    pages = []
+    for option in comic_info.options("Pages"):
+        pages.append(OrderedDict([
+            ("template_name", option),
+            ("title", comic_info.get("Pages", option)),
+        ]))
+    if pages:
+        data["pages"] = pages
+
+
+def write_unmapped_legacy_options(
+        comic_info: RawConfigParser,
+        data: OrderedDict[str, Any],
+        handled_options: set[tuple[str, str]],
+) -> None:
+    handled_sections = {"Links Bar", "Pages"}
+    legacy: OrderedDict[str, OrderedDict[str, str]] = OrderedDict()
+    for section in comic_info.sections():
+        if section in handled_sections:
+            continue
+        for option in comic_info.options(section):
+            if (section, option) in handled_options:
+                continue
+            legacy.setdefault(section, OrderedDict())[option] = comic_info.get(section, option)
+    if legacy:
+        data["legacy"] = legacy
+
+
 def has_toml_key(data: dict[str, Any], table_name: str, key: str) -> bool:
     if table_name not in data:
         return False
@@ -176,3 +309,15 @@ def set_option(parser: RawConfigParser, section: str, option: str, value: str) -
 def ensure_section(parser: RawConfigParser, section: str) -> None:
     if not parser.has_section(section):
         parser.add_section(section)
+
+
+def ensure_toml_table(data: OrderedDict[str, Any], table_name: str) -> OrderedDict[str, Any]:
+    if table_name not in data:
+        data[table_name] = OrderedDict()
+    return data[table_name]
+
+
+def is_image_link_option(option: str) -> bool:
+    return option.lower().endswith(
+        (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".gif", ".bmp", ".webp", ".webv", ".svg", ".eps")
+    )

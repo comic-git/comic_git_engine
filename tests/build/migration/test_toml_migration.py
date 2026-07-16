@@ -3,6 +3,7 @@ import tempfile
 from collections import OrderedDict
 from unittest import TestCase
 
+from build.content import comic_config_sources
 from build.content import page_sources
 from build.migration import toml_migration
 
@@ -30,6 +31,8 @@ class TestTomlMigration(TestCase):
         with open(os.path.join(content_dir, "comic_info.ini"), "w", encoding="utf-8") as f:
             f.write("[Comic Info]\n")
             f.write("Comic name = Extra Comic\n")
+            f.write("\n[Links Bar]\n")
+            f.write("Cast = /cast\n")
 
     def write_page(self, root: str, comic_folder: str, page_name: str) -> str:
         page_dir = os.path.join(root, "your_content", comic_folder, "comics", page_name)
@@ -144,6 +147,7 @@ class TestTomlMigration(TestCase):
             self.assertTrue(os.path.exists(os.path.join(page_dir, "second.png")))
             self.assertEqual(
                 [
+                    "your_content/comic_info.ini",
                     "your_content/comics/001/English.md",
                     "your_content/comics/001/info.ini",
                     "your_content/comics/001/post.txt",
@@ -172,3 +176,104 @@ class TestTomlMigration(TestCase):
             self.assertFalse(os.path.exists(os.path.join(page_dir, "social_media.json")))
             self.assertTrue(os.path.exists(os.path.join(page_dir, "info.toml")))
             self.assertEqual(4, len(report.deleted_legacy_files))
+
+    def test_dry_run_reports_comic_config_without_writing_toml(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_main_comic_info(temp_dir)
+
+            report = self.run_in_host(temp_dir, lambda: toml_migration.run_page_migration(write=False))
+
+            toml_path = os.path.join(temp_dir, "your_content", "comic_info.toml")
+            self.assertEqual(1, len(report.comic_configs_planned))
+            self.assertEqual(0, len(report.comic_configs_written))
+            self.assertFalse(os.path.exists(toml_path))
+
+    def test_write_creates_main_comic_toml_from_legacy_config(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_main_comic_info(temp_dir)
+
+            report = self.run_in_host(temp_dir, lambda: toml_migration.run_page_migration(write=True))
+
+            toml_path = os.path.join(temp_dir, "your_content", "comic_info.toml")
+            self.assertEqual(1, len(report.comic_configs_written))
+            self.assertTrue(os.path.exists(toml_path))
+            loaded = comic_config_sources.load_comic_config_from_toml(toml_path)
+            self.assertEqual("Test Comic", loaded.get("Comic Info", "Comic name"))
+            self.assertEqual("Test Author", loaded.get("Comic Info", "Author"))
+            self.assertEqual("%B %d, %Y", loaded.get("Comic Settings", "Date format"))
+            self.assertTrue(loaded.getboolean("Transcripts", "Enable transcripts"))
+            self.assertTrue(loaded.getboolean("Transcripts", "Load transcripts from comic folder"))
+            self.assertEqual("English", loaded.get("Transcripts", "Default language"))
+
+    def test_existing_comic_config_toml_is_skipped_without_overwrite(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_main_comic_info(temp_dir)
+            toml_path = os.path.join(temp_dir, "your_content", "comic_info.toml")
+            with open(toml_path, "w", encoding="utf-8") as f:
+                f.write("# existing\n")
+
+            report = self.run_in_host(temp_dir, lambda: toml_migration.run_page_migration(write=True))
+
+            self.assertEqual(0, len(report.comic_configs_written))
+            self.assertEqual(1, len(report.skipped_comic_configs))
+            with open(toml_path, "r", encoding="utf-8") as f:
+                self.assertEqual("# existing\n", f.read())
+
+    def test_extra_comic_configs_are_included_by_default(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_main_comic_info(temp_dir, "extras/story")
+            self.write_extra_comic_info(temp_dir, "extras/story")
+
+            report = self.run_in_host(temp_dir, lambda: toml_migration.run_page_migration(write=False))
+
+            self.assertEqual(
+                ["", "extras/story/"],
+                [target.comic_folder for target in report.comic_configs_planned],
+            )
+            self.assertTrue(
+                report.comic_configs_planned[1].toml_info_path.endswith(
+                    "your_content/extras/story/comic_info.toml"
+                )
+            )
+
+    def test_write_creates_extra_comic_toml_from_legacy_config(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_main_comic_info(temp_dir, "extras/story")
+            self.write_extra_comic_info(temp_dir, "extras/story")
+
+            report = self.run_in_host(temp_dir, lambda: toml_migration.run_page_migration(write=True))
+
+            toml_path = os.path.join(temp_dir, "your_content", "extras", "story", "comic_info.toml")
+            self.assertEqual(["", "extras/story/"], [target.comic_folder for target in report.comic_configs_written])
+            self.assertTrue(os.path.exists(toml_path))
+            loaded = comic_config_sources.load_comic_config_from_toml(toml_path)
+            self.assertEqual("Extra Comic", loaded.get("Comic Info", "Comic name"))
+            self.assertEqual("/cast", loaded.get("Links Bar", "Cast"))
+
+    def test_delete_legacy_removes_comic_config_after_write(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_main_comic_info(temp_dir)
+
+            report = self.run_in_host(
+                temp_dir,
+                lambda: toml_migration.run_page_migration(write=True, delete_legacy=True),
+            )
+
+            self.assertTrue(os.path.exists(os.path.join(temp_dir, "your_content", "comic_info.toml")))
+            self.assertFalse(os.path.exists(os.path.join(temp_dir, "your_content", "comic_info.ini")))
+            self.assertIn("your_content/comic_info.ini", report.deleted_legacy_files)
+
+    def test_delete_legacy_cleans_already_migrated_comic_config(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_main_comic_info(temp_dir)
+            with open(os.path.join(temp_dir, "your_content", "comic_info.toml"), "w", encoding="utf-8") as f:
+                f.write('[comic]\nname = "Test Comic"\n')
+
+            report = self.run_in_host(
+                temp_dir,
+                lambda: toml_migration.run_page_migration(write=False, delete_legacy=True),
+            )
+
+            self.assertFalse(os.path.exists(os.path.join(temp_dir, "your_content", "comic_info.ini")))
+            self.assertTrue(os.path.exists(os.path.join(temp_dir, "your_content", "comic_info.toml")))
+            self.assertIn("your_content/comic_info.ini", report.deleted_legacy_files)

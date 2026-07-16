@@ -7,6 +7,7 @@ from core import utils
 
 
 STRING_OPTIONS = {
+    ("engine", "version"): ("Comic Settings", "Engine version"),
     ("comic", "name"): ("Comic Info", "Comic name"),
     ("comic", "author"): ("Comic Info", "Author"),
     ("comic", "description"): ("Comic Info", "Description"),

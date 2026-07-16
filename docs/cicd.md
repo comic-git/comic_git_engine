@@ -37,12 +37,15 @@ For `1.1`, the engine version source of truth is:
 
 - [`src/build/site_builder.py`](../src/build/site_builder.py)
   - the `VERSION = "..."` constant
+- [`.github/workflows/build_site.yaml`](../.github/workflows/build_site.yaml)
+  - the `DEFAULT_ENGINE_VERSION = "..."` fallback used when host config omits an engine version
 
-The maintainer release workflow in [`.github/workflows/main.yaml`](../.github/workflows/main.yaml) updates that constant before it creates version branches, tags, and the GitHub release.
+The maintainer release workflow in [`.github/workflows/main.yaml`](../.github/workflows/main.yaml) updates the `VERSION` constant and the reusable workflow fallback before it creates version branches, tags, and the GitHub release.
 
 When checking release readiness, verify these three things together:
 
 - `main.yaml` still edits `src/build/site_builder.py`
+- `main.yaml` still updates `DEFAULT_ENGINE_VERSION` in `build_site.yaml` to the release major/minor value
 - the requested release version matches the updated `VERSION` constant
 - the created branches and tags match that same version
 

@@ -18,6 +18,7 @@ class TestTomlMigration(TestCase):
             f.write("Author = Test Author\n")
             f.write("Description = Test Description\n")
             f.write("\n[Comic Settings]\n")
+            f.write("Engine version = master\n")
             f.write("Date format = %B %d, %Y\n")
             f.write(f"Extra comics = {extra_comics}\n")
             f.write("\n[Transcripts]\n")
@@ -87,6 +88,8 @@ class TestTomlMigration(TestCase):
             toml_path = os.path.join(page_dir, "info.toml")
             self.assertEqual(1, len(report.written))
             self.assertTrue(os.path.exists(toml_path))
+            with open(toml_path, "rb") as f:
+                self.assertNotIn(b"\r\n", f.read())
             with open(toml_path, "r", encoding="utf-8") as f:
                 toml_text = f.read()
             loaded = page_sources.load_page_source_from_toml(toml_path)
@@ -197,13 +200,21 @@ class TestTomlMigration(TestCase):
             toml_path = os.path.join(temp_dir, "your_content", "comic_info.toml")
             self.assertEqual(1, len(report.comic_configs_written))
             self.assertTrue(os.path.exists(toml_path))
+            with open(toml_path, "rb") as f:
+                self.assertNotIn(b"\r\n", f.read())
+            with open(toml_path, "r", encoding="utf-8") as f:
+                toml_text = f.read()
             loaded = comic_config_sources.load_comic_config_from_toml(toml_path)
             self.assertEqual("Test Comic", loaded.get("Comic Info", "Comic name"))
             self.assertEqual("Test Author", loaded.get("Comic Info", "Author"))
+            self.assertEqual("master", loaded.get("Comic Settings", "Engine version"))
             self.assertEqual("%B %d, %Y", loaded.get("Comic Settings", "Date format"))
             self.assertTrue(loaded.getboolean("Transcripts", "Enable transcripts"))
             self.assertTrue(loaded.getboolean("Transcripts", "Load transcripts from comic folder"))
             self.assertEqual("English", loaded.get("Transcripts", "Default language"))
+            self.assertIn("[engine]", toml_text)
+            self.assertIn('version = "master"', toml_text)
+            self.assertNotIn('"Engine version"', toml_text)
 
     def test_existing_comic_config_toml_is_skipped_without_overwrite(self):
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -165,7 +165,7 @@ def serialize_target(target: PageMigrationTarget, comic_info: RawConfigParser) -
 
 def write_target(target: PageMigrationTarget, comic_info: RawConfigParser) -> None:
     toml_text = serialize_target(target, comic_info)
-    with open(target.toml_info_path, "x", encoding="utf-8") as f:
+    with open(target.toml_info_path, "x", encoding="utf-8", newline="\n") as f:
         f.write(toml_text)
 
 
@@ -176,7 +176,7 @@ def serialize_comic_config_target(target: ComicConfigMigrationTarget) -> str:
 
 def write_comic_config_target(target: ComicConfigMigrationTarget) -> None:
     toml_text = serialize_comic_config_target(target)
-    with open(target.toml_info_path, "x", encoding="utf-8") as f:
+    with open(target.toml_info_path, "x", encoding="utf-8", newline="\n") as f:
         f.write(toml_text)
 
 

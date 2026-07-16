@@ -83,7 +83,35 @@ jobs:
       - name: Pull in comic_git_engine
         run: |
           if [ ! -e comic_git_engine/.git ]; then
-            ENGINE_VERSION=$(sed -n 's/Engine version = \(.*\)/\1/p' your_content/comic_info.ini);
+            ENGINE_VERSION=$(python - <<'PY'
+          from configparser import RawConfigParser
+          from pathlib import Path
+          import tomllib
+
+          DEFAULT_ENGINE_VERSION = "1.1"
+
+          toml_path = Path("your_content/comic_info.toml")
+          ini_path = Path("your_content/comic_info.ini")
+
+          if toml_path.exists():
+              data = tomllib.loads(toml_path.read_text(encoding="utf-8"))
+              engine = data.get("engine", {})
+              if not isinstance(engine, dict):
+                  raise SystemExit("Expected engine in comic_info.toml to be a table")
+              version = engine.get("version", DEFAULT_ENGINE_VERSION)
+              if not isinstance(version, str):
+                  raise SystemExit("Expected engine.version in comic_info.toml to be a string")
+          elif ini_path.exists():
+              parser = RawConfigParser()
+              parser.optionxform = str
+              parser.read(ini_path, encoding="utf-8")
+              version = parser.get("Comic Settings", "Engine version", fallback=DEFAULT_ENGINE_VERSION)
+          else:
+              version = DEFAULT_ENGINE_VERSION
+
+          print(version.strip() or DEFAULT_ENGINE_VERSION)
+          PY
+            );
             echo "Engine version: $ENGINE_VERSION";
             git submodule add -b "$ENGINE_VERSION" -f https://github.com/comic-git/comic_git_engine;
           fi

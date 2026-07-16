@@ -16,7 +16,11 @@ jobs:
           ref: master
       - name: Update version in site_builder.py
         run: |
-          sed -i 's/VERSION = ".*"/VERSION = "${{ github.event.inputs.version }}"/' src/build/site_builder.py
+          VERSION=${{ github.event.inputs.version }}
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          sed -i "s/VERSION = \".*\"/VERSION = \"$VERSION\"/" src/build/site_builder.py
+          sed -i "s/DEFAULT_ENGINE_VERSION = \".*\"/DEFAULT_ENGINE_VERSION = \"$MAJOR.$MINOR\"/" .github/workflows/build_site.yaml
           git config --local user.name "Github Action"
           git config --local user.email "action@github.com"
           git add --all

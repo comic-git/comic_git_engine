@@ -43,6 +43,9 @@ Extra Comics still inherit from the main comic config, but their own config file
 ## Proposed Main Schema
 
 ```toml
+[engine]
+version = "1.1"
+
 [comic]
 name = "My Comic"
 author = "Comic Creator"
@@ -160,6 +163,7 @@ exclude_own_comic_from_members = false
 
 | Legacy section       | Legacy option                          | TOML location                                |
 |----------------------|----------------------------------------|----------------------------------------------|
+| `Comic Settings`     | `Engine version`                       | `engine.version`                             |
 | `Comic Info`         | `Comic name`                           | `comic.name`                                 |
 | `Comic Info`         | `Author`                               | `comic.author`                               |
 | `Comic Info`         | `Description`                          | `comic.description`                          |
@@ -209,6 +213,7 @@ exclude_own_comic_from_members = false
 
 - `links` uses `name` for text links and `image_url` for image links. This avoids overloading the legacy option name.
 - `pages` uses an array of tables so page order remains explicit.
+- `engine.version` is read by the reusable build workflow before `comic_git_engine` is available in the host repo, so workflow parsing must support both `comic_info.ini` and `comic_info.toml`.
 - Empty strings and default-looking values in the example represent supported keys and legacy-compatible values, not required file contents.
 - Optional values may be omitted when the engine can provide the same behavior from code defaults.
 - Migration may preserve unmapped legacy config values under a `[legacy]` table of section tables. That is a compatibility escape hatch for existing custom data, not the preferred home for new CMS-owned settings.

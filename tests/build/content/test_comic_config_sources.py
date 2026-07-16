@@ -23,6 +23,9 @@ name = "Test Comic"
 author = "Test Author"
 description = "Test Description"
 
+[engine]
+version = "1.1"
+
 [site]
 theme = "custom"
 date_format = "%Y-%m-%d"
@@ -45,6 +48,7 @@ image_width = "144"
 
         self.assertEqual("Test Comic", comic_info.get("Comic Info", "Comic name"))
         self.assertEqual("Test Author", comic_info.get("Comic Info", "Author"))
+        self.assertEqual("1.1", comic_info.get("Comic Settings", "Engine version"))
         self.assertEqual("custom", comic_info.get("Comic Settings", "Theme"))
         self.assertEqual("extras/story, bonus", comic_info.get("Comic Settings", "Extra comics"))
         self.assertEqual("tables, fenced-code-blocks", comic_info.get("Comic Settings", "Markdown extras"))
@@ -143,6 +147,7 @@ url = "/about/"
         comic_info.add_section("Comic Info")
         comic_info.set("Comic Info", "Comic name", "Test Comic")
         comic_info.add_section("Comic Settings")
+        comic_info.set("Comic Settings", "Engine version", "master")
         comic_info.set("Comic Settings", "Extra comics", "extras/story, bonus")
         comic_info.add_section("Links Bar")
         comic_info.set("Links Bar", "About", "/about/")
@@ -157,8 +162,12 @@ url = "/about/"
 
         loaded = comic_config_sources.load_comic_config_from_toml(path)
         self.assertEqual("Test Comic", loaded.get("Comic Info", "Comic name"))
+        self.assertEqual("master", loaded.get("Comic Settings", "Engine version"))
         self.assertEqual("extras/story, bonus", loaded.get("Comic Settings", "Extra comics"))
         self.assertEqual("/about/", loaded.get("Links Bar", "About"))
         self.assertEqual("^https://example.com/", loaded.get("Links Bar", "cdn.example.com/button.png"))
         self.assertEqual("Cast", loaded.get("Pages", "cast"))
         self.assertEqual("Custom Value", loaded.get("Custom Section", "Custom Option"))
+        self.assertIn("[engine]", toml_text)
+        self.assertIn('version = "master"', toml_text)
+        self.assertNotIn('"Engine version"', toml_text)

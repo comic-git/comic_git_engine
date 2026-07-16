@@ -1,0 +1,137 @@
+import os
+import tempfile
+from unittest import TestCase
+
+from build.content import comic_config_sources
+
+
+class TestComicConfigSources(TestCase):
+    def write_toml(self, text: str) -> str:
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        path = os.path.join(temp_dir.name, "comic_info.toml")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+        return path
+
+    def test_load_comic_config_from_toml_maps_scalars_lists_and_booleans(self):
+        path = self.write_toml(
+            """
+[comic]
+name = "Test Comic"
+author = "Test Author"
+description = "Test Description"
+
+[site]
+theme = "custom"
+date_format = "%Y-%m-%d"
+timezone = "UTC"
+extra_comics = ["extras/story", "bonus"]
+markdown_extras = ["tables", "fenced-code-blocks"]
+allow_missing_variables_in_templates = true
+
+[archive]
+use_thumbnails = true
+
+[rss]
+build = true
+newest_first = false
+image_width = "144"
+"""
+        )
+
+        comic_info = comic_config_sources.load_comic_config_from_toml(path)
+
+        self.assertEqual("Test Comic", comic_info.get("Comic Info", "Comic name"))
+        self.assertEqual("Test Author", comic_info.get("Comic Info", "Author"))
+        self.assertEqual("custom", comic_info.get("Comic Settings", "Theme"))
+        self.assertEqual("extras/story, bonus", comic_info.get("Comic Settings", "Extra comics"))
+        self.assertEqual("tables, fenced-code-blocks", comic_info.get("Comic Settings", "Markdown extras"))
+        self.assertTrue(comic_info.getboolean("Comic Settings", "Allow missing variables in templates"))
+        self.assertTrue(comic_info.getboolean("Archive", "Use thumbnails"))
+        self.assertTrue(comic_info.getboolean("RSS Feed", "Build RSS feed"))
+        self.assertFalse(comic_info.getboolean("RSS Feed", "Newest first"))
+        self.assertEqual("144", comic_info.get("RSS Feed", "Image width"))
+
+    def test_load_comic_config_from_toml_keeps_sparse_optional_values_omitted(self):
+        path = self.write_toml(
+            """
+[comic]
+name = "Test Comic"
+
+[site]
+date_format = "%B %d, %Y"
+"""
+        )
+
+        comic_info = comic_config_sources.load_comic_config_from_toml(path)
+
+        self.assertEqual("Test Comic", comic_info.get("Comic Info", "Comic name"))
+        self.assertEqual("%B %d, %Y", comic_info.get("Comic Settings", "Date format"))
+        self.assertFalse(comic_info.has_option("Comic Settings", "Theme"))
+        self.assertFalse(comic_info.has_option("RSS Feed", "Build RSS feed"))
+
+    def test_load_comic_config_from_toml_maps_links_pages_and_webring(self):
+        path = self.write_toml(
+            """
+[webring]
+enabled = true
+endpoint = "local"
+id = "comic_a"
+show_all_members = true
+exclude_own_comic_from_members = false
+
+[[links]]
+name = "About"
+url = "/about/"
+
+[[links]]
+image_url = "cdn.example.com/button.png"
+url = "https://example.com/"
+open_in_new_tab = true
+
+[[pages]]
+template_name = "about"
+title = "About"
+
+[[pages]]
+template_name = "cast"
+title = "Cast"
+"""
+        )
+
+        comic_info = comic_config_sources.load_comic_config_from_toml(path)
+
+        self.assertEqual("/about/", comic_info.get("Links Bar", "About"))
+        self.assertEqual("^https://example.com/", comic_info.get("Links Bar", "cdn.example.com/button.png"))
+        self.assertEqual("About", comic_info.get("Pages", "about"))
+        self.assertEqual("Cast", comic_info.get("Pages", "cast"))
+        self.assertTrue(comic_info.getboolean("Webring", "Enable webring"))
+        self.assertEqual("local", comic_info.get("Webring", "Endpoint"))
+        self.assertEqual("comic_a", comic_info.get("Webring", "Webring ID"))
+        self.assertTrue(comic_info.getboolean("Webring", "Show all members"))
+        self.assertFalse(comic_info.getboolean("Webring", "Exclude own comic from members"))
+
+    def test_load_comic_config_from_toml_rejects_bad_list_type(self):
+        path = self.write_toml(
+            """
+[site]
+extra_comics = "extras/story"
+"""
+        )
+
+        with self.assertRaisesRegex(ValueError, "site.extra_comics"):
+            comic_config_sources.load_comic_config_from_toml(path)
+
+    def test_load_comic_config_from_toml_rejects_malformed_link(self):
+        path = self.write_toml(
+            """
+[[links]]
+name = "About"
+image_url = "button.png"
+url = "/about/"
+"""
+        )
+
+        with self.assertRaisesRegex(ValueError, "links\\[0\\]"):
+            comic_config_sources.load_comic_config_from_toml(path)

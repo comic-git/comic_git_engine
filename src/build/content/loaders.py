@@ -4,6 +4,7 @@ from copy import deepcopy
 from typing import Any
 
 from build.content import content_paths
+from build.content.comic_config_sources import load_comic_config_from_toml
 from build.content.page_sources import load_page_source_from_toml, page_source_to_legacy_page_info
 from core import utils
 
@@ -20,8 +21,8 @@ def load_main_comic_info() -> RawConfigParser:
     return load_legacy_comic_info(legacy_path)
 
 
-def load_main_comic_info_toml(_path: str) -> RawConfigParser | object:
-    return NOT_FOUND
+def load_main_comic_info_toml(path: str) -> RawConfigParser | object:
+    return load_comic_config_from_toml(path)
 
 
 def load_extra_comic_info(folder_name: str, comic_info: RawConfigParser) -> RawConfigParser:
@@ -33,8 +34,9 @@ def load_extra_comic_info(folder_name: str, comic_info: RawConfigParser) -> RawC
     return load_legacy_extra_comic_info(legacy_path, comic_info)
 
 
-def load_extra_comic_info_toml(_folder_name: str, _comic_info: RawConfigParser, _path: str) -> RawConfigParser | object:
-    return NOT_FOUND
+def load_extra_comic_info_toml(_folder_name: str, comic_info: RawConfigParser, path: str) -> RawConfigParser | object:
+    extra_comic_info = load_comic_config_from_toml(path)
+    return merge_extra_comic_info(extra_comic_info, comic_info)
 
 
 def load_page_info(page_path: str, comic_info: RawConfigParser) -> tuple[str | None, dict[str, Any] | None]:
@@ -70,4 +72,18 @@ def load_legacy_extra_comic_info(path: str, comic_info: RawConfigParser) -> RawC
     if extra_comic_info.has_section("Links Bar") and merged_info.has_section("Links Bar"):
         del merged_info["Links Bar"]
     merged_info.read(path)
+    return merged_info
+
+
+def merge_extra_comic_info(extra_comic_info: RawConfigParser, comic_info: RawConfigParser) -> RawConfigParser:
+    merged_info = deepcopy(comic_info)
+    if merged_info.has_section("Pages"):
+        del merged_info["Pages"]
+    if extra_comic_info.has_section("Links Bar") and merged_info.has_section("Links Bar"):
+        del merged_info["Links Bar"]
+    for section in extra_comic_info.sections():
+        if not merged_info.has_section(section):
+            merged_info.add_section(section)
+        for option in extra_comic_info.options(section):
+            merged_info.set(section, option, extra_comic_info.get(section, option))
     return merged_info

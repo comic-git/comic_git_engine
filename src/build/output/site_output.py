@@ -1,9 +1,12 @@
+import logging
 import os
 import shutil
 from configparser import RawConfigParser
 
 from build.content.site_config import get_extra_comics_list, get_pages_list
 from core.utils import get_output_dir, read_info
+
+logger = logging.getLogger(__name__)
 
 SITE_ROOT_SOURCE = os.path.join("your_content", "site_root")
 
@@ -61,5 +64,5 @@ def copy_site_root_files(output_dir: str) -> None:
             source_path = os.path.join(current_root, file_name)
             target_path = os.path.join(target_dir, file_name)
             if os.path.exists(target_path):
-                print(f"WARNING: Overwriting existing output file with site_root file: {target_path}")
+                logger.warning("Overwriting existing output file with site_root file: %s", target_path)
             shutil.copy2(source_path, target_path)

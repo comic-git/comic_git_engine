@@ -1,3 +1,4 @@
+import logging
 import os
 from collections import OrderedDict
 from configparser import RawConfigParser
@@ -13,6 +14,8 @@ from build.output.images import process_comic_images
 from build.output.rendering import write_html_files
 from integrations.hooks import run_hook
 from integrations.webring import load_webring_data
+
+logger = logging.getLogger(__name__)
 
 
 VERSION = "1.0.9"
@@ -54,7 +57,7 @@ def load_home_page_text(comic_folder: str) -> str:
         if os.path.isfile(path):
             with open(path, "rb") as f:
                 return MARKDOWN.convert(f.read().decode("utf-8"))
-    print(f"Couldn't find any home page file at {base_path}*")
+    logger.warning("Couldn't find any home page file at %s*", base_path)
     return ""
 
 
@@ -69,7 +72,7 @@ def build_and_publish_comic_pages(
     page_info_list, scheduled_post_count = get_page_info_list(
         comic_folder, comic_info, delete_scheduled_posts, publish_all_comics
     )
-    print([p["page_name"] for p in page_info_list])
+    logger.debug("Page build order for '%s': %s", comic_folder, [p["page_name"] for p in page_info_list])
     utils.checkpoint(f"Get info for all pages in '{comic_folder}'")
 
     save_page_info_json_file(comic_folder, page_info_list, scheduled_post_count)

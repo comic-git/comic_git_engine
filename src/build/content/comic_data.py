@@ -1,4 +1,5 @@
 import html
+import logging
 import os
 import re
 from configparser import RawConfigParser
@@ -9,6 +10,8 @@ from markdown2 import Markdown
 
 from build.content.transcripts import get_transcripts
 from integrations.hooks import run_hook
+
+logger = logging.getLogger(__name__)
 
 
 MARKDOWN = Markdown(extras=["strike", "break-on-newline", "markdown-in-html"])
@@ -34,7 +37,7 @@ def get_ids(comic_list: List[Dict], index):
 def create_comic_data(comic_folder: str, comic_info: RawConfigParser, page_info: dict,
                       first_id: str, previous_id: str, current_id: str, next_id: str, last_id: str):
     t = strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{t}] Building page {page_info['page_name']}...")
+    logger.info("[%s] Building page %s", t, page_info["page_name"])
     page_dir = f"your_content/{comic_folder}comics/{page_info['page_name']}/"
     archive_date_format = comic_info.get("Archive", "Date format")
     if archive_date_format:

@@ -1,10 +1,13 @@
 import json
+import logging
 from configparser import RawConfigParser
 from typing import Any
 from urllib.error import HTTPError
 from urllib.request import urlopen
 
 from build.content.content_paths import WEBRING_JSON
+
+logger = logging.getLogger(__name__)
 
 
 def load_webring_data(comic_info: RawConfigParser, comic_url: str) -> dict[str, Any]:
@@ -61,7 +64,7 @@ def load_webring_data(comic_info: RawConfigParser, comic_url: str) -> dict[str, 
             if member["id"] == webring_id:
                 break
         else:
-            print(f"Webring members:\n{json.dumps(data, indent=4)}")
+            logger.error("Webring members:\n%s", json.dumps(data, indent=4))
             raise ValueError(
                 f"Couldn't find '{webring_id}' in the list of members.\n"
                 f"Verify your Webring ID matches exactly with one of the IDs in the webring data (see logs above)."

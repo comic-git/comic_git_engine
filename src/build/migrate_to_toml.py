@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import sys
 
@@ -6,6 +7,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from build.migration.toml_migration import PageMigrationReport, run_page_migration
 from core import utils
+from core.logging_config import configure_logging
+
+logger = logging.getLogger(__name__)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -31,6 +35,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
+    configure_logging()
     args = parse_args(argv)
     utils.find_project_root()
     report = run_page_migration(
@@ -46,18 +51,20 @@ def print_report(report: PageMigrationReport, write: bool) -> None:
     action = "Wrote" if write else "Would write"
     targets = report.written if write else report.planned
     for target in targets:
-        print(f"{action} {target.toml_info_path}")
+        logger.info("%s %s", action, target.toml_info_path)
     for skipped in report.skipped:
-        print(f"Skipped {skipped.page_path}: {skipped.reason}")
+        logger.info("Skipped %s: %s", skipped.page_path, skipped.reason)
     for deleted_path in report.deleted_legacy_files:
-        print(f"Deleted legacy file {deleted_path}")
-    print(
-        f"Summary: {len(targets)} {'written' if write else 'planned'}, "
-        f"{len(report.skipped)} skipped, "
-        f"{len(report.deleted_legacy_files)} legacy files deleted"
+        logger.warning("Deleted legacy file %s", deleted_path)
+    logger.info(
+        "Summary: %s %s, %s skipped, %s legacy files deleted",
+        len(targets),
+        "written" if write else "planned",
+        len(report.skipped),
+        len(report.deleted_legacy_files),
     )
     if not write and targets:
-        print("Dry run only. Re-run with --write to create these files.")
+        logger.info("Dry run only. Re-run with --write to create these files.")
 
 
 if __name__ == "__main__":

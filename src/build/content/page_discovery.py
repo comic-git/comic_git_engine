@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import shutil
@@ -15,6 +16,8 @@ from build.content.loaders import load_page_info
 from build.content.transcripts import get_transcripts
 from core import utils
 from integrations.hooks import run_hook
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_list_field(value) -> list:
@@ -46,7 +49,7 @@ def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_sc
             f"See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for a complete list."
         ) from e
     local_time = datetime.now(tz=tz_info)
-    print(f"Local time is {local_time}")
+    logger.info("Local time is %s", local_time)
     page_info_list = []
     scheduled_post_count = 0
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
@@ -55,7 +58,7 @@ def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_sc
         filepath, page_info = load_page_info(page_path, comic_info)
         if page_info is None or filepath is None:
             _, legacy_path = content_paths.get_page_info_candidates(page_path)
-            print(f"{page_path} is missing its {os.path.basename(legacy_path)} file. Skipping")
+            logger.warning("%s is missing its %s file. Skipping", page_path, os.path.basename(legacy_path))
             continue
         try:
             post_date = tz_info.localize(datetime.strptime(page_info["Post date"], date_format))
@@ -67,7 +70,7 @@ def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_sc
         if post_date > local_time and not publish_all_comics:
             scheduled_post_count += 1
             if delete_scheduled_posts:
-                print(f"Deleting {page_path}")
+                logger.warning("Deleting scheduled page %s", page_path)
                 shutil.rmtree(page_path)
         else:
             if "image_file_names" in page_info:
@@ -98,7 +101,7 @@ def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_sc
                                    [comic_folder, comic_info, page_path, page_info])
             if hook_result:
                 page_info = hook_result
-            print(page_info)
+            logger.debug("Page info: %s", page_info)
             page_info_list.append(page_info)
 
     page_info_list = sorted(

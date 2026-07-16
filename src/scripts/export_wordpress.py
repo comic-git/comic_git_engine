@@ -1,11 +1,20 @@
 import glob
+import logging
 import os
 import shutil
+import sys
 import time
 from collections import defaultdict
 from urllib.request import urlretrieve
 from xml.etree import ElementTree as ET
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from core.logging_config import configure_logging
+
+
+logger = logging.getLogger(__name__)
+configure_logging()
 
 
 WEBCOMIC_POST_TYPE = "webcomic1"
@@ -25,11 +34,11 @@ pages = defaultdict(dict)
 for child in channel.iter('item'):
     # if child.find("title").text in ["Page 1", "Page 2", "Page 3"]:
     #     for c in child:
-    #         print(c.tag)
+    #         logger.debug(c.tag)
     #         if c.attrib:
-    #             print(f"\t{repr(c.attrib)}")
-    #         print(f"\t{repr(c.text)}")
-    #     print("")
+    #             logger.debug("\t%r", c.attrib)
+    #         logger.debug("\t%r", c.text)
+    #     logger.debug("")
 
     post_name = child.find('{http://wordpress.org/export/1.2/}post_name').text
     if post_name is None:
@@ -49,8 +58,7 @@ for child in channel.iter('item'):
             elif c.attrib["domain"].endswith("character"):
                 characters.append(c.text)
             else:
-                print("WHAT IS THIS FUCK")
-                print(c)
+                logger.warning("Unexpected category while exporting WordPress data: %s", c)
         pages[post_name]["characters"] = characters
     elif post_type == ATTACHMENT_POST_TYPE:
         if post_name.endswith("-2"):
@@ -68,18 +76,17 @@ for child in channel.iter('item'):
         pages[post_name]["page_link"] = child.find('{http://wordpress.org/export/1.2/}attachment_url').text
         pages[post_name]["alt_text"] = child.find('{http://wordpress.org/export/1.2/excerpt/}encoded').text
     # else:
-    #     print(f"Bad post type {post_type} for {child.find('title').text}")
+    #     logger.debug("Bad post type %s for %s", post_type, child.find('title').text)
 
 # for f in glob.glob("../../your_content/comics/*"):
 #     shutil.rmtree(f)
 
 for name, page in pages.items():
     if "page_name" in page:
-        print(name)
+        logger.info("Exporting %s", name)
         for k in ["title", "page_name", "post_date", "text_post", "characters", "page_link", "alt_text"]:
             if k not in page:
-                print(k)
-                print(page)
+                logger.warning("Missing %s in %s", k, page)
                 break
         else:
             dir_name = f"../../your_content/comics/{name}"
@@ -104,8 +111,8 @@ Tags = """.encode("utf-8"))
                 f.write(page["text_post"].encode("utf-8"))
 
 
-print("")
+logger.info("")
 folders = glob.glob("../../your_content/comics/*")
 for i in range(1, 219):
     if f"../../your_content/comics\\page-{i}" not in folders:
-        print(f"Missing page-{i}")
+        logger.warning("Missing page-%s", i)

@@ -9,15 +9,21 @@ This doc is focused on local development and manual debugging.
 
 ## Reading Logs
 
-This repo does not have a separate application log system for local development. Most useful debugging output appears directly in:
+Build scripts log directly to the console. Most useful debugging output appears in:
 
 - the terminal running `build_site.py`
 - the terminal running `dev_server.py`
-- Python tracebacks printed to stderr
+- GitHub Actions job logs
+
+The default log level is `INFO`. To change it for a local run, set `COMIC_GIT_LOG_LEVEL` to a standard Python logging level such as `DEBUG`, `INFO`, `WARNING`, or `ERROR`.
 
 ```powershell
 # Run a local build and read the console output directly
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
+python comic_git_engine\src\build\build_site.py
+
+# Run with debug logging
+$env:COMIC_GIT_LOG_LEVEL='DEBUG'
 python comic_git_engine\src\build\build_site.py
 
 # Run the local preview server and watch rebuild output live

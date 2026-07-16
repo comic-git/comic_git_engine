@@ -1,8 +1,11 @@
+import logging
 import os
 from configparser import RawConfigParser
 from typing import Dict, List
 
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 
 def resize(im: Image, size: str) -> Image:
@@ -52,7 +55,7 @@ def create_comic_thumbnail(comic_info, comic_page_path):
         im = Image.open(f)
         thumbnail_path = os.path.join(comic_page_dir, "_thumbnail.jpg")
         if comic_info.getboolean(section, "Overwrite existing images") or not os.path.isfile(thumbnail_path):
-            print(f"Creating thumbnail for {comic_page_name}")
+            logger.info("Creating thumbnail for %s", comic_page_name)
             thumb_im = resize(im, comic_info.get(section, "Thumbnail size"))
             save_image(thumb_im, thumbnail_path)
 

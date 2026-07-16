@@ -1,7 +1,7 @@
 import argparse
+import logging
 import os
 import sys
-import traceback
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -10,10 +10,13 @@ from build.content.loaders import load_main_comic_info
 from build.content.site_config import get_extra_comic_info, get_extra_comics_list
 from build.output.site_output import copy_output_assets, copy_site_root_files, setup_output_file_space
 from core import utils
+from core.logging_config import configure_logging
 from core.models import ComicBuildResult
 from core.utils import checkpoint, print_processing_times
 from integrations.hooks import run_hook
 from integrations.rss import build_rss_feed_from_job, get_rss_feed_jobs
+
+logger = logging.getLogger(__name__)
 
 
 def add_inputs_to_env_vars(inputs: str):
@@ -30,12 +33,13 @@ def add_inputs_to_env_vars(inputs: str):
         try:
             k, v = utils.str_to_list(input_pair, ":", 1)
         except ValueError:
-            print("Invalid key-value pair for input: {!r}".format(input_pair))
+            logger.warning("Invalid key-value pair for input: %r", input_pair)
         else:
             os.environ[k] = v
 
 
 def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False):
+    configure_logging()
     checkpoint("Start", clear=True)
 
     # Pull values from the INPUTS and SECRETS env vars and turn them into individual env vars
@@ -62,7 +66,7 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
     comic_results = []
     extra_comic_values = {}
     for extra_comic in get_extra_comics_list(comic_info):
-        print(extra_comic)
+        logger.info("Building Extra Comic: %s", extra_comic)
         extra_comic_info = get_extra_comic_info(extra_comic, comic_info)
         extra_comic_output_dir = os.path.join(utils.get_output_dir(), extra_comic)
         if extra_comic_output_dir:
@@ -82,7 +86,7 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
         extra_comic_values[extra_comic] = comic_data_dicts[-1] if comic_data_dicts else {}
 
     # Build and publish pages for the main comic
-    print("Main comic")
+    logger.info("Building main comic")
     comic_data_dicts, global_values = build_and_publish_comic_pages(
         comic_url, "", comic_info, delete_scheduled_posts, publish_all_comics, extra_comic_values
     )
@@ -151,6 +155,6 @@ if __name__ == "__main__":
         # If the repo is not running in GitHub, raise the error normally
         if not os.getenv("GITHUB_REPOSITORY"):
             raise
-        # Otherwise, print the error to stdout so it's more readable in the logs
-        print(traceback.format_exc())
-        print(f"\n============= ERROR =============\n{e}\n=================================\n")
+        # Otherwise, log the error so it's readable in GitHub Actions logs.
+        logger.exception("Build failed")
+        logger.error("============= ERROR =============\n%s\n=================================", e)

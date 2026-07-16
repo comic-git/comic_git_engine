@@ -5,8 +5,8 @@ Creates dev_server.py to run build_site.main, start an HTTP server, and watch fo
 
 import os
 import sys
+import logging
 import threading
-import traceback
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from typing import Any
 
@@ -15,16 +15,20 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from build import build_site
 from build.output.site_output import delete_output_file_space
 from core import utils
+from core.logging_config import configure_logging
+
+logger = logging.getLogger(__name__)
+configure_logging()
 
 try:
     from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
 except ImportError:
-    print("""
+    logger.error("""
 ERROR: The 'watchdog' library is required for detecting file changes.
 Install it by running:
     pip install watchdog
-Then re-run this script.""", file=sys.stderr)
+Then re-run this script.""")
     exit(1)
 
 WATCH_EXTENSIONS = {'.tpl', '.txt', '.html', '.md', '.ini'}
@@ -44,26 +48,25 @@ class WatchdogEventHandler(FileSystemEventHandler):
     def on_any_event(self, event):
         global SKIP_REBUILD
         if SKIP_REBUILD:
-            print("Skipping watch due to rebuilding")
+            logger.debug("Skipping watch due to rebuilding")
             return
-        # print(event)
         # Only rebuild if the file extension matches
         if not event.is_directory:
             ext = os.path.splitext(event.src_path)[1].lower()
             if ext in WATCH_EXTENSIONS:
-                print(f"Change detected: {event.src_path}. Rebuilding...")
+                logger.info("Change detected: %s. Rebuilding...", event.src_path)
                 SKIP_REBUILD = True
                 os.chdir(SRC_ROOT)
                 try:
                     build_site.main(*self.build_args)
                 except Exception:
-                    traceback.print_exc(file=sys.stderr)
+                    logger.exception("Build failed after file change")
                 # Drain remaining events
                 if hasattr(self.observer, "event_queue"):
                     try:
                         self.observer.event_queue.queue.clear()
                     except Exception:
-                        traceback.print_exc(file=sys.stderr)
+                        logger.exception("Failed to clear watchdog event queue")
                 SKIP_REBUILD = False
 
 
@@ -76,7 +79,7 @@ def watch_and_rebuild(build_args: list[Any]) -> Observer:
 
 def start_observer(observer: Observer):
     observer.start()
-    print("Started watchdog observer.")
+    logger.info("Started watchdog observer.")
     try:
         observer.join()
     except KeyboardInterrupt:
@@ -88,7 +91,7 @@ def start_http_server(subdirectory: str):
     server_address = ('', 8000)
     httpd = HTTPServer(server_address, SimpleHTTPRequestHandler)
     url = f"http://localhost:{server_address[1]}{subdirectory}"
-    print(f"Starting web server.\nGo to {url} in your browser to view your site.\nUse Ctrl+C to stop the server.\n")
+    logger.info("Starting web server.\nGo to %s in your browser to view your site.\nUse Ctrl+C to stop the server.", url)
     httpd.serve_forever()
 
 
@@ -114,7 +117,7 @@ def main():
 
     # Initial build
     build_site.main(*build_args)
-    print("")
+    logger.info("")
 
     # Start watcher thread
     observer = watch_and_rebuild(build_args)
@@ -128,7 +131,7 @@ def main():
         pass
 
     observer.stop()
-    print("\nWeb server stopped. Deleting auto-generated files...")
+    logger.info("Web server stopped. Deleting auto-generated files...")
     os.chdir(SRC_ROOT)
     delete_output_file_space()
 

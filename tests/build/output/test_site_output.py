@@ -126,8 +126,7 @@ class TestSiteOutput(TestCase):
             with open(os.path.join(temp_dir, "favicon.ico"), encoding="utf-8") as f:
                 self.assertEqual("icon", f.read())
 
-    @patch("builtins.print")
-    def test_copy_site_root_files_warns_when_overwriting_existing_file(self, mock_print):
+    def test_copy_site_root_files_warns_when_overwriting_existing_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             cwd = os.getcwd()
             output_dir = os.path.join(temp_dir, "build")
@@ -140,12 +139,14 @@ class TestSiteOutput(TestCase):
                 f.write("old")
             try:
                 os.chdir(temp_dir)
-                site_output.copy_site_root_files(output_dir)
+                with self.assertLogs("build.output.site_output", level="WARNING") as logs:
+                    site_output.copy_site_root_files(output_dir)
             finally:
                 os.chdir(cwd)
 
-            mock_print.assert_any_call(
-                f"WARNING: Overwriting existing output file with site_root file: {os.path.join(output_dir, 'favicon.ico')}"
+            self.assertIn(
+                f"Overwriting existing output file with site_root file: {os.path.join(output_dir, 'favicon.ico')}",
+                "\n".join(logs.output),
             )
             with open(os.path.join(output_dir, "favicon.ico"), encoding="utf-8") as f:
                 self.assertEqual("new", f.read())

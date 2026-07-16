@@ -1,11 +1,20 @@
 import glob
+import logging
 import os
 import shutil
+import sys
 import time
 from collections import defaultdict
 from urllib.request import urlretrieve
 from xml.etree import ElementTree as ET
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from core.logging_config import configure_logging
+
+
+logger = logging.getLogger(__name__)
+configure_logging()
 
 
 WEBCOMIC_POST_TYPE = "webcomic1"
@@ -40,7 +49,7 @@ TRANSCRIPT_POST_TYPE = "webcomic_transcript"
 # for post_id, page in pages.items():
 #     for k in ["page_name", "transcripts"]:
 #         if k not in page:
-#             print(page)
+#             logger.debug(page)
 #             break
 #     else:
 #         dir_name = f"../../your_content/transcripts/{page['page_name']}"
@@ -64,9 +73,9 @@ TRANSCRIPT_POST_TYPE = "webcomic_transcript"
 #             with open(filepath, "wb") as f:
 #                 f.write(tscript.encode("utf-8"))
 
-print("")
+logger.info("")
 folders = glob.glob("../../your_content/transcripts/*")
-# print(folders)
+# logger.debug(folders)
 for i in range(1, 219):
     if f"../../your_content/transcripts\\page-{i}" not in folders:
-        print(f"Missing page-{i}")
+        logger.warning("Missing page-%s", i)

@@ -1,5 +1,6 @@
 import html
 import json
+import logging
 import os
 import re
 from configparser import RawConfigParser
@@ -10,6 +11,8 @@ from build.content.content_paths import get_comic_social_media_paths
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateNotFound
 from markdown2 import Markdown
 from time import strftime, perf_counter_ns
+
+logger = logging.getLogger(__name__)
 
 BASE_DIRECTORY = ""
 PROCESSING_TIMES: list[tuple[str, float]] = []
@@ -85,7 +88,7 @@ def get_comic_url(comic_info: RawConfigParser) -> tuple[str, str]:
     if base_directory:
         base_directory = "/" + base_directory
     comic_url = comic_domain + base_directory
-    print(f"Base URL: {comic_url}, base subdirectory: {base_directory}")
+    logger.info("Base URL: %s, base subdirectory: %s", comic_url, base_directory)
     return comic_url, base_directory
 
 
@@ -185,7 +188,7 @@ def write_to_template(template_name: str, html_path: str, data_dict: dict | None
     if dir_name:
         os.makedirs(dir_name, exist_ok=True)
     t = strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{t}] Writing {html_path}")
+    logger.info("[%s] Writing %s", t, html_path)
     try:
         with open(html_path, "wb") as f:
             f.write(bytes(file_contents, "utf-8"))
@@ -207,7 +210,6 @@ def read_info(filepath, to_dict=False):
         ) from e
     try:
         if not re.search(r"^\[.*?]", info_string):
-            # print(filepath + " has no section")
             info_string = "[DEFAULT]\n" + info_string
         info = RawConfigParser()
         info.optionxform = str
@@ -345,9 +347,9 @@ def checkpoint(s: str, clear: bool = False) -> None:
 
 def print_processing_times() -> None:
     last_processed_time = None
-    print("")
+    logger.info("")
     for name, t in PROCESSING_TIMES:
         if last_processed_time is not None:
-            print("{}: {:.2f} ms".format(name, (t - last_processed_time) / 1_000_000))
+            logger.info("%s: %.2f ms", name, (t - last_processed_time) / 1_000_000)
         last_processed_time = t
-    print("{}: {:.2f} ms".format("Total time", (PROCESSING_TIMES[-1][1] - PROCESSING_TIMES[0][1]) / 1_000_000))
+    logger.info("Total time: %.2f ms", (PROCESSING_TIMES[-1][1] - PROCESSING_TIMES[0][1]) / 1_000_000)

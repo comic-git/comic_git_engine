@@ -1,9 +1,13 @@
-prefix_rule(pattern=["git", "merge-base", "master", "HEAD"], decision="allow")
-prefix_rule(pattern=["git", "status"], decision="allow")
-prefix_rule(pattern=["git", "diff"], decision="allow")
-prefix_rule(pattern=["git", "log"], decision="allow")
-prefix_rule(pattern=["git", "add"], decision="allow")
-prefix_rule(pattern=["python", "scripts/run_e2e.py"], decision="allow")
+# Repo-specific command approval rules.
+# Keep global read-only development habits in C:\Users\marco\.codex\rules\default.rules.
+
+prefix_rule(
+    pattern = ["git", "add"],
+    decision = "allow",
+    justification = "Staging changes is reversible and still leaves commits as a deliberate user-visible step.",
+)
+
+# comic_git_engine Python verification commands.
 prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "compileall"], decision="allow")
 prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "compileall"], decision="allow")
 prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "coverage"], decision="allow")
@@ -12,6 +16,9 @@ prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "py_compile"], decision=
 prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "py_compile"], decision="allow")
 prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "unittest"], decision="allow")
 prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "unittest"], decision="allow")
+
+# Local e2e harness commands for e2e_tests, usually located at ../e2e_tests.
+prefix_rule(pattern=["python", "scripts/run_e2e.py"], decision="allow")
 prefix_rule(pattern=["venv\\Scripts\\python.exe", "scripts/run_e2e.py"], decision="allow")
 prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "scripts/run_e2e.py"], decision="allow")
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "diff"], decision="allow")

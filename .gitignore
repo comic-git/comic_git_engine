@@ -6,5 +6,7 @@ __pycache__/
 
 requirements_hooks.txt
 
-.codex/
+.codex/*
+!.codex/rules/
+!.codex/rules/**
 specs/

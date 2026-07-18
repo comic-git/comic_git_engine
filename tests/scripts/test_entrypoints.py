@@ -93,6 +93,31 @@ class TestWorkflowEntrypoints(TestCase):
         self.assertEqual(0, result.returncode, msg=result.stderr)
         self.assertEqual("1.2", result.stdout.strip())
 
+    def test_build_workflow_prefers_toml_engine_version_over_ini(self):
+        result = self.run_engine_version_script({
+            "your_content/comic_info.toml": '[engine]\nversion = "1.2"\n',
+            "your_content/comic_info.ini": "[Comic Settings]\nEngine version = 1.3\n",
+        })
+
+        self.assertEqual(0, result.returncode, msg=result.stderr)
+        self.assertEqual("1.2", result.stdout.strip())
+
+    def test_build_workflow_rejects_non_table_engine_toml_value(self):
+        result = self.run_engine_version_script({
+            "your_content/comic_info.toml": 'engine = "1.2"\n',
+        })
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Expected engine in comic_info.toml to be a table", result.stderr)
+
+    def test_build_workflow_rejects_non_string_engine_version_toml_value(self):
+        result = self.run_engine_version_script({
+            "your_content/comic_info.toml": "[engine]\nversion = 1.2\n",
+        })
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Expected engine.version in comic_info.toml to be a string", result.stderr)
+
     def test_build_workflow_reads_engine_version_from_ini(self):
         result = self.run_engine_version_script({
             "your_content/comic_info.ini": "[Comic Settings]\nEngine version = 1.3\n",

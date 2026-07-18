@@ -9,6 +9,8 @@
 
 Run tests from the `comic_git_engine` repo root.
 
+The `tests` package adds `src` to `sys.path`, so normal unittest commands do not need a `PYTHONPATH` prefix.
+
 Install both core and migration-only dependencies before running the full suite:
 
 ```powershell
@@ -18,21 +20,16 @@ Install both core and migration-only dependencies before running the full suite:
 
 ```powershell
 # Run the full test suite
-$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m unittest discover -s tests -t .
 
 # Run tests for a specific file
-$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m unittest tests.integrations.test_rss
 
 # Run a specific test class or test method
-$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m unittest tests.build.test_build_site.TestMain
-$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m unittest tests.scripts.test_entrypoints.TestEntrypoints.test_build_site_can_be_run_directly_by_path
 
 # Run with coverage
-$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m coverage run -m unittest discover -s tests -t .
 .\venv\Scripts\python.exe -m coverage report -m
 ```
@@ -302,7 +299,6 @@ What they cover:
 How to run:
 
 ```powershell
-$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m unittest discover -s tests -t .
 ```
 

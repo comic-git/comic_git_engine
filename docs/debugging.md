@@ -78,11 +78,9 @@ Get-Location
 Get-ChildItem your_content
 
 # Run one focused test file while debugging a specific area
-$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m unittest tests.integrations.test_rss
 
 # Run build orchestration tests
-$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m unittest tests.build.test_build_site
 ```
 

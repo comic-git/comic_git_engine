@@ -108,14 +108,12 @@ Do not use `--delete-scheduled-posts` during normal local development. That flag
 Run tests from the `comic_git_engine` repo root:
 
 ```powershell
-$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m unittest discover -s tests -t .
 ```
 
 Run a single test file:
 
 ```powershell
-$env:PYTHONPATH='src'
 .\venv\Scripts\python.exe -m unittest tests.integrations.test_rss
 ```
 

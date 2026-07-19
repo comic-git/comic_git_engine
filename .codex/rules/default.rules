@@ -14,6 +14,8 @@ prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "coverage"], decision="a
 prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "coverage"], decision="allow")
 prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "py_compile"], decision="allow")
 prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "py_compile"], decision="allow")
+prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "pytest"], decision="allow")
+prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "pytest"], decision="allow")
 prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "unittest"], decision="allow")
 prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "unittest"], decision="allow")
 

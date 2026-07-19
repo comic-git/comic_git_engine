@@ -18,9 +18,6 @@ prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "unittest"], decision="a
 prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "unittest"], decision="allow")
 
 # Local e2e harness commands for e2e_tests, usually located at ../e2e_tests.
-prefix_rule(pattern=["python", "scripts/run_e2e.py"], decision="allow")
-prefix_rule(pattern=["venv\\Scripts\\python.exe", "scripts/run_e2e.py"], decision="allow")
-prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "scripts/run_e2e.py"], decision="allow")
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "diff"], decision="allow")
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "log"], decision="allow")
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "status"], decision="allow")

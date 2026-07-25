@@ -1,6 +1,7 @@
 # Repo-specific command approval rules.
-# Keep global read-only development habits in C:\Users\marco\.codex\rules\default.rules.
+# Keep broad read-only inspection commands in ~\.codex\rules\default.rules.
 
+# Reversible repo-local staging command.
 prefix_rule(
     pattern = ["git", "add"],
     decision = "allow",
@@ -19,7 +20,7 @@ prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "pytest"], decision="
 prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "unittest"], decision="allow")
 prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "unittest"], decision="allow")
 
-# Local e2e harness commands for e2e_tests, usually located at ../e2e_tests.
+# Read-only inspection of the sibling e2e_tests repo from this repo.
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "diff"], decision="allow")
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "log"], decision="allow")
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "status"], decision="allow")

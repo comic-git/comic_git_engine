@@ -93,3 +93,4 @@ When `info.toml` exists for a page:
 - This schema intentionally avoids legacy image auto-discovery in TOML mode.
 - The page folder name remains the single source of truth for page identity.
 - The `[extra]` table exists to preserve compatibility with custom template fields and hook logic during migration.
+- Migration preserves the `post_date` value, not the exact legacy display spelling. The TOML read path formats the ISO date with the configured site date format, so a legacy value such as `August 1, 2025` may render as `August 01, 2025` when the format uses `%d`.

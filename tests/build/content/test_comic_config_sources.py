@@ -141,6 +141,101 @@ url = "/about/"
         with self.assertRaisesRegex(ValueError, "links\\[0\\]"):
             comic_config_sources.load_comic_config_from_toml(path)
 
+    def test_load_comic_config_from_toml_rejects_unknown_top_level_key(self):
+        path = self.write_toml(
+            """
+[mystery]
+value = "ignored"
+"""
+        )
+
+        with self.assertRaisesRegex(ValueError, "Unsupported key mystery in comic_info.toml"):
+            comic_config_sources.load_comic_config_from_toml(path)
+
+    def test_load_comic_config_from_toml_rejects_unknown_engine_table_key(self):
+        path = self.write_toml(
+            """
+[site]
+timezome = "UTC"
+"""
+        )
+
+        with self.assertRaisesRegex(ValueError, "Unsupported key site.timezome in comic_info.toml"):
+            comic_config_sources.load_comic_config_from_toml(path)
+
+    def test_load_comic_config_from_toml_rejects_unknown_link_key(self):
+        path = self.write_toml(
+            """
+[[links]]
+name = "About"
+url = "/about/"
+label = "ignored"
+"""
+        )
+
+        with self.assertRaisesRegex(ValueError, "Unsupported key links\\[0\\].label in comic_info.toml"):
+            comic_config_sources.load_comic_config_from_toml(path)
+
+    def test_load_comic_config_from_toml_rejects_unknown_page_key(self):
+        path = self.write_toml(
+            """
+[[pages]]
+template_name = "about"
+title = "About"
+slug = "ignored"
+"""
+        )
+
+        with self.assertRaisesRegex(ValueError, "Unsupported key pages\\[0\\].slug in comic_info.toml"):
+            comic_config_sources.load_comic_config_from_toml(path)
+
+    def test_load_comic_config_from_toml_rejects_legacy_scalar_collision(self):
+        path = self.write_toml(
+            """
+[comic]
+name = "First Class"
+
+[legacy."Comic Info"]
+"Comic name" = "Legacy Override"
+"""
+        )
+
+        with self.assertRaisesRegex(
+                ValueError,
+                'legacy\\["Comic Info"\\]\\["Comic name"\\].*comic.name',
+        ):
+            comic_config_sources.load_comic_config_from_toml(path)
+
+    def test_load_comic_config_from_toml_rejects_legacy_link_collision(self):
+        path = self.write_toml(
+            """
+[[links]]
+name = "About"
+url = "/about/"
+
+[legacy."Links Bar"]
+About = "/legacy-about/"
+"""
+        )
+
+        with self.assertRaisesRegex(ValueError, 'legacy\\["Links Bar"\\]\\["About"\\].*links\\[0\\]'):
+            comic_config_sources.load_comic_config_from_toml(path)
+
+    def test_load_comic_config_from_toml_rejects_legacy_page_collision(self):
+        path = self.write_toml(
+            """
+[[pages]]
+template_name = "about"
+title = "About"
+
+[legacy.Pages]
+about = "Legacy About"
+"""
+        )
+
+        with self.assertRaisesRegex(ValueError, 'legacy\\["Pages"\\]\\["about"\\].*pages\\[0\\]'):
+            comic_config_sources.load_comic_config_from_toml(path)
+
     def test_legacy_parser_serializes_to_sparse_toml_and_round_trips(self):
         comic_info = RawConfigParser()
         comic_info.optionxform = str

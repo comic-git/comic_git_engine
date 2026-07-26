@@ -34,6 +34,10 @@ When `comic_info.toml` exists for a logical comic config, it is the source of tr
 
 The schema below is a supported-key contract, not a required full-file template. Migration and generated examples should stay sparse when code defaults are sufficient, so the TOML file remains approachable for manual editors.
 
+The current reader accepts the engine-owned tables documented below through `[webring]`, plus `[[links]]`, `[[pages]]`, and `[legacy]`. Unknown top-level keys, unknown keys in engine-owned tables, and unsupported fields in link or page entries are rejected with the exact TOML path. This prevents misspelled settings from being silently ignored.
+
+`[cms]` and `[social_media]` remain proposed schema areas for later CMS work. They are not accepted by the current reader until their engine behavior is implemented.
+
 Extra Comics still inherit from the main comic config, but their own config file is an override file:
 
 - extra `comic_info.toml` exists -> use it as the Extra Comic override source
@@ -217,4 +221,5 @@ exclude_own_comic_from_members = false
 - Empty strings and default-looking values in the example represent supported keys and legacy-compatible values, not required file contents.
 - Optional values may be omitted when the engine can provide the same behavior from code defaults.
 - Migration may preserve unmapped legacy config values under a `[legacy]` table of section tables. That is a compatibility escape hatch for existing custom data, not the preferred home for new CMS-owned settings.
+- A `[legacy]` entry may not duplicate a value supplied through a first-class TOML field, link, or page. Collisions are rejected so legacy compatibility data cannot silently overwrite first-class config.
 - The final CMS UI may hide many of these fields even if the TOML schema supports them.

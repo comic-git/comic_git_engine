@@ -216,6 +216,20 @@ class TestTomlMigration(TestCase):
             self.assertIn('version = "master"', toml_text)
             self.assertNotIn('"Engine version"', toml_text)
 
+    def test_generated_comic_toml_with_unmapped_legacy_values_passes_strict_validation(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_main_comic_info(temp_dir)
+            legacy_path = os.path.join(temp_dir, "your_content", "comic_info.ini")
+            with open(legacy_path, "a", encoding="utf-8") as f:
+                f.write("\n[Custom Section]\n")
+                f.write("Custom Option = Custom Value\n")
+
+            self.run_in_host(temp_dir, lambda: toml_migration.run_page_migration(write=True))
+
+            toml_path = os.path.join(temp_dir, "your_content", "comic_info.toml")
+            loaded = comic_config_sources.load_comic_config_from_toml(toml_path)
+            self.assertEqual("Custom Value", loaded.get("Custom Section", "Custom Option"))
+
     def test_existing_comic_config_toml_is_skipped_without_overwrite(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             self.write_main_comic_info(temp_dir)

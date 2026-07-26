@@ -1,3 +1,4 @@
+import json
 import tomllib
 from collections import OrderedDict
 from configparser import RawConfigParser
@@ -58,6 +59,16 @@ LIST_OPTIONS = {
     ("site", "markdown_extras"): ("Comic Settings", "Markdown extras"),
 }
 
+OPTION_MAPPINGS = (STRING_OPTIONS, BOOL_OPTIONS, LIST_OPTIONS)
+SUPPORTED_TABLE_KEYS: dict[str, set[str]] = {}
+for option_mapping in OPTION_MAPPINGS:
+    for table_name, key in option_mapping:
+        SUPPORTED_TABLE_KEYS.setdefault(table_name, set()).add(key)
+
+SUPPORTED_TOP_LEVEL_KEYS = frozenset((*SUPPORTED_TABLE_KEYS, "links", "pages", "legacy"))
+SUPPORTED_LINK_KEYS = frozenset(("name", "image_url", "url", "open_in_new_tab"))
+SUPPORTED_PAGE_KEYS = frozenset(("template_name", "title"))
+
 
 def load_comic_config_from_toml(path: str) -> RawConfigParser:
     with open(path, "rb") as f:
@@ -77,8 +88,8 @@ def serialize_comic_config_to_toml(comic_info: RawConfigParser) -> str:
 
 
 def comic_config_data_to_legacy_parser(data: dict[str, Any]) -> RawConfigParser:
-    if not isinstance(data, dict):
-        raise ValueError("Expected comic_info.toml to contain TOML tables")
+    validate_comic_config_schema(data)
+    validate_legacy_collisions(data)
     parser = RawConfigParser()
     parser.optionxform = str
     apply_scalar_options(parser, data)
@@ -88,6 +99,86 @@ def comic_config_data_to_legacy_parser(data: dict[str, Any]) -> RawConfigParser:
     apply_pages(parser, data)
     apply_legacy_options(parser, data)
     return parser
+
+
+def validate_comic_config_schema(data: dict[str, Any]) -> None:
+    if not isinstance(data, dict):
+        raise ValueError("Expected comic_info.toml to contain TOML tables")
+    reject_unknown_keys(data, SUPPORTED_TOP_LEVEL_KEYS, "")
+    for table_name, supported_keys in SUPPORTED_TABLE_KEYS.items():
+        if table_name not in data:
+            continue
+        table = data[table_name]
+        if not isinstance(table, dict):
+            raise ValueError(f"Expected {table_name} in comic_info.toml to be a table")
+        reject_unknown_keys(table, supported_keys, table_name)
+    validate_collection_item_keys(data, "links", SUPPORTED_LINK_KEYS)
+    validate_collection_item_keys(data, "pages", SUPPORTED_PAGE_KEYS)
+
+
+def reject_unknown_keys(data: dict[str, Any], supported_keys: set[str] | frozenset[str], path: str) -> None:
+    for key in data:
+        if key in supported_keys:
+            continue
+        key_path = f"{path}.{key}" if path else key
+        raise ValueError(f"Unsupported key {key_path} in comic_info.toml")
+
+
+def validate_collection_item_keys(
+        data: dict[str, Any],
+        collection_name: str,
+        supported_keys: frozenset[str],
+) -> None:
+    collection = data.get(collection_name)
+    if not isinstance(collection, list):
+        return
+    for index, item in enumerate(collection):
+        if isinstance(item, dict):
+            reject_unknown_keys(item, supported_keys, f"{collection_name}[{index}]")
+
+
+def validate_legacy_collisions(data: dict[str, Any]) -> None:
+    legacy = data.get("legacy")
+    if not isinstance(legacy, dict):
+        return
+    first_class_paths = get_first_class_legacy_paths(data)
+    for section, options in legacy.items():
+        if not isinstance(section, str) or not isinstance(options, dict):
+            continue
+        for option in options:
+            if not isinstance(option, str):
+                continue
+            first_class_path = first_class_paths.get((section, option))
+            if first_class_path is None:
+                continue
+            legacy_path = f"legacy[{json.dumps(section)}][{json.dumps(option)}]"
+            raise ValueError(
+                f"{legacy_path} conflicts with {first_class_path} in comic_info.toml"
+            )
+
+
+def get_first_class_legacy_paths(data: dict[str, Any]) -> dict[tuple[str, str], str]:
+    paths: dict[tuple[str, str], str] = {}
+    for option_mapping in OPTION_MAPPINGS:
+        for (table_name, key), legacy_location in option_mapping.items():
+            table = data.get(table_name)
+            if isinstance(table, dict) and key in table:
+                paths[legacy_location] = f"{table_name}.{key}"
+
+    links = data.get("links")
+    if isinstance(links, list):
+        for index, link in enumerate(links):
+            if isinstance(link, dict):
+                paths[("Links Bar", get_link_option(link, index))] = f"links[{index}]"
+
+    pages = data.get("pages")
+    if isinstance(pages, list):
+        for index, page in enumerate(pages):
+            if isinstance(page, dict):
+                template_name = get_required_string(page, "template_name", f"pages[{index}]")
+                paths[("Pages", template_name)] = f"pages[{index}]"
+
+    return paths
 
 
 def legacy_parser_to_comic_config_data(comic_info: RawConfigParser) -> OrderedDict[str, Any]:

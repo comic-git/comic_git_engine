@@ -24,3 +24,8 @@ prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "unittest"], decision
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "diff"], decision="allow")
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "log"], decision="allow")
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "status"], decision="allow")
+
+# Non-mutating harness checks against the sibling e2e_tests repo from this repo.
+prefix_rule(pattern=["python", "..\\e2e_tests\\scripts\\run_e2e.py", "check-build"], decision="allow")
+prefix_rule(pattern=["python", "..\\e2e_tests\\scripts\\run_e2e.py", "check-migration"], decision="allow")
+prefix_rule(pattern=["python", "..\\e2e_tests\\scripts\\run_e2e.py", "check-migrated-build"], decision="allow")

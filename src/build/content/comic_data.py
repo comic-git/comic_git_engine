@@ -1,110 +1,127 @@
-import html
 import logging
 import os
 import re
 from configparser import RawConfigParser
-from time import strptime, strftime
-from typing import Dict, List
+from datetime import date
+from time import strftime
 
 from markdown2 import Markdown
 
-from build.content.transcripts import get_transcripts
+from build.content.page_models import ComicPage
 from integrations.hooks import run_hook
 
 logger = logging.getLogger(__name__)
-
-
 MARKDOWN = Markdown(extras=["strike", "break-on-newline", "markdown-in-html"])
 
 
-def format_user_variable(k: str) -> str:
-    k = re.sub(r"[^a-z0-9_]+", "_", k.lower()).strip("_")
-    if k not in ["page_name"]:
-        k = "_" + k
-    return k
+def format_user_variable(key: str) -> str:
+    key = re.sub(r"[^a-z0-9_]+", "_", key.lower()).strip("_")
+    if key != "page_name":
+        key = "_" + key
+    return key
 
 
-def get_ids(comic_list: List[Dict], index):
+def get_ids(comic_list: list[ComicPage], index: int) -> dict[str, str]:
     return {
-        "first_id": comic_list[0]["page_name"],
-        "previous_id": comic_list[max(0, index - 1)]["page_name"],
-        "current_id": comic_list[index]["page_name"],
-        "next_id": comic_list[min(len(comic_list) - 1, index + 1)]["page_name"],
-        "last_id": comic_list[-1]["page_name"]
+        "first_id": comic_list[0].page_name,
+        "previous_id": comic_list[max(0, index - 1)].page_name,
+        "current_id": comic_list[index].page_name,
+        "next_id": comic_list[min(len(comic_list) - 1, index + 1)].page_name,
+        "last_id": comic_list[-1].page_name,
     }
 
 
-def create_comic_data(comic_folder: str, comic_info: RawConfigParser, page_info: dict,
-                      first_id: str, previous_id: str, current_id: str, next_id: str, last_id: str):
-    t = strftime("%Y-%m-%d %H:%M:%S")
-    logger.info("[%s] Building page %s", t, page_info["page_name"])
-    page_dir = f"your_content/{comic_folder}comics/{page_info['page_name']}/"
-    archive_date_format = comic_info.get("Archive", "Date format")
+def enrich_comic_page(
+        comic_folder: str,
+        comic_info: RawConfigParser,
+        page: ComicPage,
+        first_id: str,
+        previous_id: str,
+        current_id: str,
+        next_id: str,
+        last_id: str,
+) -> ComicPage:
+    logger.info("[%s] Building page %s", strftime("%Y-%m-%d %H:%M:%S"), page.page_name)
+    page.first_id = first_id
+    page.previous_id = previous_id
+    page.next_id = next_id
+    page.last_id = last_id
+
+    archive_date_format = comic_info.get("Archive", "Date format", fallback="")
     if archive_date_format:
-        archive_post_date = strftime(
-            archive_date_format,
-            strptime(
-                page_info["Post date"],
-                comic_info.get("Comic Settings", "Date format")
-            )
-        )
+        page.archive_post_date = date.fromisoformat(page.post_date).strftime(archive_date_format)
     else:
-        archive_post_date = page_info["Post date"]
-    post_md = []
-    post_text_paths = [
+        page.archive_post_date = page.display_post_date
+
+    post_parts = []
+    for path in (
         f"your_content/{comic_folder}before post text.txt",
         f"your_content/{comic_folder}before post text.html",
-        None if page_info.get("_toml_managed") else page_dir + "post.txt",
+    ):
+        text = read_optional_utf8(path)
+        if text is not None:
+            post_parts.append(text)
+    if page.post_md:
+        post_parts.append(page.post_md)
+    for path in (
         f"your_content/{comic_folder}after post text.txt",
         f"your_content/{comic_folder}after post text.html",
-    ]
-    if page_info.get("_toml_managed"):
-        post_md.append(page_info.get("_inline_post_text", ""))
-    for post_text_path in post_text_paths:
-        if not post_text_path:
-            continue
-        if os.path.isfile(post_text_path):
-            with open(post_text_path, "rb") as f:
-                post_md.append(f.read().decode("utf-8"))
-    post_md = "\n\n".join(post_md)
-    post_html = MARKDOWN.convert(post_md)
-    if "Title" in page_info:
-        page_title = page_info["Title"]
-    elif page_info["image_file_names"]:
-        page_title = os.path.splitext(page_info["image_file_names"][0])[0]
-    else:
-        page_title = ""
-    d = {
-        "page_title": page_title,
-        "page_dir": page_dir,
-        "comic_paths": [os.path.join(page_dir, f) for f in page_info["image_file_names"]],
-        "thumbnail_path": os.path.join(page_dir, "_thumbnail.jpg"),
-        "escaped_alt_text": html.escape(page_info.get("Alt text", "")),
-        "first_id": first_id,
-        "previous_id": previous_id,
-        "current_id": current_id,
-        "next_id": next_id,
-        "last_id": last_id,
-        "archive_post_date": archive_post_date,
-        "post_md": post_md,
-        "post_html": post_html,
-        "transcripts": get_transcripts(comic_folder, comic_info, page_info["page_name"], page_info),
-    }
-    d.update({format_user_variable(k): v for k, v in page_info.items()})
-    if "_title" not in page_info:
-        d["_title"] = page_title
-    if "_on_comic_click" not in d:
-        d["_on_comic_click"] = comic_info.get("Comic Settings", "On comic click", fallback="Next comic")
-    d["_on_comic_click"] = d["_on_comic_click"].lower()
+    ):
+        text = read_optional_utf8(path)
+        if text is not None:
+            post_parts.append(text)
+    page.post_md = "\n\n".join(post_parts)
+    page.post_html = MARKDOWN.convert(page.post_md)
+
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
-    hook_result = run_hook(theme, "extra_comic_dict_processing", [comic_folder, comic_info, d])
-    if hook_result:
-        d = hook_result
-    return d
+    hook_result = run_hook(
+        theme,
+        "extra_comic_dict_processing",
+        [comic_folder, comic_info, page],
+    )
+    return hook_result if hook_result is not None else page
 
 
-def build_comic_data_dicts(comic_folder: str, comic_info: RawConfigParser, page_info_list: List[Dict]) -> List[Dict]:
+def read_optional_utf8(path: str) -> str | None:
+    if not os.path.isfile(path):
+        return None
+    with open(path, "rb") as f:
+        return f.read().decode("utf-8")
+
+
+def build_comic_pages(
+        comic_folder: str,
+        comic_info: RawConfigParser,
+        pages: list[ComicPage],
+) -> list[ComicPage]:
     return [
-        create_comic_data(comic_folder, comic_info, page_info, **get_ids(page_info_list, i))
-        for i, page_info in enumerate(page_info_list)
+        enrich_comic_page(comic_folder, comic_info, page, **get_ids(pages, index))
+        for index, page in enumerate(pages)
     ]
+
+
+def page_to_template_context(page: ComicPage) -> dict:
+    context = {
+        "page": page,
+        "images": page.images,
+        "page_name": page.page_name,
+        "page_title": page.title,
+        "page_dir": page.page_dir,
+        "first_id": page.first_id,
+        "previous_id": page.previous_id,
+        "current_id": page.page_name,
+        "next_id": page.next_id,
+        "last_id": page.last_id,
+        "archive_post_date": page.archive_post_date,
+        "post_md": page.post_md,
+        "post_html": page.post_html,
+        "transcripts": page.transcripts,
+        "_title": page.title,
+        "_post_date": page.display_post_date,
+        "_storyline": page.storyline,
+        "_characters": page.characters,
+        "_tags": page.tags,
+        "_on_comic_click": page.on_comic_click,
+    }
+    context.update({format_user_variable(key): value for key, value in page.extra.items()})
+    return context

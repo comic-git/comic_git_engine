@@ -1,15 +1,17 @@
+import html
 import os
 from configparser import RawConfigParser
 from dataclasses import dataclass
 from re import sub
 from string import Formatter
-from time import strptime, strftime
+from time import strftime, strptime
 from typing import Any
 from urllib.parse import urljoin
 from xml.dom import minidom
 from xml.etree import ElementTree
 from xml.etree.ElementTree import register_namespace
 
+from build.content.page_models import ComicImage, ComicPage
 from core.models import ComicBuildResult
 from core.utils import get_comic_url, get_output_dir
 
@@ -20,9 +22,16 @@ DEFAULT_RSS_IMAGE_HEIGHT = "36"
 
 
 @dataclass(slots=True)
+class FeedPage:
+    page: ComicPage
+    title: str
+    comic_page_relative_path: str | None = None
+
+
+@dataclass(slots=True)
 class FeedJob:
     comic_info: RawConfigParser
-    comic_data_dicts: list[dict[str, Any]]
+    pages: list[FeedPage]
     feed_relative_path: str = "feed.xml"
     comic_page_relative_path: str = "comic"
     build_enabled: bool = True
@@ -59,42 +68,48 @@ def format_guid(direct_link: str) -> str:
     return direct_link.lower().replace(" ", "_").replace("&", "_")
 
 
-def parse_item_pub_date(comic_data: dict[str, Any], comic_info: RawConfigParser) -> str:
+def parse_item_pub_date(page: ComicPage, comic_info: RawConfigParser) -> str:
     date_format = comic_info.get("Comic Settings", "Date format")
     try:
-        post_date = strptime(comic_data["_post_date"], date_format)
+        post_date = strptime(page.display_post_date, date_format)
     except ValueError as e:
         raise ValueError(
-            f"Invalid post date '{comic_data['_post_date']}' for page '{comic_data['page_name']}'\n"
+            f"Invalid post date '{page.display_post_date}' for page '{page.page_name}'\n"
             f"The date format is '{date_format}'. Ensure the date matches this format."
         ) from e
     return strftime("%a, %d %b %Y %H:%M:%S +0000", post_date)
 
 
-def build_rss_post(comic_url: str, comic_paths: list[str], alt_text: str | None, post_html: str) -> str:
-    comic_images = []
-    for comic_path in comic_paths:
-        comic_images.append(
-            '<p><img src="{}"{}></p>'.format(
-                urljoin(comic_url, comic_path),
-                ' alt_text="{}"'.format(alt_text.replace(r'"', r'\"')) if alt_text else ""
-            )
+def build_rss_post(comic_url: str, images: list[ComicImage], post_html: str) -> str:
+    comic_images = [
+        '<p><img src="{}" alt="{}"></p>'.format(
+            urljoin(comic_url, image.web_path),
+            html.escape(image.alt_text, quote=True),
         )
-    return "\n".join(comic_images) + "\n\n<hr>\n\n{}".format(post_html)
+        for image in images
+    ]
+    sections = []
+    if comic_images:
+        sections.append("\n".join(comic_images))
+    if post_html:
+        if sections:
+            sections.append("<hr>")
+        sections.append(post_html)
+    return "\n\n".join(sections)
 
 
 def pretty_xml(element: ElementTree.Element) -> str:
     raw_string = ElementTree.tostring(
-        element, xml_declaration=True, encoding='utf-8', method="xml"
+        element, xml_declaration=True, encoding="utf-8", method="xml"
     ).decode("utf-8")
     flattened_string = sub(r"\n\s*", "", raw_string)
     return minidom.parseString(flattened_string).toprettyxml(indent="    ")
 
 
-def validate_comic_data_dicts(comic_data_dicts: list[dict[str, Any]]) -> None:
+def validate_feed_pages(feed_pages: list[FeedPage]) -> None:
     seen_page_names = set()
-    for comic_data in comic_data_dicts:
-        page_name = comic_data["page_name"]
+    for feed_page in feed_pages:
+        page_name = feed_page.page.page_name
         if page_name in seen_page_names:
             raise ValueError(
                 f"Duplicate page_name '{page_name}' found in RSS feed input.\n"
@@ -103,57 +118,44 @@ def validate_comic_data_dicts(comic_data_dicts: list[dict[str, Any]]) -> None:
         seen_page_names.add(page_name)
 
 
-def order_comic_data_dicts(
-        comic_info: RawConfigParser,
-        comic_data_dicts: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    ordered_comic_data_dicts = list(comic_data_dicts)
+def order_feed_pages(comic_info: RawConfigParser, feed_pages: list[FeedPage]) -> list[FeedPage]:
+    ordered_pages = list(feed_pages)
     if comic_info.getboolean("RSS Feed", "Newest first", fallback=False):
-        ordered_comic_data_dicts.reverse()
-    return ordered_comic_data_dicts
+        ordered_pages.reverse()
+    return ordered_pages
 
 
-def normalize_item_categories(comic_data: dict[str, Any]) -> list[dict[str, str]]:
+def normalize_item_categories(page: ComicPage) -> list[dict[str, str]]:
     categories = []
-    if "_storyline" in comic_data:
-        categories.append({"type": "storyline", "text": comic_data["_storyline"]})
-    if "_characters" in comic_data:
-        categories.extend({"type": "character", "text": character} for character in comic_data["_characters"])
-    if "_tags" in comic_data:
-        categories.extend({"type": "tag", "text": tag} for tag in comic_data["_tags"])
+    if page.storyline:
+        categories.append({"type": "storyline", "text": page.storyline})
+    categories.extend({"type": "character", "text": character} for character in page.characters)
+    categories.extend({"type": "tag", "text": tag} for tag in page.tags)
     return categories
 
 
-def get_item_comic_page_relative_path(comic_data: dict[str, Any], default_comic_page_relative_path: str) -> str:
-    return comic_data.get("rss_comic_page_relative_path", default_comic_page_relative_path)
-
-
 def normalize_feed_item(
-        comic_data: dict[str, Any],
+        feed_page: FeedPage,
         comic_info: RawConfigParser,
         comic_url: str,
-        comic_page_relative_path: str,
+        default_comic_page_relative_path: str,
         item_index: int,
 ) -> dict[str, Any]:
+    page = feed_page.page
     direct_link = build_item_link(
         comic_url,
-        get_item_comic_page_relative_path(comic_data, comic_page_relative_path),
-        comic_data["page_name"],
+        feed_page.comic_page_relative_path or default_comic_page_relative_path,
+        page.page_name,
     )
     return {
-        "title": comic_data["_title"],
+        "title": feed_page.title,
         "author": comic_info.get("Comic Info", "Author"),
-        "pub_date": parse_item_pub_date(comic_data, comic_info),
+        "pub_date": parse_item_pub_date(page, comic_info),
         "link": direct_link,
         "guid": format_guid(direct_link),
-        "categories": normalize_item_categories(comic_data),
+        "categories": normalize_item_categories(page),
         "description_placeholder_key": f"rss_cdata_{item_index}",
-        "description_html": build_rss_post(
-            comic_url,
-            comic_data["comic_paths"],
-            comic_data.get("escaped_alt_text"),
-            comic_data["post_html"],
-        ),
+        "description_html": build_rss_post(comic_url, page.images, page.post_html),
     }
 
 
@@ -186,7 +188,7 @@ def normalize_channel_context(
 
 def build_feed_context(
         comic_info: RawConfigParser,
-        comic_data_dicts: list[dict[str, Any]],
+        feed_pages: list[FeedPage],
         feed_relative_path: str = "feed.xml",
         comic_page_relative_path: str = "comic",
 ) -> dict[str, Any]:
@@ -194,11 +196,11 @@ def build_feed_context(
     if not comic_url.endswith("/"):
         comic_url += "/"
 
-    ordered_comic_data_dicts = order_comic_data_dicts(comic_info, comic_data_dicts)
+    ordered_pages = order_feed_pages(comic_info, feed_pages)
     feed_context = normalize_channel_context(comic_info, comic_url, feed_relative_path)
     feed_context["items"] = [
-        normalize_feed_item(comic_data, comic_info, comic_url, comic_page_relative_path, item_index)
-        for item_index, comic_data in enumerate(ordered_comic_data_dicts)
+        normalize_feed_item(feed_page, comic_info, comic_url, comic_page_relative_path, item_index)
+        for item_index, feed_page in enumerate(ordered_pages)
     ]
     return feed_context
 
@@ -246,7 +248,7 @@ def serialize_feed_xml(root: ElementTree.Element, cdata_map: dict[str, str]) -> 
 
 def write_feed_xml(feed_output_path: str, xml_text: str) -> None:
     try:
-        with open(feed_output_path, 'wb') as f:
+        with open(feed_output_path, "wb") as f:
             f.write(bytes(xml_text, "utf-8"))
     except (OSError, IOError) as e:
         raise ValueError(
@@ -255,14 +257,14 @@ def write_feed_xml(feed_output_path: str, xml_text: str) -> None:
         ) from e
     except UnicodeEncodeError as e:
         raise ValueError(
-            f"Error encoding RSS feed to UTF-8\n"
-            f"PLACEHOLDER: The feed may contain unsupported characters."
+            "Error encoding RSS feed to UTF-8\n"
+            "PLACEHOLDER: The feed may contain unsupported characters."
         ) from e
 
 
 def build_feed_job(
         comic_info: RawConfigParser,
-        comic_data_dicts: list[dict[str, Any]],
+        pages: list[ComicPage],
         feed_relative_path: str = "feed.xml",
         comic_page_relative_path: str = "comic",
         build_enabled: bool | None = None,
@@ -271,7 +273,7 @@ def build_feed_job(
         build_enabled = comic_info.getboolean("RSS Feed", "Build RSS feed", fallback=False)
     return FeedJob(
         comic_info=comic_info,
-        comic_data_dicts=comic_data_dicts,
+        pages=[FeedPage(page=page, title=page.title) for page in pages],
         feed_relative_path=feed_relative_path,
         comic_page_relative_path=comic_page_relative_path,
         build_enabled=build_enabled,
@@ -282,10 +284,10 @@ def build_rss_feed_from_job(feed_job: FeedJob) -> None:
     if not feed_job.build_enabled:
         return
 
-    validate_comic_data_dicts(feed_job.comic_data_dicts)
+    validate_feed_pages(feed_job.pages)
     feed_context = build_feed_context(
         feed_job.comic_info,
-        feed_job.comic_data_dicts,
+        feed_job.pages,
         feed_relative_path=feed_job.feed_relative_path,
         comic_page_relative_path=feed_job.comic_page_relative_path,
     )
@@ -296,13 +298,13 @@ def build_rss_feed_from_job(feed_job: FeedJob) -> None:
 
 def build_rss_feed(
         comic_info: RawConfigParser,
-        comic_data_dicts: list[dict[str, Any]],
+        pages: list[ComicPage],
         feed_relative_path: str = "feed.xml",
         comic_page_relative_path: str = "comic",
 ) -> None:
     feed_job = build_feed_job(
         comic_info,
-        comic_data_dicts,
+        pages,
         feed_relative_path=feed_relative_path,
         comic_page_relative_path=comic_page_relative_path,
     )
@@ -325,15 +327,6 @@ def get_comic_page_relative_path(comic_folder: str) -> str:
     if not comic_folder:
         return "comic"
     return f"{comic_folder}/comic"
-
-
-def build_rss_feed_job_for_comic_result(comic_result: ComicBuildResult) -> FeedJob:
-    return build_feed_job(
-        comic_result.comic_info,
-        build_rss_feed_comic_data_dicts_for_comic_result(comic_result),
-        feed_relative_path=get_feed_relative_path(comic_result.comic_folder),
-        comic_page_relative_path=get_comic_page_relative_path(comic_result.comic_folder),
-    )
 
 
 def get_main_comic_result(comic_results: list[ComicBuildResult]) -> ComicBuildResult:
@@ -361,17 +354,13 @@ def should_combine_with_main_rss_feed(comic_result: ComicBuildResult) -> bool:
     return comic_result.comic_info.getboolean("RSS Feed", "Combine with Main RSS Feed", fallback=False)
 
 
-def get_rss_feed_item_title(
-        comic_result: ComicBuildResult,
-        comic_data: dict[str, Any],
-) -> str:
-    page_title = comic_data.get("page_title") or comic_data.get("_title") or comic_data["page_name"]
+def get_rss_feed_item_title(comic_result: ComicBuildResult, page: ComicPage) -> str:
     title_format = comic_result.comic_info.get("RSS Feed", "RSS title format", fallback="").strip()
     if not title_format:
-        return comic_data.get("_title", page_title)
+        return page.title
     variables = {
         "comic_title": comic_result.comic_info.get("Comic Info", "Comic name", fallback=""),
-        "page_title": page_title,
+        "page_title": page.title,
     }
     for _, field_name, _, _ in Formatter().parse(title_format):
         if field_name and field_name not in variables:
@@ -382,38 +371,46 @@ def get_rss_feed_item_title(
     return title_format.format(**variables)
 
 
-def build_rss_feed_comic_data_dicts_for_comic_result(
-        comic_result: ComicBuildResult,
-) -> list[dict[str, Any]]:
-    rss_comic_data_dicts = []
-    for comic_data in comic_result.comic_data_dicts:
-        merged_comic_data = comic_data.copy()
-        merged_comic_data["_title"] = get_rss_feed_item_title(comic_result, merged_comic_data)
-        rss_comic_data_dicts.append(merged_comic_data)
-    return rss_comic_data_dicts
+def build_feed_pages_for_comic_result(comic_result: ComicBuildResult) -> list[FeedPage]:
+    return [
+        FeedPage(
+            page=page,
+            title=get_rss_feed_item_title(comic_result, page),
+        )
+        for page in comic_result.pages
+    ]
 
 
-def build_main_rss_comic_data_dicts(
+def build_rss_feed_job_for_comic_result(comic_result: ComicBuildResult) -> FeedJob:
+    return FeedJob(
+        comic_info=comic_result.comic_info,
+        pages=build_feed_pages_for_comic_result(comic_result),
+        feed_relative_path=get_feed_relative_path(comic_result.comic_folder),
+        comic_page_relative_path=get_comic_page_relative_path(comic_result.comic_folder),
+        build_enabled=is_rss_feed_enabled(comic_result.comic_info),
+    )
+
+
+def build_main_rss_feed_pages(
         main_comic_result: ComicBuildResult,
         extra_comic_results: list[ComicBuildResult],
-) -> list[dict[str, Any]]:
-    main_rss_comic_data_dicts = build_rss_feed_comic_data_dicts_for_comic_result(main_comic_result)
+) -> list[FeedPage]:
+    feed_pages = build_feed_pages_for_comic_result(main_comic_result)
     for comic_result in extra_comic_results:
         comic_page_relative_path = get_comic_page_relative_path(comic_result.comic_folder)
-        for comic_data in build_rss_feed_comic_data_dicts_for_comic_result(comic_result):
-            merged_comic_data = comic_data.copy()
-            merged_comic_data["rss_comic_page_relative_path"] = comic_page_relative_path
-            main_rss_comic_data_dicts.append(merged_comic_data)
-    return main_rss_comic_data_dicts
+        for feed_page in build_feed_pages_for_comic_result(comic_result):
+            feed_page.comic_page_relative_path = comic_page_relative_path
+            feed_pages.append(feed_page)
+    return feed_pages
 
 
 def build_main_rss_feed_job(
         main_comic_result: ComicBuildResult,
         extra_comic_results: list[ComicBuildResult],
 ) -> FeedJob:
-    return build_feed_job(
-        main_comic_result.comic_info,
-        build_main_rss_comic_data_dicts(main_comic_result, extra_comic_results),
+    return FeedJob(
+        comic_info=main_comic_result.comic_info,
+        pages=build_main_rss_feed_pages(main_comic_result, extra_comic_results),
         feed_relative_path="feed.xml",
         comic_page_relative_path="comic",
         build_enabled=is_rss_feed_enabled(main_comic_result.comic_info),
@@ -434,14 +431,9 @@ def get_rss_feed_jobs(comic_results: list[ComicBuildResult]) -> list[FeedJob]:
 
     feed_jobs = []
     if is_rss_feed_enabled(main_comic_result.comic_info):
-        feed_jobs.append(
-            build_main_rss_feed_job(
-                main_comic_result,
-                extra_comic_results_to_combine,
-            )
-        )
-    feed_jobs.extend([
+        feed_jobs.append(build_main_rss_feed_job(main_comic_result, extra_comic_results_to_combine))
+    feed_jobs.extend(
         build_rss_feed_job_for_comic_result(comic_result)
         for comic_result in extra_comic_results_with_independent_feeds
-    ])
+    )
     return feed_jobs

@@ -36,6 +36,13 @@ allow_missing_variables_in_templates = true
 
 [archive]
 use_thumbnails = true
+entry_mode = "images"
+image_title_fallback = "filename"
+
+[image_processing]
+create_thumbnails = true
+overwrite_existing_images = true
+thumbnail_size = "200x200"
 
 [rss]
 build = true
@@ -54,6 +61,11 @@ image_width = "144"
         self.assertEqual("tables, fenced-code-blocks", comic_info.get("Comic Settings", "Markdown extras"))
         self.assertTrue(comic_info.getboolean("Comic Settings", "Allow missing variables in templates"))
         self.assertTrue(comic_info.getboolean("Archive", "Use thumbnails"))
+        self.assertEqual("images", comic_info.get("Archive", "Entry mode"))
+        self.assertEqual("filename", comic_info.get("Archive", "Image title fallback"))
+        self.assertTrue(comic_info.getboolean("Image Reprocessing", "Create thumbnails"))
+        self.assertTrue(comic_info.getboolean("Image Reprocessing", "Overwrite existing images"))
+        self.assertEqual("200x200", comic_info.get("Image Reprocessing", "Thumbnail size"))
         self.assertTrue(comic_info.getboolean("RSS Feed", "Build RSS feed"))
         self.assertFalse(comic_info.getboolean("RSS Feed", "Newest first"))
         self.assertEqual("144", comic_info.get("RSS Feed", "Image width"))

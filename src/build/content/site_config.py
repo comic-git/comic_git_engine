@@ -3,6 +3,7 @@ from configparser import RawConfigParser
 from typing import Any, List
 
 from build.content.loaders import load_extra_comic_info as load_extra_comic_info_with_precedence
+from build.content.page_models import ArchiveEntryMode, ImageTitleFallback
 from core import utils
 from core.utils import web_path
 
@@ -42,3 +43,24 @@ def get_extra_comics_list(comic_info: RawConfigParser) -> List[str]:
 
 def get_extra_comic_info(folder_name: str, comic_info: RawConfigParser):
     return load_extra_comic_info_with_precedence(folder_name, comic_info)
+
+
+def get_archive_entry_mode(comic_info: RawConfigParser) -> ArchiveEntryMode:
+    value = comic_info.get("Archive", "Entry mode", fallback="Pages").strip().lower().replace("_", " ")
+    if value == "pages":
+        return ArchiveEntryMode.PAGES
+    if value == "images":
+        return ArchiveEntryMode.IMAGES
+    raise ValueError("Invalid [Archive] Entry mode. Expected 'Pages' or 'Images'.")
+
+
+def get_image_title_fallback(comic_info: RawConfigParser) -> ImageTitleFallback:
+    value = comic_info.get("Archive", "Image title fallback", fallback="Page title")
+    value = value.strip().lower().replace("_", " ")
+    if value == "page title":
+        return ImageTitleFallback.PAGE_TITLE
+    if value == "filename":
+        return ImageTitleFallback.FILENAME
+    raise ValueError(
+        "Invalid [Archive] Image title fallback. Expected 'Page title' or 'Filename'."
+    )

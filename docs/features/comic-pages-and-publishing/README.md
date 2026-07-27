@@ -23,12 +23,22 @@ The current design favors low-friction publishing for non-technical users:
 
 Important current behavior:
 
+- a page remains the scheduling, navigation, post-text, tag, and RSS publishing unit
+- each page owns an ordered collection of zero or more structured comic images
+- each image has resolved title, alt text, thumbnail, filename-based identity,
+  and a stable HTML anchor
 - future-dated pages are treated as scheduled posts and are not published by default
 - local development may opt into previewing future posts
-- generated page metadata is intentionally published for use by client-side features and external tools
+- generated page metadata is versioned and validated by a deployed JSON Schema
 - page-level source metadata can include private values that are stripped from public metadata output
 - explicit `Filename` or `Filenames` values override image auto-discovery
+- structured INI pages use ordered `[Image <label>]` sections; these cannot be
+  mixed with page-level `Filename` or `Filenames`
+- TOML pages use ordered `[[images]]` tables and do not auto-discover images
 - image files whose names start with `_` are intentionally excluded from image auto-discovery
+- the archive defaults to one entry per page, with an optional image mode that
+  links each image entry to its stable anchor
+- no-image pages keep their post, navigation, RSS item, and page archive entry
 
 This feature is under active long-term architectural pressure from the roadmap:
 
@@ -43,6 +53,11 @@ This feature is under active long-term architectural pressure from the roadmap:
 - Explicit page-file declarations should remain available when users need to override automatic discovery.
 - Scheduled publishing must protect creators from accidentally exposing future comic content.
 - Generated metadata such as `page_info_list.json` is part of the product contract and should be treated as intentional output.
+- Image fallback rules are resolved while normalizing source data. Templates,
+  feeds, JavaScript, and hooks consume resolved values rather than independently
+  repeating fallback logic.
+- Image identity is derived from owning comic, page folder, and normalized
+  filename so reordering does not change it and Extra Comics cannot collide.
 - Refactors in this area should be tested carefully because many other features depend on page ordering, page metadata, and page inclusion rules.
 
 ## Supporting Documents

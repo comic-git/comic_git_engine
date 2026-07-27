@@ -171,14 +171,18 @@ Initial direction:
 ```toml
 title = "Page Title"
 post_date = "2026-04-19"
-images = ["page.png"]
 post_text = """
 Markdown text here.
 """
-transcript = """
-Markdown transcript here.
-"""
 alt_text = "Optional alt text"
+
+[[images]]
+filename = "page.png"
+title = "Optional image title"
+alt_text = "Optional image-specific alt text"
+
+[transcripts]
+English = "Markdown transcript here."
 
 [social_media]
 # Raw nested values for page override support in MVP
@@ -196,7 +200,11 @@ Likely additional fields:
 - page folder ID should be treated as stable after creation
 - page folder ID should remain path-derived rather than duplicated into `info.toml`
 - title may remain optional if the engine can still derive it from image filenames where appropriate
-- image ordering is explicit and important
+- image ordering is explicit through `[[images]]` table order
+- image fields other than `filename` remain optional so the CMS can expose
+  simple and advanced editing without two data shapes
+- omitted image metadata inherits engine-resolved page defaults, while explicit
+  blank values suppress inheritance
 - auto-discovery of page images remains legacy-mode behavior only
 
 ## Site-Level Config Direction

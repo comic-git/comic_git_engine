@@ -21,6 +21,13 @@ class TestTomlMigration(TestCase):
             f.write("Engine version = master\n")
             f.write("Date format = %B %d, %Y\n")
             f.write(f"Extra comics = {extra_comics}\n")
+            f.write("\n[Archive]\n")
+            f.write("Entry mode = Images\n")
+            f.write("Image title fallback = Filename\n")
+            f.write("\n[Image Reprocessing]\n")
+            f.write("Create thumbnails = True\n")
+            f.write("Overwrite existing images = True\n")
+            f.write("Thumbnail size = 200x200\n")
             f.write("\n[Transcripts]\n")
             f.write("Enable transcripts = True\n")
             f.write("Load transcripts from comic folder = True\n")
@@ -94,7 +101,13 @@ class TestTomlMigration(TestCase):
                 toml_text = f.read()
             loaded = page_sources.load_page_source_from_toml(toml_path)
             self.assertEqual("2024-01-02", loaded.post_date)
-            self.assertEqual(["first.png", "second.png"], loaded.images)
+            self.assertEqual(
+                [
+                    page_sources.PageImageSource("first.png"),
+                    page_sources.PageImageSource("second.png"),
+                ],
+                loaded.images,
+            )
             self.assertEqual("Chapter One", loaded.title)
             self.assertEqual("Page body", loaded.post_text)
             self.assertEqual(["Alice", "Bob"], loaded.characters)
@@ -212,7 +225,13 @@ class TestTomlMigration(TestCase):
             self.assertTrue(loaded.getboolean("Transcripts", "Enable transcripts"))
             self.assertTrue(loaded.getboolean("Transcripts", "Load transcripts from comic folder"))
             self.assertEqual("English", loaded.get("Transcripts", "Default language"))
+            self.assertEqual("Images", loaded.get("Archive", "Entry mode"))
+            self.assertEqual("Filename", loaded.get("Archive", "Image title fallback"))
+            self.assertTrue(loaded.getboolean("Image Reprocessing", "Overwrite existing images"))
             self.assertIn("[engine]", toml_text)
+            self.assertIn("[archive]", toml_text)
+            self.assertIn("[image_processing]", toml_text)
+            self.assertIn("overwrite_existing_images = true", toml_text)
             self.assertIn('version = "master"', toml_text)
             self.assertNotIn('"Engine version"', toml_text)
 

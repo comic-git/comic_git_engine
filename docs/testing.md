@@ -43,12 +43,14 @@ tests/
   build/
     test_build_site.py         - top-level build orchestration in `main()`
     content/
-      test_comic_data.py       - comic page data construction
-      test_page_discovery.py   - page discovery, scheduling, and page_info JSON output
+      test_comic_data.py       - structured comic page enrichment
+      test_page_discovery.py   - page discovery, scheduling, source resolution, and validation
+      test_page_models.py      - page/image identity, anchors, and fallback rules
+      test_page_metadata.py    - versioned public metadata serialization and schema artifact
       test_site_config.py      - config parsing and extra-comic config merging
       test_transcripts.py      - transcript loading and ordering
     output/
-      test_images.py           - resize and thumbnail/image processing behavior
+      test_images.py           - page/image thumbnail resolution and generation behavior
       test_rendering.py        - template/page-writing orchestration
       test_site_output.py      - output cleanup and site_root/output copying
   core/
@@ -105,6 +107,8 @@ Use automated end-to-end tests in `e2e_tests` (usually at `../e2e_tests`) when:
 - behavior only appears when multiple engine subsystems run together across a full build
 - validating entrypoint, submodule, or host-layout behavior that unit imports cannot catch
 - checking generated site output that depends on real files, templates, assets, and config together
+- validating generated `page_info_list.json` instances with the JSON Schema
+  deployed by the same build
 - preventing recurrence of a bug that escaped unit tests because it only appeared in full-build context
 
 Do not add an end-to-end case by default. First ask whether the behavior can be covered with focused unit tests in this repo. Every new end-to-end test should have a clear reason why unit tests alone are insufficient, and the underlying engine logic should still get unit coverage where practical.

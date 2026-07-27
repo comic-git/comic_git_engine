@@ -4,6 +4,7 @@ from copy import deepcopy
 from unittest import TestCase
 from unittest.mock import patch, mock_open, call
 
+from build.content.page_models import ComicImage, ComicPage
 from core import utils
 
 
@@ -126,9 +127,32 @@ class TestGetSocialMediaData(TestCase):
         cls.comic_info.add_section("Comic Info")
         cls.comic_info.set("Comic Info", "Comic name", "My Comic!!")
         cls.comic_info.set("Comic Info", "Description", "hey hey you you i don't like your comic")
+        image = ComicImage(
+            id="main/001/page.png",
+            filename="page.png",
+            source_path="page.png",
+            web_path="your_content/comics/001/page.png",
+            anchor_id="comic-image-001",
+            title="Page 1",
+            alt_text="This is where your first comic page will go!",
+            thumbnail_path="your_content/comics/001/_thumbnail.jpg",
+        )
+        page = ComicPage(
+            id="main/001",
+            comic_id="main",
+            comic_folder="",
+            page_name="001",
+            page_dir="your_content/comics/001/",
+            url="/comic/001/",
+            title="Page 1",
+            post_date="2020-01-01",
+            display_post_date="January 1, 2020",
+            archive_post_date="January 1, 2020",
+            images=[image],
+            thumbnail_path="your_content/comics/001/_thumbnail.jpg",
+        )
         cls.comic_data_dict = {
-            "thumbnail_path": "your_content/comics/001/_thumbnail.jpg",
-            "escaped_alt_text": "This is where your first comic page will go!",
+            "page": page,
             "post_md": "If you'd like some ideas on what you can do next with comic_git...",
             "_title": "Page 1",
             "comic_url": "https://ryanvilbrandt.github.io/comic_git_dev",
@@ -193,6 +217,41 @@ class TestGetSocialMediaData(TestCase):
             "comic/001/index.html",
         )
         self.assertEqual(expected, actual)
+
+    def test_comic_without_page_thumbnail_uses_site_preview(self):
+        comic_data_dict = deepcopy(self.comic_data_dict)
+        comic_data_dict["page"].thumbnail_path = None
+
+        actual = utils.get_social_media_data(
+            self.comic_info,
+            comic_data_dict,
+            "comic",
+            "comic/001/index.html",
+        )
+
+        self.assertEqual(
+            "https://ryanvilbrandt.github.io/comic_git_dev/your_content/images/preview_image.png",
+            actual["og:image"],
+        )
+        self.assertEqual("This is where your first comic page will go!", actual["og:image:alt"])
+
+    def test_comic_without_images_uses_site_preview_and_blank_alt(self):
+        comic_data_dict = deepcopy(self.comic_data_dict)
+        comic_data_dict["page"].thumbnail_path = None
+        comic_data_dict["page"].images = []
+
+        actual = utils.get_social_media_data(
+            self.comic_info,
+            comic_data_dict,
+            "comic",
+            "comic/001/index.html",
+        )
+
+        self.assertEqual(
+            "https://ryanvilbrandt.github.io/comic_git_dev/your_content/images/preview_image.png",
+            actual["og:image"],
+        )
+        self.assertEqual("", actual["og:image:alt"])
 
     def test_comic_url_with_slash(self):
         """Test that a comic_url with a slash at the end is handled properly."""

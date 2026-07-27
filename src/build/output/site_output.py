@@ -45,6 +45,7 @@ def copy_output_assets(output_dir: str):
         return
     shutil.copytree("comic_git_engine/css", os.path.join(output_dir, "comic_git_engine/css"))
     shutil.copytree("comic_git_engine/js", os.path.join(output_dir, "comic_git_engine/js"))
+    shutil.copytree("comic_git_engine/schemas", os.path.join(output_dir, "comic_git_engine/schemas"))
     shutil.copytree("your_content", os.path.join(output_dir, "your_content"))
 
 

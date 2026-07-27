@@ -21,25 +21,27 @@
        the Python script that generates the HTML file. That value is dropped into the existing HTML with no changes.
        For example, if the value passed in to `comic_base_dir` is `/comic_git`, then `{{ comic_base_dir }}/comic`
        becomes `/comic_git/comic` #}
-    {%- if comic_paths %}
+    {%- if images %}
     <div id="comic-page">
-        {%- for comic_path in comic_paths %}
+        {%- for image in images %}
+        <div class="comic-image-container" id="{{ image.anchor_id }}">
         {% if _on_comic_click == "overlay" %}
         <a id="click-for-overlay">
         {% elif _on_comic_click == "open image" %}
-        <a id="open-image" href="{{ base_dir }}/{{ comic_path }}">
+        <a id="open-image" href="{{ base_dir }}/{{ image.web_path | e }}">
         {% elif _on_comic_click == "open image window" %}
-        <a id="open-image-window" href="{{ base_dir }}/{{ comic_path }}" target="_blank">
+        <a id="open-image-window" href="{{ base_dir }}/{{ image.web_path | e }}" target="_blank">
         {% else %}
         <a href="{{ comic_base_dir }}/comic/{{ next_id }}/#comic-page">
         {% endif %}
-            <img class="comic-image" src="{{ base_dir }}/{{ comic_path }}" title="{{ escaped_alt_text }}"/>
+            <img class="comic-image" src="{{ base_dir }}/{{ image.web_path | e }}" alt="{{ image.alt_text | e }}"/>
         </a>
+        </div>
         {%- endfor %}
     </div>
 
     <div id="comic-page-overlay" hidden>
-        <img id="comic-overlay-image" src="{{ base_dir }}/{{ comic_paths[0] }}" title="{{ escaped_alt_text }}"/>
+        <img id="comic-overlay-image" src="{{ base_dir }}/{{ images[0].web_path | e }}" alt="{{ images[0].alt_text | e }}"/>
     </div>
     {% endif %}
 

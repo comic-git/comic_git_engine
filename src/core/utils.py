@@ -317,6 +317,14 @@ def get_social_media_data(
     if html_path.endswith("index.html"):
         html_path = html_path[:-10]
     html_path = urljoin(comic_url, html_path)
+    comic_page = comic_data_dict.get("page")
+    preview_image = "your_content/images/preview_image.png"
+    page_thumbnail = comic_page.thumbnail_path if comic_page is not None else None
+    page_alt_text = (
+        comic_page.images[0].alt_text
+        if comic_page is not None and comic_page.images
+        else ""
+    )
     for k, v in data.items():
         if v == "_comic_name":
             data[k] = comic_info.get("Comic Info", "Comic name")
@@ -327,13 +335,13 @@ def get_social_media_data(
         elif v == "_title":
             data[k] = comic_data_dict["_title"]
         elif v == "_preview_image":
-            data[k] = urljoin(comic_url, "your_content/images/preview_image.png")
+            data[k] = urljoin(comic_url, preview_image)
         elif v == "_thumbnail":
-            data[k] = urljoin(comic_url, comic_data_dict["thumbnail_path"])
+            data[k] = urljoin(comic_url, page_thumbnail or preview_image)
         elif v == "_post_text":
             data[k] = html.escape(comic_data_dict["post_md"])
         elif v == "_alt_text":
-            data[k] = comic_data_dict["escaped_alt_text"]
+            data[k] = page_alt_text
     return data
 
 

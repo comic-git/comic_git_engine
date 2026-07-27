@@ -87,7 +87,14 @@ class TestSiteOutput(TestCase):
 
         site_output.copy_output_assets("output")
 
-        self.assertEqual(3, mock_copytree.call_count)
+        self.assertEqual(4, mock_copytree.call_count)
+        self.assertIn(
+            (
+                "comic_git_engine/schemas",
+                os.path.join("output", "comic_git_engine/schemas"),
+            ),
+            [call.args for call in mock_copytree.call_args_list],
+        )
 
     def test_copy_site_root_files_copies_files_into_output_dir(self):
         with tempfile.TemporaryDirectory() as temp_dir:

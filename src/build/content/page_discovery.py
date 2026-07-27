@@ -1,137 +1,192 @@
-import json
 import logging
 import os
-import re
 import shutil
 from datetime import datetime
 from glob import iglob
-from time import strptime
-from typing import Dict, List, Tuple
 
 from configparser import RawConfigParser
 from pytz import timezone
 
-from build.content import content_paths
-from build.content.loaders import load_page_info
-from build.content.transcripts import get_transcripts
+from build.content.loaders import load_page_source
+from build.content.page_models import (
+    ComicImage,
+    ComicPage,
+    build_image_anchor_id,
+    build_image_id,
+    build_page_id,
+    normalize_comic_id,
+    normalize_web_path,
+    resolve_image_alt_text,
+    resolve_image_title,
+    resolve_page_title,
+    validate_page_asset_path,
+    validate_unique_filenames,
+)
+from build.content.page_sources import PageSource, iso_date_to_legacy
+from build.content.site_config import get_image_title_fallback
+from build.content.transcripts import render_transcript_sources, sort_transcript_languages
 from core import utils
 from integrations.hooks import run_hook
 
 logger = logging.getLogger(__name__)
 
-INTERNAL_PAGE_INFO_FIELDS = {
-    "_inline_post_text",
-    "_inline_transcripts",
-    "_social_media",
-    "_toml_managed",
-}
 
-
-def normalize_list_field(value) -> list:
-    if isinstance(value, list):
-        return value
-    return utils.str_to_list(value or "")
-
-
-def validate_page_image_files(page_path: str, page_info_path: str, image_file_names: list[str]) -> None:
-    for filename in image_file_names:
-        path = os.path.join(page_path, filename)
-        if not os.path.isfile(path):
-            raise FileNotFoundError(
-                f"Could not find comic image {path}\n"
-                f"Did you mistype the filename in the {os.path.basename(page_info_path)} file? Remember that filenames "
-                f"and extensions are case-sensitive when building on GitHub."
-            )
-
-
-def get_page_info_list(comic_folder: str, comic_info: RawConfigParser, delete_scheduled_posts: bool,
-                       publish_all_comics: bool) -> Tuple[List[Dict], int]:
-    date_format = comic_info.get("Comic Settings", "Date format")
+def discover_pages(
+        comic_folder: str,
+        comic_info: RawConfigParser,
+        delete_scheduled_posts: bool,
+        publish_all_comics: bool,
+) -> tuple[list[ComicPage], int]:
     try:
         tz_info = timezone(comic_info.get("Comic Settings", "Timezone"))
     except Exception as e:
         raise ValueError(
             f"Invalid timezone specified in [Comic Settings] Timezone: {e}\n"
-            f"Use a valid IANA timezone name (e.g., 'America/Los_Angeles', 'Europe/London', 'UTC'). "
-            f"See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for a complete list."
+            "Use a valid IANA timezone name (e.g., 'America/Los_Angeles', 'Europe/London', 'UTC'). "
+            "See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for a complete list."
         ) from e
+
     local_time = datetime.now(tz=tz_info)
     logger.info("Local time is %s", local_time)
-    page_info_list = []
+    pages = []
     scheduled_post_count = 0
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
     for page_path in iglob(f"your_content/{comic_folder}comics/*/"):
-        page_path = page_path.replace("\\", "/")
-        filepath, page_info = load_page_info(page_path, comic_info)
-        if page_info is None or filepath is None:
-            _, legacy_path = content_paths.get_page_info_candidates(page_path)
-            logger.warning("%s is missing its %s file. Skipping", page_path, os.path.basename(legacy_path))
+        page_path = normalize_web_path(page_path) + "/"
+        filepath, page_source = load_page_source(page_path, comic_folder, comic_info)
+        if page_source is None or filepath is None:
+            logger.warning("%s is missing its info.ini/info.toml file. Skipping", page_path)
             continue
         try:
-            post_date = tz_info.localize(datetime.strptime(page_info["Post date"], date_format))
+            post_date = tz_info.localize(datetime.fromisoformat(page_source.post_date))
         except ValueError as e:
             raise ValueError(
-                f"Invalid 'Post date' in {filepath}: {page_info['Post date']}\n"
-                f"The date format is '{date_format}'. Ensure the date matches this format exactly (case-sensitive)."
+                f"Invalid post_date in {filepath}: {page_source.post_date}\n"
+                "Expected an ISO YYYY-MM-DD date after source loading."
             ) from e
         if post_date > local_time and not publish_all_comics:
             scheduled_post_count += 1
             if delete_scheduled_posts:
                 logger.warning("Deleting scheduled page %s", page_path)
                 shutil.rmtree(page_path)
-        else:
-            if "image_file_names" in page_info:
-                validate_page_image_files(page_path, filepath, page_info["image_file_names"])
-            else:
-                filenames = page_info.get("Filenames") or page_info.get("Filename", "")
-                if filenames:
-                    page_info["image_file_names"] = utils.str_to_list(filenames)
-                    validate_page_image_files(page_path, filepath, page_info["image_file_names"])
-                else:
-                    image_files = []
-                    for filename in os.listdir(page_path):
-                        if filename.startswith("_"):
-                            continue
-                        if re.search(r"\.(jpg|jpeg|png|tif|tiff|gif|bmp|webp|webv|svg|eps)$", filename):
-                            image_files.append(filename)
-                    page_info["image_file_names"] = sorted(image_files)
-            page_info["page_name"] = os.path.basename(os.path.normpath(page_path))
-            page_info["Storyline"] = page_info.get("Storyline", "")
-            page_info["Characters"] = normalize_list_field(page_info.get("Characters", ""))
-            page_info["Tags"] = normalize_list_field(page_info.get("Tags", ""))
-            for key in page_info.copy():
-                if key.startswith("!"):
-                    del page_info[key]
-            transcripts = get_transcripts(comic_folder, comic_info, page_info["page_name"], page_info)
-            page_info["transcript_languages"] = list(transcripts.keys())
-            hook_result = run_hook(theme, "extra_page_info_processing",
-                                   [comic_folder, comic_info, page_path, page_info])
-            if hook_result:
-                page_info = hook_result
-            logger.debug("Page info: %s", page_info)
-            page_info_list.append(page_info)
+            continue
 
-    page_info_list = sorted(
-        page_info_list,
-        key=lambda x: (strptime(x["Post date"], date_format), x["page_name"])
+        page = build_discovered_page(comic_folder, comic_info, page_path, page_source)
+        hook_result = run_hook(
+            theme,
+            "extra_page_info_processing",
+            [comic_folder, comic_info, page_path, page],
+        )
+        if hook_result is not None:
+            page = hook_result
+        logger.debug("Page: %s", page)
+        pages.append(page)
+
+    pages.sort(key=lambda page: (page.post_date, page.page_name))
+    return pages, scheduled_post_count
+
+
+def build_discovered_page(
+        comic_folder: str,
+        comic_info: RawConfigParser,
+        page_path: str,
+        source: PageSource,
+) -> ComicPage:
+    page_name = os.path.basename(os.path.normpath(page_path))
+    validate_unique_filenames([image.filename for image in source.images])
+    fallback = get_image_title_fallback(comic_info)
+    page_title = resolve_page_title(source.title, [image.filename for image in source.images], page_name)
+    if source.title is not None and not source.title.strip():
+        logger.warning("Page %s has a blank title; using fallback title %r", page_name, page_title)
+
+    page_dir = f"your_content/{comic_folder}comics/{page_name}/"
+    images = []
+    resolved_source_paths = set()
+    for image_source in source.images:
+        filename, source_path = validate_page_asset_path(page_path, image_source.filename, "comic image")
+        resolved_source_path = os.path.normcase(source_path)
+        if resolved_source_path in resolved_source_paths:
+            raise ValueError(f"Duplicate comic image declaration: {filename}")
+        resolved_source_paths.add(resolved_source_path)
+        image_id = build_image_id(comic_folder, page_name, filename)
+        thumbnail_path, thumbnail_explicit, thumbnail_disabled = resolve_explicit_thumbnail(
+            page_path,
+            page_dir,
+            image_source.thumbnail,
+            f"thumbnail for image {filename}",
+        )
+        images.append(
+            ComicImage(
+                id=image_id,
+                filename=filename,
+                source_path=source_path,
+                web_path=normalize_web_path(page_dir + filename),
+                anchor_id=build_image_anchor_id(image_id),
+                title=resolve_image_title(image_source.title, source.title, filename, fallback),
+                alt_text=resolve_image_alt_text(image_source.alt_text, source.alt_text),
+                thumbnail_path=thumbnail_path,
+                thumbnail_explicit=thumbnail_explicit,
+                thumbnail_disabled=thumbnail_disabled,
+            )
+        )
+
+    thumbnail_path, thumbnail_explicit, thumbnail_disabled = resolve_explicit_thumbnail(
+        page_path,
+        page_dir,
+        source.thumbnail,
+        f"thumbnail for page {page_name}",
     )
-    return page_info_list, scheduled_post_count
+    transcripts = {}
+    if comic_info.getboolean("Transcripts", "Enable transcripts"):
+        transcript_sources = sort_transcript_languages(source.transcripts, comic_info)
+        transcripts = render_transcript_sources(transcript_sources)
+
+    display_post_date = iso_date_to_legacy(
+        source.post_date,
+        comic_info.get("Comic Settings", "Date format"),
+    )
+    base_dir = utils.BASE_DIRECTORY.rstrip("/")
+    page_url = f"{base_dir}/{comic_folder}comic/{page_name}/"
+    return ComicPage(
+        id=build_page_id(comic_folder, page_name),
+        comic_id=normalize_comic_id(comic_folder),
+        comic_folder=comic_folder,
+        page_name=page_name,
+        page_dir=page_dir,
+        url=page_url,
+        title=page_title,
+        post_date=source.post_date,
+        display_post_date=display_post_date,
+        archive_post_date=display_post_date,
+        images=images,
+        thumbnail_path=thumbnail_path,
+        thumbnail_explicit=thumbnail_explicit,
+        thumbnail_disabled=thumbnail_disabled,
+        storyline=source.storyline,
+        characters=list(source.characters),
+        tags=list(source.tags),
+        transcript_languages=list(transcripts),
+        post_md=source.post_text,
+        transcripts=transcripts,
+        social_media_source=dict(source.social_media),
+        extra=dict(source.extra),
+        on_comic_click=comic_info.get(
+            "Comic Settings",
+            "On comic click",
+            fallback="Next comic",
+        ).lower(),
+    )
 
 
-def public_page_info(page_info: Dict) -> Dict:
-    return {
-        key: value
-        for key, value in page_info.items()
-        if key not in INTERNAL_PAGE_INFO_FIELDS
-    }
-
-
-def save_page_info_json_file(comic_folder: str, page_info_list: List, scheduled_post_count: int):
-    d = {
-        "page_info_list": [public_page_info(page_info) for page_info in page_info_list],
-        "scheduled_post_count": scheduled_post_count
-    }
-    output_dir = utils.get_output_dir()
-    os.makedirs(os.path.join(output_dir, f"{comic_folder}comic"), exist_ok=True)
-    with open(os.path.join(output_dir, f"{comic_folder}comic/page_info_list.json"), "w") as f:
-        f.write(json.dumps(d))
+def resolve_explicit_thumbnail(
+        page_path: str,
+        page_dir: str,
+        configured_thumbnail: str | None,
+        description: str,
+) -> tuple[str | None, bool, bool]:
+    if configured_thumbnail is None:
+        return None, False, False
+    if configured_thumbnail == "":
+        return None, False, True
+    filename, _source_path = validate_page_asset_path(page_path, configured_thumbnail, description)
+    return normalize_web_path(page_dir + filename), True, False

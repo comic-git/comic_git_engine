@@ -18,7 +18,9 @@
 | Build pipeline modules      | [`src/build/`](../src/build/)                                               | Purpose-built modules for the build pipeline, including site config, page discovery, comic data assembly, rendering, output handling, and image/transcript helpers. |
 | Shared utilities            | [`src/core/utils.py`](../src/core/utils.py)                                 | Cross-cutting helpers for root discovery, config parsing, path/url building, templating, social media data, and build checkpoints.        |
 | RSS generation              | [`src/integrations/rss.py`](../src/integrations/rss.py)                     | Builds RSS feed jobs and serializes RSS XML for the main comic and Extra Comics.                                                          |
-| Data models                 | [`src/core/models.py`](../src/core/models.py)                               | Small shared dataclasses used to pass build results between steps.                                                                        |
+| Page and image models       | [`src/build/content/page_models.py`](../src/build/content/page_models.py)   | Structured page/image/archive models plus stable identity, anchor, and fallback helpers.                                                   |
+| Shared build models         | [`src/core/models.py`](../src/core/models.py)                               | Small shared dataclasses used to pass per-comic build results between top-level steps.                                                     |
+| Public metadata contract    | [`src/build/content/page_metadata.py`](../src/build/content/page_metadata.py), [`schemas/`](../schemas/) | Serializes resolved page/image data and ships its versioned JSON Schema. |
 | Hooks and external data     | [`src/integrations/`](../src/integrations/)                                 | Theme hooks, RSS integration logic, and webring loading.                                                                                  |
 | Built-in presentation layer | [`templates/`](../templates/), [`css/`](../css/), [`js/`](../js/)           | Default templates, CSS, and JavaScript shipped with the engine. These provide the default site behavior and appearance.                   |
 | Host-repo content layer     | `your_content/` in the loading `comic_git` repo                             | User-controlled data source: comic config, page metadata, images, themes, transcripts, home page content, and Extra Comic content.        |
@@ -75,13 +77,15 @@ This structure is intentionally file-based and low-friction:
 1. A host `comic_git` repo invokes the engine locally or through the reusable [`build_site.yaml`](../.github/workflows/build_site.yaml) workflow.
 2. [`src/build/build_site.py`](../src/build/build_site.py) finds the project root, reads `your_content/comic_info.ini`, resolves the site URL, loads theme hooks, and orchestrates the build order for Extra Comics and the main comic.
 3. [`src/build/site_builder.py`](../src/build/site_builder.py) coordinates the per-comic build pipeline using the lower-level modules.
-4. [`src/build/page_discovery.py`](../src/build/page_discovery.py) scans `your_content/comics/` and any configured Extra Comics for page folders, scheduling state, and page metadata, then writes `page_info_list.json`.
-5. [`src/build/comic_data.py`](../src/build/comic_data.py) normalizes page metadata into full comic data dictionaries, including post text, transcripts, navigation IDs, derived titles, and other template variables.
-6. [`src/build/images.py`](../src/build/images.py) optionally creates thumbnails and other image derivatives.
-7. [`src/build/rendering.py`](../src/build/rendering.py) renders Jinja templates from the built-in template set and any theme overrides into HTML output.
-8. [`src/integrations/rss.py`](../src/integrations/rss.py) builds any enabled RSS feeds for the main comic and Extra Comics.
-9. [`src/build/output/site_output.py`](../src/build/output/site_output.py) handles cleanup, staging into the configured output directory, and copying any host-managed root files from `your_content/site_root/` into the built site root.
-10. The host repo then publishes that output, typically to GitHub Pages and optionally to Neocities.
+4. [`src/build/content/page_sources.py`](../src/build/content/page_sources.py) parses legacy INI or TOML into source-only page/image models, preserving omitted versus explicitly blank values.
+5. [`src/build/content/page_discovery.py`](../src/build/content/page_discovery.py) scans page folders, applies scheduling and source precedence, validates image paths, resolves fallbacks once, and constructs ordered `ComicPage`/`ComicImage` models.
+6. [`src/build/content/comic_data.py`](../src/build/content/comic_data.py) enriches pages with navigation, post HTML, archive dates, and the structured hook boundary.
+7. [`src/build/output/images.py`](../src/build/output/images.py) resolves page and image thumbnails according to archive mode, generation, explicit-asset, and overwrite policies.
+8. [`src/build/content/page_metadata.py`](../src/build/content/page_metadata.py) writes resolved public metadata after thumbnail processing. Every build also deploys [`schemas/page_info_list.schema.json`](../schemas/page_info_list.schema.json).
+9. [`src/build/output/rendering.py`](../src/build/output/rendering.py) projects narrow template contexts and renders built-in or theme templates.
+10. [`src/integrations/rss.py`](../src/integrations/rss.py) builds page-level RSS items from structured pages for the main comic and Extra Comics.
+11. [`src/build/output/site_output.py`](../src/build/output/site_output.py) handles cleanup, staging into the configured output directory, and copying any host-managed root files from `your_content/site_root/` into the built site root.
+12. The host repo then publishes that output, typically to GitHub Pages and optionally to Neocities.
 
 ## Key Dependencies
 
@@ -99,15 +103,17 @@ This structure is intentionally file-based and low-friction:
 ## API / Data Model
 
 - API spec: none; this repo does not expose a network API
-- Data models: [`src/core/models.py`](../src/core/models.py)
+- Internal page/image models: [`src/build/content/page_models.py`](../src/build/content/page_models.py)
+- Public page metadata schema: [`schemas/page_info_list.schema.json`](../schemas/page_info_list.schema.json)
 - Primary host-repo config/data inputs:
   - `your_content/comic_info.ini`
-  - `your_content/comics/*/info.ini`
+  - `your_content/comic_info.toml`
+  - `your_content/comics/*/info.ini|info.toml`
   - `your_content/<extra-comic>/comic_info.ini`
 
 ## Features
 
-No feature-specific folders have been created yet in [`docs/features/`](features/README.md).
+Feature intent and product rules are indexed in [`docs/features/`](features/README.md).
 
 ## Design Decisions
 

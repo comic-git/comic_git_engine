@@ -1,22 +1,24 @@
+import hashlib
 import logging
 import os
 from configparser import RawConfigParser
-from typing import Dict, List
 
 from PIL import Image
+
+from build.content.page_models import ArchiveEntryMode, ComicImage, ComicPage, normalize_web_path
+from build.content.site_config import get_archive_entry_mode
 
 logger = logging.getLogger(__name__)
 
 
-def resize(im: Image, size: str) -> Image:
+def resize(im: Image.Image, size: str) -> Image.Image:
     image_width, image_height = im.size
     if "," in size:
         w, h = size.strip().split(",")
         w, h = w.strip(), h.strip()
     elif size.endswith("%"):
-        size = float(size.strip().strip("%"))
-        size = size / 100
-        w, h = image_width * size, image_height * size
+        scale = float(size.strip().strip("%")) / 100
+        w, h = image_width * scale, image_height * scale
     elif size.endswith("h"):
         h = int(size[:-1].strip())
         w = image_width / image_height * h
@@ -32,11 +34,10 @@ def resize(im: Image, size: str) -> Image:
     return im.resize((int(w), int(h)))
 
 
-def save_image(im, path):
+def save_image(im, path: str) -> None:
     try:
-        if path.lower().endswith("jpg") or path.lower().endswith("jpeg"):
-            if im.mode != 'RGB':
-                im = im.convert('RGB')
+        if path.lower().endswith(("jpg", "jpeg")) and im.mode != "RGB":
+            im = im.convert("RGB")
         im.save(path)
     except OSError as e:
         if str(e) == "cannot write mode RGBA as JPEG":
@@ -47,25 +48,80 @@ def save_image(im, path):
             raise
 
 
-def create_comic_thumbnail(comic_info, comic_page_path):
-    section = "Image Reprocessing"
-    comic_page_dir = os.path.dirname(comic_page_path)
-    comic_page_name, _comic_page_ext = os.path.splitext(os.path.basename(comic_page_path))
-    with open(comic_page_path, "rb") as f:
+def create_comic_thumbnail(
+        comic_info: RawConfigParser,
+        comic_image_path: str,
+        thumbnail_path: str,
+) -> None:
+    overwrite = comic_info.getboolean(
+        "Image Reprocessing",
+        "Overwrite existing images",
+        fallback=False,
+    )
+    if os.path.isfile(thumbnail_path) and not overwrite:
+        return
+    logger.info("Creating thumbnail for %s", os.path.basename(comic_image_path))
+    with open(comic_image_path, "rb") as f:
         im = Image.open(f)
-        thumbnail_path = os.path.join(comic_page_dir, "_thumbnail.jpg")
-        if comic_info.getboolean(section, "Overwrite existing images") or not os.path.isfile(thumbnail_path):
-            logger.info("Creating thumbnail for %s", comic_page_name)
-            thumb_im = resize(im, comic_info.get(section, "Thumbnail size"))
-            save_image(thumb_im, thumbnail_path)
+        thumbnail = resize(im, comic_info.get("Image Reprocessing", "Thumbnail size"))
+        save_image(thumbnail, thumbnail_path)
 
 
-def process_comic_images(comic_info: RawConfigParser, comic_data_dicts: List[Dict]):
-    if comic_info.getboolean("Image Reprocessing", "Create thumbnails"):
-        for comic_data in comic_data_dicts:
-            if not comic_data["comic_paths"]:
-                raise ValueError(
-                    f"No images found for page '{comic_data['page_name']}'. Either add an image for that page, or disable "
-                    f"the 'Create thumbnails' option in the [Image Reprocessing] section."
-                )
-            create_comic_thumbnail(comic_info, comic_data["comic_paths"][0])
+def process_comic_images(comic_info: RawConfigParser, pages: list[ComicPage]) -> None:
+    create_thumbnails = comic_info.getboolean(
+        "Image Reprocessing",
+        "Create thumbnails",
+        fallback=False,
+    )
+    generate_image_thumbnails = (
+        create_thumbnails
+        and get_archive_entry_mode(comic_info) == ArchiveEntryMode.IMAGES
+        and comic_info.getboolean("Archive", "Use thumbnails", fallback=False)
+    )
+    for page in pages:
+        resolve_page_thumbnail(comic_info, page, create_thumbnails)
+        for index, image in enumerate(page.images):
+            resolve_image_thumbnail(
+                comic_info,
+                page,
+                image,
+                index,
+                generate_image_thumbnails,
+            )
+
+
+def resolve_page_thumbnail(
+        comic_info: RawConfigParser,
+        page: ComicPage,
+        create_thumbnails: bool,
+) -> None:
+    if page.thumbnail_disabled or page.thumbnail_explicit:
+        return
+    target = normalize_web_path(page.page_dir + "_thumbnail.jpg")
+    if page.images and create_thumbnails:
+        create_comic_thumbnail(comic_info, page.images[0].source_path, target)
+        page.thumbnail_path = target
+    else:
+        page.thumbnail_path = target if os.path.isfile(target) else None
+
+
+def resolve_image_thumbnail(
+        comic_info: RawConfigParser,
+        page: ComicPage,
+        image: ComicImage,
+        index: int,
+        generate_image_thumbnails: bool,
+) -> None:
+    if image.thumbnail_disabled or image.thumbnail_explicit:
+        return
+    if index == 0 and page.thumbnail_path is not None:
+        image.thumbnail_path = page.thumbnail_path
+        return
+    target = normalize_web_path(
+        page.page_dir + f"_thumbnail_{hashlib.sha256(image.id.encode('utf-8')).hexdigest()}.jpg"
+    )
+    if generate_image_thumbnails:
+        create_comic_thumbnail(comic_info, image.source_path, target)
+        image.thumbnail_path = target
+    else:
+        image.thumbnail_path = target if os.path.isfile(target) else None

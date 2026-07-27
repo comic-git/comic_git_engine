@@ -144,47 +144,53 @@ name = "Extra Comic"
         self.assertFalse(extra_info.has_section("Pages"))
 
 
-class TestLoadPageInfo(TestCase):
+class TestLoadPageSource(TestCase):
     def make_comic_info(self):
         comic_info = RawConfigParser()
         comic_info.add_section("Comic Settings")
         comic_info.set("Comic Settings", "Date format", "%B %d, %Y")
         return comic_info
 
-    @patch(MUT + "load_legacy_page_info")
+    @patch(MUT + "load_legacy_page_source")
     @patch(MUT + "os.path.isfile", side_effect=lambda path: path.endswith("info.toml"))
-    @patch(MUT + "load_page_info_toml")
+    @patch(MUT + "load_page_source_from_toml")
     def test_toml_wins_when_available(self, toml_loader, _mock_isfile, legacy_loader):
-        page_info = {"Post date": "January 01, 2020"}
-        toml_loader.return_value = page_info
+        page_source = object()
+        toml_loader.return_value = page_source
 
-        actual_path, actual_page_info = loaders.load_page_info("your_content/comics/001/", self.make_comic_info())
+        actual_path, actual_page_source = loaders.load_page_source(
+            "your_content/comics/001/", "", self.make_comic_info()
+        )
 
         self.assertTrue(actual_path.endswith("info.toml"))
-        self.assertEqual(page_info, actual_page_info)
+        self.assertIs(page_source, actual_page_source)
         legacy_loader.assert_not_called()
 
-    @patch(MUT + "load_legacy_page_info")
+    @patch(MUT + "load_legacy_page_source")
     @patch(MUT + "os.path.isfile", side_effect=lambda path: path.endswith("info.ini"))
-    @patch(MUT + "load_page_info_toml")
+    @patch(MUT + "load_page_source_from_toml")
     def test_legacy_used_when_toml_missing(self, toml_loader, _mock_isfile, legacy_loader):
-        page_info = {"Post date": "January 01, 2020"}
-        legacy_loader.return_value = page_info
+        page_source = object()
+        legacy_loader.return_value = page_source
 
-        actual_path, actual_page_info = loaders.load_page_info("your_content/comics/001/", self.make_comic_info())
+        actual_path, actual_page_source = loaders.load_page_source(
+            "your_content/comics/001/", "", self.make_comic_info()
+        )
 
         self.assertTrue(actual_path.endswith("info.ini"))
-        self.assertEqual(page_info, actual_page_info)
+        self.assertIs(page_source, actual_page_source)
         toml_loader.assert_not_called()
         legacy_loader.assert_called_once()
 
-    @patch(MUT + "load_legacy_page_info")
+    @patch(MUT + "load_legacy_page_source")
     @patch(MUT + "os.path.isfile", return_value=False)
-    @patch(MUT + "load_page_info_toml")
+    @patch(MUT + "load_page_source_from_toml")
     def test_returns_none_when_no_supported_files_exist(self, toml_loader, _mock_isfile, legacy_loader):
-        actual_path, actual_page_info = loaders.load_page_info("your_content/comics/001/", self.make_comic_info())
+        actual_path, actual_page_source = loaders.load_page_source(
+            "your_content/comics/001/", "", self.make_comic_info()
+        )
 
         self.assertIsNone(actual_path)
-        self.assertIsNone(actual_page_info)
+        self.assertIsNone(actual_page_source)
         toml_loader.assert_not_called()
         legacy_loader.assert_not_called()

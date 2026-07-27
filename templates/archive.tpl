@@ -4,58 +4,49 @@
 {# This is the start of the `content` block. It's part of the <body> of the page. This is where all the visible
    parts of the website after the links bar and before the "Powered by comic_git" footer go. #}
 {% block content %}
-    {%- if storylines -%}
-        <div id="blurb">
-        {# If blocks let you check the value of a variable and then generate different HTML depending on that variable.
-           The if block below will check the `use_thumbnails` variable. If it's True, the template will generate a grid
-           of thumbnail images for each comic in the archive, each linking to the comic page.
-           If it's False, the template will generate a simple HTML list of links to each comic in the archive.#}
+    {%- if storylines %}
+    <div id="blurb">
         {%- if use_thumbnails %}
-            {%- for name, pages in storylines.items() %}
-            {%- if pages %}
-            {# `| replace(" ", "-")` takes the value in the variable, in this case `storyline.name`, and replaces all
-               spaces with hyphens. This is important when building links to other parts of the site. #}
+            {%- for name, entries in storylines.items() %}
+            {%- if entries %}
             {%- if storylines.keys() | list != ["Uncategorized"] %}
             <a id="{{ name | replace(' ', '-') }}"></a>
             <h2 class="archive-section" id="archive-section-{{ name | replace(' ', '-') }}">{{ name }}</h2>
             {%- endif %}
             <div class="archive-grid">
-            {# For loops let you take a list of a values and do something for each of those values. In this case,
-               it runs through list of all the pages in a particular storyline (Chapter 1, Chapter 2, etc) and creates
-               a tiny thumbnail image with a title and post date, all of which link to that comic page if clicked. #}
-            {%- for page in pages %}
-                <a href="{{ comic_base_dir }}/comic/{{ page.page_name }}/">
-                <div class="archive-thumbnail">
-                    <div class="archive-thumbnail-page"><img src="{{ base_dir }}/{{ page.thumbnail_path }}"></div>
-                    <div class="archive-thumbnail-title">{{ page._title }}</div>
-                    <div class="archive-thumbnail-post-date">{{ page.archive_post_date }}</div>
-                </div>
+                {%- for entry in entries %}
+                <a href="{{ entry.page_url | e }}{% if entry.image %}#{{ entry.image.anchor_id }}{% endif %}">
+                    <div class="archive-thumbnail{% if not entry.thumbnail_path %} archive-thumbnail-text-only{% endif %}">
+                        {%- if entry.thumbnail_path %}
+                        <div class="archive-thumbnail-page">
+                            <img src="{{ base_dir }}/{{ entry.thumbnail_path | e }}" alt="">
+                        </div>
+                        {%- endif %}
+                        <div class="archive-thumbnail-title">{{ entry.title }}</div>
+                        <div class="archive-thumbnail-post-date">{{ entry.post_date }}</div>
+                    </div>
                 </a>
-            {%- endfor %}
+                {%- endfor %}
             </div>
             {%- endif %}
             {%- endfor %}
         {%- else %}
             <ul>
-            {%- for name, pages in storylines.items() %}
-                {%- if pages %}
+            {%- for name, entries in storylines.items() %}
+                {%- if entries %}
                     {%- if storylines.keys() | list != ["Uncategorized"] %}
-                    <li><a id="{{ name | replace(' ', '-') }}"></a>{{ name }}
-                    <ul>
+                    <li><a id="{{ name | replace(' ', '-') }}"></a>{{ name }}<ul>
                     {%- endif %}
-                    {%- for page in pages %}
-                        <li><a href="{{ comic_base_dir }}/comic/{{ page.page_name }}/">{{ page._title }}</a> -- {{ page._post_date }}</li>
+                    {%- for entry in entries %}
+                        <li><a href="{{ entry.page_url | e }}{% if entry.image %}#{{ entry.image.anchor_id }}{% endif %}">{{ entry.title }}</a> -- {{ entry.post_date }}</li>
                     {%- endfor %}
-                    {%- if storylines.keys() | list != ["Uncategorized"] %}
-                    </ul>
-                    {%- endif %}
-                </li>
+                    {%- if storylines.keys() | list != ["Uncategorized"] %}</ul></li>{%- endif %}
                 {%- endif %}
             {%- endfor %}
             </ul>
         {%- endif %}
-        </div>
-    {%- else -%}
-        <h3>No comics have been published yet.</h3>
-    {%- endif -%}
+    </div>
+    {%- else %}
+    <h3>No comics have been published yet.</h3>
+    {%- endif %}
 {% endblock %}

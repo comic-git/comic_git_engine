@@ -2,14 +2,16 @@ import logging
 import os
 from collections import OrderedDict
 from configparser import RawConfigParser
-from typing import Dict, List, Optional
+from typing import Optional
 
 from markdown2 import Markdown
 
 from core import utils
-from build.content.comic_data import build_comic_data_dicts
-from build.content.page_discovery import get_page_info_list, save_page_info_json_file
-from build.content.site_config import get_links_list
+from build.content.comic_data import build_comic_pages
+from build.content.page_discovery import discover_pages
+from build.content.page_metadata import save_page_metadata
+from build.content.page_models import ArchiveEntry, ArchiveEntryMode, ComicPage
+from build.content.site_config import get_archive_entry_mode, get_links_list
 from build.output.images import process_comic_images
 from build.output.rendering import write_html_files
 from integrations.hooks import run_hook
@@ -28,24 +30,48 @@ https://comic-git.gitbook.io/documentation/advanced-editing/themes#editing-exist
 -->"""
 
 
-def get_storylines(comic_info: RawConfigParser, comic_data_dicts: List[Dict]) -> OrderedDict:
+def get_storylines(comic_info: RawConfigParser, pages: list[ComicPage]) -> OrderedDict:
     storylines_dict = OrderedDict()
     show_uncategorized = comic_info.getboolean("Archive", "Show Uncategorized comics", fallback=True)
-    for comic_data in comic_data_dicts:
-        storyline = comic_data["_storyline"]
+    entry_mode = get_archive_entry_mode(comic_info)
+    for page in pages:
+        storyline = page.storyline
         if not storyline:
             if not show_uncategorized:
                 continue
             storyline = "Uncategorized"
         if storyline not in storylines_dict.keys():
             storylines_dict[storyline] = []
-        storylines_dict[storyline].append(comic_data.copy())
+        if entry_mode == ArchiveEntryMode.IMAGES and page.images:
+            storylines_dict[storyline].extend(
+                ArchiveEntry(
+                    page_id=page.id,
+                    page_name=page.page_name,
+                    page_url=page.url,
+                    post_date=page.archive_post_date,
+                    title=image.title,
+                    thumbnail_path=image.thumbnail_path,
+                    image=image,
+                )
+                for image in page.images
+            )
+        else:
+            storylines_dict[storyline].append(
+                ArchiveEntry(
+                    page_id=page.id,
+                    page_name=page.page_name,
+                    page_url=page.url,
+                    post_date=page.archive_post_date,
+                    title=page.title,
+                    thumbnail_path=page.thumbnail_path,
+                )
+            )
     if "Uncategorized" in storylines_dict:
         storylines_dict.move_to_end("Uncategorized")
     hooked_storylines_dict = run_hook(
         comic_info.get("Comic Settings", "Theme", fallback="default"),
         "extra_get_storylines_processing",
-        [comic_info, comic_data_dicts, storylines_dict]
+        [comic_info, pages, storylines_dict]
     )
     return hooked_storylines_dict if hooked_storylines_dict is not None else storylines_dict
 
@@ -68,21 +94,27 @@ def build_and_publish_comic_pages(
         delete_scheduled_posts: bool,
         publish_all_comics: bool,
         extra_comics_dict: Optional[dict] = None,
-) -> tuple[list[dict], dict]:
-    page_info_list, scheduled_post_count = get_page_info_list(
+) -> tuple[list[ComicPage], dict]:
+    pages, scheduled_post_count = discover_pages(
         comic_folder, comic_info, delete_scheduled_posts, publish_all_comics
     )
-    logger.debug("Page build order for '%s': %s", comic_folder, [p["page_name"] for p in page_info_list])
+    logger.debug("Page build order for '%s': %s", comic_folder, [page.page_name for page in pages])
     utils.checkpoint(f"Get info for all pages in '{comic_folder}'")
 
-    save_page_info_json_file(comic_folder, page_info_list, scheduled_post_count)
-    utils.checkpoint(f"Save page_info_list.json file in '{comic_folder}'")
+    pages = build_comic_pages(comic_folder, comic_info, pages)
+    utils.checkpoint(f"Enrich comic pages for '{comic_folder}'")
 
-    comic_data_dicts = build_comic_data_dicts(comic_folder, comic_info, page_info_list)
-    utils.checkpoint(f"Build full comic data dicts for '{comic_folder}'")
-
-    process_comic_images(comic_info, comic_data_dicts)
+    process_comic_images(comic_info, pages)
     utils.checkpoint(f"Process comic images in '{comic_folder}'")
+
+    save_page_metadata(
+        comic_folder,
+        comic_info,
+        pages,
+        scheduled_post_count,
+        VERSION,
+    )
+    utils.checkpoint(f"Save page_info_list.json file in '{comic_folder}'")
 
     home_page_text = load_home_page_text(comic_folder)
 
@@ -105,7 +137,7 @@ def build_and_publish_comic_pages(
         "content_base_dir": content_base_dir,
         "links": get_links_list(comic_info),
         "use_thumbnails": comic_info.getboolean("Archive", "Use thumbnails"),
-        "storylines": get_storylines(comic_info, comic_data_dicts),
+        "storylines": get_storylines(comic_info, pages),
         "home_page_text": home_page_text,
         "google_analytics_id": comic_info.get("Google Analytics", "Tracking ID", fallback=""),
         "scheduled_post_count": scheduled_post_count,
@@ -121,12 +153,12 @@ def build_and_publish_comic_pages(
     extra_global_variables = run_hook(
         global_values["theme"],
         "extra_global_values",
-        [comic_folder, comic_info, comic_data_dicts]
+        [comic_folder, comic_info, pages]
     )
     if extra_global_variables:
         global_values.update(extra_global_variables)
     utils.checkpoint(f"Run hook for extra global values in '{comic_folder}'")
 
-    write_html_files(comic_folder, comic_info, comic_data_dicts, global_values)
+    write_html_files(comic_folder, comic_info, pages, global_values)
     utils.checkpoint(f"Write HTML files for '{comic_folder}'")
-    return comic_data_dicts, global_values
+    return pages, global_values

@@ -1,180 +1,119 @@
 import os
 import tempfile
-from collections import OrderedDict
 from configparser import RawConfigParser
 from unittest import TestCase
 from unittest.mock import patch
 
 from build.content import comic_data
+from build.content.page_models import ComicImage, ComicPage
 
 
 MUT = "build.content.comic_data."
 
 
 class TestComicData(TestCase):
-
     def make_comic_info(self):
         comic_info = RawConfigParser()
         comic_info.add_section("Comic Settings")
-        comic_info.set("Comic Settings", "Date format", "%B %d, %Y")
-        comic_info.set("Comic Settings", "On comic click", "Next comic")
         comic_info.set("Comic Settings", "Theme", "default")
         comic_info.add_section("Archive")
         comic_info.set("Archive", "Date format", "%Y-%m-%d")
-        comic_info.add_section("Transcripts")
-        comic_info.set("Transcripts", "Enable transcripts", "True")
         return comic_info
+
+    def make_page(self, name="001", post_md="main body"):
+        image = ComicImage(
+            id=f"main/{name}/page.png",
+            filename="page.png",
+            source_path="page.png",
+            web_path=f"your_content/comics/{name}/page.png",
+            anchor_id="comic-image-id",
+            title="Chapter One",
+            alt_text="Alt",
+        )
+        return ComicPage(
+            id=f"main/{name}",
+            comic_id="main",
+            comic_folder="",
+            page_name=name,
+            page_dir=f"your_content/comics/{name}/",
+            url=f"/comic/{name}/",
+            title="Chapter One",
+            post_date="2024-01-02",
+            display_post_date="January 02, 2024",
+            archive_post_date="January 02, 2024",
+            images=[image],
+            post_md=post_md,
+            extra={"Mood": "tense"},
+        )
 
     def test_format_user_variable_preserves_page_name_and_normalizes_other_keys(self):
         self.assertEqual("_post_date", comic_data.format_user_variable("Post date"))
-        self.assertEqual("_this_page_is_full_of_spiders_1", comic_data.format_user_variable("This page is full of spiders!!1"))
+        self.assertEqual(
+            "_this_page_is_full_of_spiders_1",
+            comic_data.format_user_variable("This page is full of spiders!!1"),
+        )
         self.assertEqual("page_name", comic_data.format_user_variable("page_name"))
 
     def test_get_ids_handles_first_middle_and_last_pages(self):
-        pages = [{"page_name": "001"}, {"page_name": "002"}, {"page_name": "003"}]
+        pages = [self.make_page("001"), self.make_page("002"), self.make_page("003")]
 
-        self.assertEqual(
-            {
-                "first_id": "001",
-                "previous_id": "001",
-                "current_id": "001",
-                "next_id": "002",
-                "last_id": "003",
-            },
-            comic_data.get_ids(pages, 0),
-        )
-        self.assertEqual(
-            {
-                "first_id": "001",
-                "previous_id": "001",
-                "current_id": "002",
-                "next_id": "003",
-                "last_id": "003",
-            },
-            comic_data.get_ids(pages, 1),
-        )
-        self.assertEqual(
-            {
-                "first_id": "001",
-                "previous_id": "002",
-                "current_id": "003",
-                "next_id": "003",
-                "last_id": "003",
-            },
-            comic_data.get_ids(pages, 2),
-        )
+        self.assertEqual("001", comic_data.get_ids(pages, 0)["previous_id"])
+        self.assertEqual("002", comic_data.get_ids(pages, 0)["next_id"])
+        self.assertEqual("003", comic_data.get_ids(pages, 2)["next_id"])
 
     @patch(MUT + "run_hook", return_value=None)
-    @patch(MUT + "get_transcripts", return_value=OrderedDict({"English": "<p>Transcript</p>\n"}))
-    def test_create_comic_data_builds_expected_fields(self, mock_get_transcripts, _mock_run_hook):
+    def test_enrich_comic_page_adds_navigation_archive_date_and_post_wrappers(self, _mock_hook):
         comic_info = self.make_comic_info()
-        page_info = {
-            "page_name": "001",
-            "Post date": "January 02, 2024",
-            "Title": "Chapter One",
-            "Alt text": '<tagged>',
-            "image_file_names": ["page_1.png", "page_2.png"],
-        }
+        page = self.make_page()
         with tempfile.TemporaryDirectory() as temp_dir:
             cwd = os.getcwd()
-            page_dir = os.path.join(temp_dir, "your_content", "comics", "001")
-            os.makedirs(page_dir)
-            files = {
-                os.path.join(temp_dir, "your_content", "before post text.txt"): "before",
-                os.path.join(temp_dir, "your_content", "before post text.html"): "<b>html before</b>",
-                os.path.join(page_dir, "post.txt"): "main body",
-                os.path.join(temp_dir, "your_content", "after post text.txt"): "after",
-                os.path.join(temp_dir, "your_content", "after post text.html"): "<i>html after</i>",
-            }
-            for path, text in files.items():
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-                with open(path, "w", encoding="utf-8") as f:
-                    f.write(text)
+            content_dir = os.path.join(temp_dir, "your_content")
+            os.makedirs(content_dir)
+            with open(os.path.join(content_dir, "before post text.txt"), "w", encoding="utf-8") as f:
+                f.write("before")
+            with open(os.path.join(content_dir, "after post text.html"), "w", encoding="utf-8") as f:
+                f.write("<i>after</i>")
             try:
                 os.chdir(temp_dir)
-                data = comic_data.create_comic_data("", comic_info, page_info, "001", "001", "001", "002", "002")
+                result = comic_data.enrich_comic_page(
+                    "",
+                    comic_info,
+                    page,
+                    "001",
+                    "001",
+                    "001",
+                    "002",
+                    "002",
+                )
             finally:
                 os.chdir(cwd)
 
-        self.assertEqual("Chapter One", data["page_title"])
-        self.assertEqual("Chapter One", data["_title"])
-        self.assertEqual("next comic", data["_on_comic_click"])
-        self.assertEqual("2024-01-02", data["archive_post_date"])
-        self.assertEqual("before\n\n<b>html before</b>\n\nmain body\n\nafter\n\n<i>html after</i>", data["post_md"])
-        self.assertIn("<p>before</p>", data["post_html"])
-        self.assertEqual("&lt;tagged&gt;", data["escaped_alt_text"])
-        self.assertEqual(OrderedDict({"English": "<p>Transcript</p>\n"}), data["transcripts"])
-        self.assertEqual(
-            ["your_content/comics/001/page_1.png", "your_content/comics/001/page_2.png"],
-            data["comic_paths"],
-        )
-        mock_get_transcripts.assert_called_once_with("", comic_info, "001", page_info)
+        self.assertIs(page, result)
+        self.assertEqual("2024-01-02", page.archive_post_date)
+        self.assertEqual("before\n\nmain body\n\n<i>after</i>", page.post_md)
+        self.assertIn("<p>before</p>", page.post_html)
+        self.assertEqual("002", page.next_id)
+        self.assertIs(page, _mock_hook.call_args.args[2][-1])
 
-    @patch(MUT + "run_hook", return_value=None)
-    @patch(MUT + "get_transcripts", return_value=OrderedDict())
-    def test_create_comic_data_uses_filename_and_existing_title_overrides(self, _mock_get_transcripts, _mock_run_hook):
-        comic_info = self.make_comic_info()
-        page_info = {
-            "page_name": "002",
-            "Post date": "January 03, 2024",
-            "image_file_names": ["cover-image.png"],
-            "_title": "Explicit Internal Title",
-            "_on_comic_click": "FIRST COMIC",
-        }
+    @patch(MUT + "run_hook", side_effect=lambda _theme, _name, args: args[-1])
+    def test_build_comic_pages_preserves_order_and_navigation(self, _mock_hook):
+        pages = [self.make_page("001"), self.make_page("002")]
 
-        data = comic_data.create_comic_data("", comic_info, page_info, "001", "001", "002", "003", "003")
+        result = comic_data.build_comic_pages("", self.make_comic_info(), pages)
 
-        self.assertEqual("cover-image", data["page_title"])
-        self.assertEqual("Explicit Internal Title", data["_title"])
-        self.assertEqual("first comic", data["_on_comic_click"])
+        self.assertEqual(["001", "002"], [page.page_name for page in result])
+        self.assertEqual("002", result[0].next_id)
+        self.assertEqual("001", result[1].previous_id)
 
-    @patch(MUT + "run_hook", side_effect=lambda *_args: {"hooked": True, **_args[2][-1]})
-    @patch(MUT + "get_transcripts", return_value=OrderedDict())
-    def test_create_comic_data_applies_hook_result(self, _mock_get_transcripts, _mock_run_hook):
-        comic_info = self.make_comic_info()
-        page_info = {
-            "page_name": "003",
-            "Post date": "January 04, 2024",
-            "image_file_names": [],
-        }
+    def test_template_context_exposes_structured_images_without_legacy_image_fields(self):
+        page = self.make_page()
+        page.first_id = page.previous_id = page.next_id = page.last_id = "001"
 
-        data = comic_data.create_comic_data("", comic_info, page_info, "001", "002", "003", "003", "003")
+        context = comic_data.page_to_template_context(page)
 
-        self.assertTrue(data["hooked"])
-        self.assertEqual("", data["page_title"])
-
-    @patch(MUT + "run_hook", return_value=None)
-    @patch(MUT + "get_transcripts", return_value=OrderedDict({"English": "<p>Transcript</p>\n"}))
-    def test_create_comic_data_uses_inline_toml_post_text(self, _mock_get_transcripts, _mock_run_hook):
-        comic_info = self.make_comic_info()
-        page_info = {
-            "page_name": "004",
-            "Post date": "January 05, 2024",
-            "image_file_names": ["cover.png"],
-            "_toml_managed": True,
-            "_inline_post_text": "Inline body",
-            "_inline_transcripts": OrderedDict({"English": "Transcript"}),
-        }
-
-        data = comic_data.create_comic_data("", comic_info, page_info, "001", "003", "004", "004", "004")
-
-        self.assertEqual("Inline body", data["post_md"])
-        self.assertIn("<p>Inline body</p>", data["post_html"])
-
-    @patch(MUT + "create_comic_data")
-    def test_build_comic_data_dicts_preserves_order_and_navigation_ids(self, mock_create_comic_data):
-        comic_info = self.make_comic_info()
-        page_info_list = [
-            {"page_name": "001", "Post date": "January 01, 2024"},
-            {"page_name": "002", "Post date": "January 02, 2024"},
-        ]
-        mock_create_comic_data.side_effect = lambda comic_folder, comic_info, page_info, **ids: {
-            "page_name": page_info["page_name"],
-            **ids,
-        }
-
-        data = comic_data.build_comic_data_dicts("", comic_info, page_info_list)
-
-        self.assertEqual(["001", "002"], [item["page_name"] for item in data])
-        self.assertEqual("001", data[0]["current_id"])
-        self.assertEqual("002", data[1]["current_id"])
+        self.assertEqual(page.images, context["images"])
+        self.assertEqual("tense", context["_mood"])
+        self.assertNotIn("image_file_names", context)
+        self.assertNotIn("comic_paths", context)
+        self.assertNotIn("escaped_alt_text", context)
+        self.assertNotIn("thumbnail_path", context)

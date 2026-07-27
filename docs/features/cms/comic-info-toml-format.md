@@ -71,6 +71,8 @@ allow_missing_variables_in_templates = false
 date_format = "%B %d, %Y"
 use_thumbnails = true
 show_uncategorized_comics = true
+entry_mode = "pages"
+image_title_fallback = "page_title"
 
 [navigation]
 use_images = false
@@ -184,6 +186,8 @@ exclude_own_comic_from_members = false
 | `Archive`            | `Date format`                          | `archive.date_format`                        |
 | `Archive`            | `Use thumbnails`                       | `archive.use_thumbnails`                     |
 | `Archive`            | `Show Uncategorized comics`            | `archive.show_uncategorized_comics`          |
+| `Archive`            | `Entry mode`                            | `archive.entry_mode`                         |
+| `Archive`            | `Image title fallback`                  | `archive.image_title_fallback`               |
 | `Navigation Bar`     | `Use images`                           | `navigation.use_images`                      |
 | `Navigation Bar`     | `Above comic`                          | `navigation.above_comic`                     |
 | `Navigation Bar`     | `Below comic`                          | `navigation.below_comic`                     |
@@ -220,6 +224,11 @@ exclude_own_comic_from_members = false
 - `engine.version` is read by the reusable build workflow before `comic_git_engine` is available in the host repo, so workflow parsing must support both `comic_info.ini` and `comic_info.toml`.
 - Empty strings and default-looking values in the example represent supported keys and legacy-compatible values, not required file contents.
 - Optional values may be omitted when the engine can provide the same behavior from code defaults.
+- `archive.entry_mode` accepts `pages` or `images`; `pages` preserves one archive entry per publishing page.
+- `archive.image_title_fallback` accepts `page_title` or `filename`.
+- `image_processing.overwrite_existing_images` regenerates conventional page
+  and identity-derived image thumbnails. Explicitly configured thumbnail files
+  remain user-owned and are never overwritten.
 - Migration may preserve unmapped legacy config values under a `[legacy]` table of section tables. That is a compatibility escape hatch for existing custom data, not the preferred home for new CMS-owned settings.
 - A `[legacy]` entry may not duplicate a value supplied through a first-class TOML field, link, or page. Collisions are rejected so legacy compatibility data cannot silently overwrite first-class config.
 - The final CMS UI may hide many of these fields even if the TOML schema supports them.

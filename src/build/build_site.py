@@ -71,7 +71,7 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
         extra_comic_output_dir = os.path.join(utils.get_output_dir(), extra_comic)
         if extra_comic_output_dir:
             os.makedirs(extra_comic_output_dir, exist_ok=True)
-        comic_data_dicts, extra_global_values = build_and_publish_comic_pages(
+        pages, extra_global_values = build_and_publish_comic_pages(
             comic_url, extra_comic.strip("/") + "/", extra_comic_info, delete_scheduled_posts,
             publish_all_comics
         )
@@ -79,21 +79,21 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
             ComicBuildResult(
                 comic_folder=extra_comic.strip("/") + "/",
                 comic_info=extra_comic_info,
-                comic_data_dicts=comic_data_dicts,
+                pages=pages,
                 global_values=extra_global_values,
             )
         )
-        extra_comic_values[extra_comic] = comic_data_dicts[-1] if comic_data_dicts else {}
+        extra_comic_values[extra_comic] = pages[-1] if pages else {}
 
     # Build and publish pages for the main comic
     logger.info("Building main comic")
-    comic_data_dicts, global_values = build_and_publish_comic_pages(
+    pages, global_values = build_and_publish_comic_pages(
         comic_url, "", comic_info, delete_scheduled_posts, publish_all_comics, extra_comic_values
     )
     main_comic_result = ComicBuildResult(
         comic_folder="",
         comic_info=comic_info,
-        comic_data_dicts=comic_data_dicts,
+        pages=pages,
         global_values=global_values,
     )
     comic_results.append(main_comic_result)
@@ -110,7 +110,7 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
     copy_site_root_files(output_dir)
     checkpoint("Copy site_root files")
 
-    run_hook(theme, "postprocess", [comic_info, comic_data_dicts, global_values])
+    run_hook(theme, "postprocess", [comic_info, pages, global_values])
 
     checkpoint("Postprocessing hook")
 

@@ -5,6 +5,8 @@ from unittest.mock import call, patch
 
 import core.models as models
 from build import build_site
+from build import site_builder
+from build.content.page_models import ArchiveEntryMode, ComicImage, ComicPage
 
 
 COMIC_URL = "https://ryanvilbrandt.github.io/comic_git_dev"
@@ -43,16 +45,16 @@ class TestMain(TestCase):
         m = get_mock_dict(_mocks)
         comic_info = self.make_comic_info()
         m["load_main_comic_info"].return_value = comic_info
-        comic_data_dicts = [{"page_name": "Page 1"}]
+        pages = [{"page_name": "Page 1"}]
         global_values = {"theme": "default"}
-        m["build_and_publish_comic_pages"].return_value = (comic_data_dicts, global_values)
+        m["build_and_publish_comic_pages"].return_value = (pages, global_values)
         feed_job = object()
         m["get_rss_feed_jobs"].return_value = [feed_job]
 
         build_site.main()
 
         m["get_rss_feed_jobs"].assert_called_once_with(
-            [models.ComicBuildResult("", comic_info, comic_data_dicts, global_values)]
+            [models.ComicBuildResult("", comic_info, pages, global_values)]
         )
         m["build_rss_feed_from_job"].assert_called_once_with(feed_job)
         m["copy_output_assets"].assert_called_once_with("build")
@@ -163,3 +165,77 @@ class TestCliArgs(TestCase):
             build_site.apply_cli_environment_overrides(args)
 
             self.assertEqual("env_output", os.environ["OUTPUT_DIR"])
+
+
+class TestArchiveStorylines(TestCase):
+    def make_config(self, mode=ArchiveEntryMode.PAGES):
+        config = RawConfigParser()
+        config.add_section("Archive")
+        config.set("Archive", "Entry mode", mode.value)
+        config.set("Archive", "Show Uncategorized comics", "True")
+        config.add_section("Comic Settings")
+        config.set("Comic Settings", "Theme", "default")
+        return config
+
+    def make_page(self, name="001", images=2):
+        comic_images = [
+            ComicImage(
+                id=f"main/{name}/page-{index}.png",
+                filename=f"page-{index}.png",
+                source_path=f"page-{index}.png",
+                web_path=f"your_content/comics/{name}/page-{index}.png",
+                anchor_id=f"anchor-{index}",
+                title=f"Image {index}",
+                alt_text="",
+                thumbnail_path=f"thumb-{index}.jpg",
+            )
+            for index in range(images)
+        ]
+        return ComicPage(
+            id=f"main/{name}",
+            comic_id="main",
+            comic_folder="",
+            page_name=name,
+            page_dir=f"your_content/comics/{name}/",
+            url=f"/comic/{name}/",
+            title=f"Page {name}",
+            post_date="2024-01-01",
+            display_post_date="January 01, 2024",
+            archive_post_date="Jan 1",
+            images=comic_images,
+            thumbnail_path="page-thumb.jpg",
+            storyline="Arc",
+        )
+
+    @patch("build.site_builder.run_hook", return_value=None)
+    def test_page_mode_is_default_and_emits_one_entry_per_page(self, mock_hook):
+        page = self.make_page()
+        storylines = site_builder.get_storylines(self.make_config(), [page])
+
+        self.assertEqual(1, len(storylines["Arc"]))
+        entry = storylines["Arc"][0]
+        self.assertEqual("Page 001", entry.title)
+        self.assertEqual("page-thumb.jpg", entry.thumbnail_path)
+        self.assertIsNone(entry.image)
+        self.assertIs(page, mock_hook.call_args.args[2][1][0])
+        self.assertIs(entry, mock_hook.call_args.args[2][2]["Arc"][0])
+
+    @patch("build.site_builder.run_hook", return_value=None)
+    def test_image_mode_emits_ordered_direct_image_entries(self, _mock_hook):
+        storylines = site_builder.get_storylines(
+            self.make_config(ArchiveEntryMode.IMAGES),
+            [self.make_page()],
+        )
+
+        self.assertEqual(["Image 0", "Image 1"], [entry.title for entry in storylines["Arc"]])
+        self.assertEqual(["anchor-0", "anchor-1"], [entry.image.anchor_id for entry in storylines["Arc"]])
+
+    @patch("build.site_builder.run_hook", return_value=None)
+    def test_image_mode_retains_one_entry_for_no_image_page(self, _mock_hook):
+        storylines = site_builder.get_storylines(
+            self.make_config(ArchiveEntryMode.IMAGES),
+            [self.make_page(images=0)],
+        )
+
+        self.assertEqual(1, len(storylines["Arc"]))
+        self.assertIsNone(storylines["Arc"][0].image)

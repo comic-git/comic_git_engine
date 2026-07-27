@@ -20,6 +20,8 @@ STRING_OPTIONS = {
     ("site", "comic_subdirectory"): ("Comic Settings", "Comic subdirectory"),
     ("site", "on_comic_click"): ("Comic Settings", "On comic click"),
     ("archive", "date_format"): ("Archive", "Date format"),
+    ("archive", "entry_mode"): ("Archive", "Entry mode"),
+    ("archive", "image_title_fallback"): ("Archive", "Image title fallback"),
     ("transcripts", "folder"): ("Transcripts", "Transcripts folder"),
     ("transcripts", "default_language"): ("Transcripts", "Default language"),
     ("image_processing", "thumbnail_size"): ("Image Reprocessing", "Thumbnail size"),

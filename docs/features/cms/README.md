@@ -14,21 +14,23 @@ It includes the static admin surface, the TOML-backed content model, migration r
 
 ## Current State & Roadmap
 
-The CMS work is still in active design and PoC implementation.
+The TOML content foundation is implemented, while the browser-based CMS remains
+in active design and PoC work.
 
 Current direction:
 
 - CMS is optional and site-wide
 - the engine remains a static-site build engine
-- TOML becomes the editable source format for CMS-managed content
+- TOML is the editable source format for future CMS-managed content
 - migrated TOML files become the source of truth for the logical items they replace
 - the hosted GitHub App and OAuth backend remain out of scope for the engine repo, but the engine must integrate cleanly with them
 
 Important current behavior:
 
-- TOML loading is intended to be mode-agnostic once a repo is migrated
-- page-level `info.toml` support is the first concrete TOML read path
-- the migration flow is intended to be one-way
+- the engine reads both comic-level `comic_info.toml` and page-level `info.toml`
+- a TOML file takes precedence over the corresponding legacy INI file without merging same-item values
+- the migration command deterministically converts supported legacy comic and page content, with legacy-file deletion kept as an explicit step
+- TOML-backed repos build normally without enabling a CMS
 - admin output is planned but not implemented yet
 
 ## Product Rules

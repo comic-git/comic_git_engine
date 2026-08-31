@@ -53,8 +53,9 @@ inheritance from the normalized model.
 
 `ComicImage.id` is an internal thumbnail-identity input, not a public URL or
 anchor. `ComicImage` does not expose `anchor_id`; renderers derive positional
-anchors from image order. Image-mode `ArchiveEntry` values expose a one-based
-`image_index`, while page and text-only entries use `None`. Hook code should keep
+anchors from image order. Image-mode `ArchiveEntry` values expose their one-based
+`image_index`; image-bearing page-mode entries expose `1`, while text-only entries
+use `None`. Hook code should keep
 the list order intact when positional links must remain stable.
 
 The current roadmap direction is to harden the existing hook contracts over time rather than replace the hook system wholesale.

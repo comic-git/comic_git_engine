@@ -68,6 +68,7 @@ def get_storylines(comic_info: RawConfigParser, pages: list[ComicPage]) -> Order
                     post_date=page.archive_post_date,
                     title=page.title,
                     thumbnail_path=page.thumbnail_path,
+                    image_index=1 if page.images else None,
                 )
             )
     if "Uncategorized" in storylines_dict:

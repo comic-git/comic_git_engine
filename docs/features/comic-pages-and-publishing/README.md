@@ -40,8 +40,10 @@ Important current behavior:
 - image files whose names start with `_` are intentionally excluded from image auto-discovery
 - standalone pages use `#comic-image-N`; infinite scroll derives
   `#<page-name>_<minimum-two-digit-N>` independently
-- the archive defaults to one entry per page, with an optional image mode that
-  links each image entry to its standalone positional anchor
+- the archive defaults to one entry per page; image-bearing page entries link
+  to `#comic-image-1`, while text-only page entries link to `#post-body`
+- optional image mode emits one entry per image and links each entry to its
+  standalone positional anchor
 - image-mode archives include text-only posts by default; `Show text-only posts
   = False` / `archive.show_text_only_posts = false` hides them without changing
   page-mode archives

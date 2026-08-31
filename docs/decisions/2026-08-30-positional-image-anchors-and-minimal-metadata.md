@@ -24,7 +24,7 @@ needs a meaningful destination that does not assume an image wrapper exists.
 
 ## Decision
 
-The ordered `images` array is authoritative for presentation order. Standalone comic images use one-based `comic-image-N` fragments. Infinite-scroll images derive `<page-name>_<minimum-two-digit-N>` fragments at runtime; a bare page-name fragment remains an accepted input alias for that page's first image. Post-oriented archive entries use `post-body`, while tagged listings link to the page URL without a fragment so they represent the complete comic page.
+The ordered `images` array is authoritative for presentation order. Standalone comic images use one-based `comic-image-N` fragments. Infinite-scroll images derive `<page-name>_<minimum-two-digit-N>` fragments at runtime; a bare page-name fragment remains an accepted input alias for that page's first image. Archive targets depend on represented content: image-mode entries link to their image position, image-bearing page-mode entries link to `comic-image-1`, and text-only entries link to `post-body`. Tagged listings link to the page URL without a fragment so they represent the complete comic page.
 
 Public image metadata contains only `filename`, `url`, resolved `title`, resolved `alt_text`, and `thumbnail_url`. It contains no image `id`, anchor, or index. `ComicImage.id` is an internal thumbnail-identity input and must not leak into public metadata. Archive image indices are internal projections, and infinite-scroll chapter controls use a separate image-bearing-page projection rather than archive entries.
 
@@ -33,6 +33,7 @@ Public image metadata contains only `filename`, `url`, resolved `title`, resolve
 - Image links are readable and deterministic from array order, but reordering images intentionally changes their fragments.
 - Renaming an image without moving it preserves its positional fragment.
 - Navigation targets `comic-image-1` for image-bearing pages and `post-body` for text-only pages.
+- Page-mode archive links follow the same primary-content rule instead of always targeting the post body.
 - Themes and integrations derive image position from list order rather than an image ID or stored anchor.
 - Schema version 1 defines the minimal public image shape without an ID, anchor, or index.
 - The internal image ID remains coupled to generated-thumbnail naming; changing that identity requires a separate thumbnail-cache design.

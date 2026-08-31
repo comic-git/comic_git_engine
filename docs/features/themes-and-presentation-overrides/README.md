@@ -37,8 +37,9 @@ Theme overrides that render structured images follow these presentation rules:
 
 - the comic wrapper uses the `.comic-page` class
 - standalone image wrappers use `#comic-image-1`, `#comic-image-2`, and so on
-- post-oriented archive entries target `#post-body`, while tagged entries link
-  to the page without a fragment
+- page-mode archive entries target `#comic-image-1` for image-bearing pages and
+  `#post-body` for text-only pages; image-mode entries target their corresponding
+  positional image anchor, while tagged entries link without a fragment
 - `ComicImage` has no `anchor_id`, and public image records have no `id` or
   `anchor_id`; ordered image position is authoritative
 - infinite-scroll image fragments use `#<page-name>_01`, with a minimum of two

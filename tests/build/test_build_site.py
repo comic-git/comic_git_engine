@@ -218,7 +218,7 @@ class TestArchiveStorylines(TestCase):
         self.assertEqual("Page 001", entry.title)
         self.assertEqual("page-thumb.jpg", entry.thumbnail_path)
         self.assertIsNone(entry.image)
-        self.assertIsNone(entry.image_index)
+        self.assertEqual(1, entry.image_index)
         self.assertIs(page, mock_hook.call_args.args[2][1][0])
         self.assertIs(entry, mock_hook.call_args.args[2][2]["Arc"][0])
 
@@ -264,6 +264,7 @@ class TestArchiveStorylines(TestCase):
         )
 
         self.assertEqual(1, len(storylines["Arc"]))
+        self.assertIsNone(storylines["Arc"][0].image_index)
 
     @patch("build.site_builder.run_hook", return_value=None)
     def test_text_only_setting_is_isolated_per_comic_config(self, _mock_hook):

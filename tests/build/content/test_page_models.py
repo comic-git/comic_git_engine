@@ -13,14 +13,18 @@ class TestPageModels(TestCase):
         self.assertEqual("main/001/panels/page one.png", main_id)
         self.assertEqual("extras/story/001/panels/page one.png", extra_id)
 
-    def test_anchor_is_stable_for_identity_and_safe_for_html(self):
-        image_id = "main/Page 1/panels/cafe page.png"
+    def test_image_keeps_internal_identity_without_a_public_anchor_field(self):
+        image = page_models.ComicImage(
+            id="main/001/page.png",
+            filename="page.png",
+            source_path="page.png",
+            web_path="your_content/comics/001/page.png",
+            title="Page",
+            alt_text="Alt",
+        )
 
-        first = page_models.build_image_anchor_id(image_id)
-        second = page_models.build_image_anchor_id(image_id)
-
-        self.assertEqual(first, second)
-        self.assertRegex(first, r"^comic-image-[0-9a-f]{64}$")
+        self.assertEqual("main/001/page.png", image.id)
+        self.assertFalse(hasattr(image, "anchor_id"))
 
     def test_page_title_uses_configured_title_then_first_filename_then_page_name(self):
         self.assertEqual(

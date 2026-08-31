@@ -1,4 +1,3 @@
-import hashlib
 import os
 import posixpath
 from dataclasses import dataclass, field
@@ -58,11 +57,6 @@ def build_image_id(comic_folder: str, page_name: str, filename: str) -> str:
     return f"{build_page_id(comic_folder, page_name)}/{normalize_web_path(filename)}"
 
 
-def build_image_anchor_id(image_id: str) -> str:
-    digest = hashlib.sha256(image_id.encode("utf-8")).hexdigest()
-    return f"comic-image-{digest}"
-
-
 def filename_stem(filename: str) -> str:
     return os.path.splitext(PurePosixPath(normalize_web_path(filename)).name)[0]
 
@@ -102,7 +96,6 @@ class ComicImage:
     filename: str
     source_path: str
     web_path: str
-    anchor_id: str
     title: str
     alt_text: str
     thumbnail_path: str | None = None
@@ -139,6 +132,10 @@ class ComicPage:
     previous_id: str = ""
     next_id: str = ""
     last_id: str = ""
+    first_anchor: str = ""
+    previous_anchor: str = ""
+    next_anchor: str = ""
+    last_anchor: str = ""
     on_comic_click: str = "next comic"
 
 
@@ -151,3 +148,4 @@ class ArchiveEntry:
     title: str
     thumbnail_path: str | None
     image: ComicImage | None = None
+    image_index: int | None = None

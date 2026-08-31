@@ -97,3 +97,12 @@ class TestSiteConfig(TestCase):
 
         self.assertEqual("Extra Comic", extra_info.get("Comic Info", "Comic name"))
         self.assertEqual("/cast", extra_info.get("Links Bar", "Cast"))
+
+    def test_show_text_only_posts_defaults_true_and_honors_false(self):
+        comic_info = self.make_comic_info()
+
+        self.assertTrue(site_config.get_show_text_only_posts(comic_info))
+
+        comic_info.add_section("Archive")
+        comic_info.set("Archive", "Show text-only posts", "False")
+        self.assertFalse(site_config.get_show_text_only_posts(comic_info))

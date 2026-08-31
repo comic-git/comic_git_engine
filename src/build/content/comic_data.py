@@ -21,13 +21,26 @@ def format_user_variable(key: str) -> str:
     return key
 
 
+def primary_content_anchor(page: ComicPage) -> str:
+    return "comic-image-1" if page.images else "post-body"
+
+
 def get_ids(comic_list: list[ComicPage], index: int) -> dict[str, str]:
+    first = comic_list[0]
+    previous = comic_list[max(0, index - 1)]
+    current = comic_list[index]
+    next_page = comic_list[min(len(comic_list) - 1, index + 1)]
+    last = comic_list[-1]
     return {
-        "first_id": comic_list[0].page_name,
-        "previous_id": comic_list[max(0, index - 1)].page_name,
-        "current_id": comic_list[index].page_name,
-        "next_id": comic_list[min(len(comic_list) - 1, index + 1)].page_name,
-        "last_id": comic_list[-1].page_name,
+        "first_id": first.page_name,
+        "previous_id": previous.page_name,
+        "current_id": current.page_name,
+        "next_id": next_page.page_name,
+        "last_id": last.page_name,
+        "first_anchor": primary_content_anchor(first),
+        "previous_anchor": primary_content_anchor(previous),
+        "next_anchor": primary_content_anchor(next_page),
+        "last_anchor": primary_content_anchor(last),
     }
 
 
@@ -40,12 +53,20 @@ def enrich_comic_page(
         current_id: str,
         next_id: str,
         last_id: str,
+        first_anchor: str = "",
+        previous_anchor: str = "",
+        next_anchor: str = "",
+        last_anchor: str = "",
 ) -> ComicPage:
     logger.info("[%s] Building page %s", strftime("%Y-%m-%d %H:%M:%S"), page.page_name)
     page.first_id = first_id
     page.previous_id = previous_id
     page.next_id = next_id
     page.last_id = last_id
+    page.first_anchor = first_anchor
+    page.previous_anchor = previous_anchor
+    page.next_anchor = next_anchor
+    page.last_anchor = last_anchor
 
     archive_date_format = comic_info.get("Archive", "Date format", fallback="")
     if archive_date_format:
@@ -112,6 +133,10 @@ def page_to_template_context(page: ComicPage) -> dict:
         "current_id": page.page_name,
         "next_id": page.next_id,
         "last_id": page.last_id,
+        "first_anchor": page.first_anchor,
+        "previous_anchor": page.previous_anchor,
+        "next_anchor": page.next_anchor,
+        "last_anchor": page.last_anchor,
         "archive_post_date": page.archive_post_date,
         "post_md": page.post_md,
         "post_html": page.post_html,

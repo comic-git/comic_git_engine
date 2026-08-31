@@ -45,7 +45,7 @@ tests/
     content/
       test_comic_data.py       - structured comic page enrichment
       test_page_discovery.py   - page discovery, scheduling, source resolution, and validation
-      test_page_models.py      - page/image identity, anchors, and fallback rules
+      test_page_models.py      - page/image identity, navigation, and fallback rules
       test_page_metadata.py    - versioned public metadata serialization and schema artifact
       test_site_config.py      - config parsing and extra-comic config merging
       test_transcripts.py      - transcript loading and ordering

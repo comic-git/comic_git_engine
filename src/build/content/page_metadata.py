@@ -48,10 +48,8 @@ def serialize_page(page: ComicPage) -> dict[str, Any]:
 
 def serialize_image(image: ComicImage) -> dict[str, Any]:
     return {
-        "id": image.id,
         "filename": image.filename,
         "url": site_url(image.web_path),
-        "anchor_id": image.anchor_id,
         "title": image.title,
         "alt_text": image.alt_text,
         "thumbnail_url": site_url(image.thumbnail_path),

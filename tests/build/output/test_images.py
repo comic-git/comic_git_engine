@@ -119,7 +119,6 @@ class TestImageUtils(TestCase):
                     filename=f"page-{index}.png",
                     source_path=source_path,
                     web_path=source_path,
-                    anchor_id=f"anchor-{index}",
                     title=f"Page {index}",
                     alt_text="",
                 )

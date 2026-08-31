@@ -15,7 +15,7 @@
             {%- endif %}
             <div class="archive-grid">
                 {%- for entry in entries %}
-                <a href="{{ entry.page_url | e }}{% if entry.image %}#{{ entry.image.anchor_id }}{% endif %}">
+                <a href="{{ entry.page_url | e }}#{{ "comic-image-" ~ entry.image_index if entry.image_index else "post-body" }}">
                     <div class="archive-thumbnail{% if not entry.thumbnail_path %} archive-thumbnail-text-only{% endif %}">
                         {%- if entry.thumbnail_path %}
                         <div class="archive-thumbnail-page">
@@ -38,7 +38,7 @@
                     <li><a id="{{ name | replace(' ', '-') }}"></a>{{ name }}<ul>
                     {%- endif %}
                     {%- for entry in entries %}
-                        <li><a href="{{ entry.page_url | e }}{% if entry.image %}#{{ entry.image.anchor_id }}{% endif %}">{{ entry.title }}</a> -- {{ entry.post_date }}</li>
+                        <li><a href="{{ entry.page_url | e }}#{{ "comic-image-" ~ entry.image_index if entry.image_index else "post-body" }}">{{ entry.title }}</a> -- {{ entry.post_date }}</li>
                     {%- endfor %}
                     {%- if storylines.keys() | list != ["Uncategorized"] %}</ul></li>{%- endif %}
                 {%- endif %}

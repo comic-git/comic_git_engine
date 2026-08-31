@@ -25,19 +25,26 @@ Important current behavior:
 
 - a page remains the scheduling, navigation, post-text, tag, and RSS publishing unit
 - each page owns an ordered collection of zero or more structured comic images
-- each image has resolved title, alt text, thumbnail, filename-based identity,
-  and a stable HTML anchor
+- each image has resolved title, alt text, and thumbnail data; its ordered array
+  position determines its presentation anchors
 - future-dated pages are treated as scheduled posts and are not published by default
 - local development may opt into previewing future posts
 - generated page metadata is versioned and validated by a deployed JSON Schema
+- public image metadata omits internal IDs and anchors; `filename`, `url`, and
+  ordered array position are the public locator/order contract
 - page-level source metadata can include private values that are stripped from public metadata output
 - explicit `Filename` or `Filenames` values override image auto-discovery
 - structured INI pages use ordered `[Image <label>]` sections; these cannot be
   mixed with page-level `Filename` or `Filenames`
 - TOML pages use ordered `[[images]]` tables and do not auto-discover images
 - image files whose names start with `_` are intentionally excluded from image auto-discovery
+- standalone pages use `#comic-image-N`; infinite scroll derives
+  `#<page-name>_<minimum-two-digit-N>` independently
 - the archive defaults to one entry per page, with an optional image mode that
-  links each image entry to its stable anchor
+  links each image entry to its standalone positional anchor
+- image-mode archives include text-only posts by default; `Show text-only posts
+  = False` / `archive.show_text_only_posts = false` hides them without changing
+  page-mode archives
 - no-image pages keep their post, navigation, RSS item, and page archive entry
 
 This feature is under active long-term architectural pressure from the roadmap:
@@ -56,8 +63,9 @@ This feature is under active long-term architectural pressure from the roadmap:
 - Image fallback rules are resolved while normalizing source data. Templates,
   feeds, JavaScript, and hooks consume resolved values rather than independently
   repeating fallback logic.
-- Image identity is derived from owning comic, page folder, and normalized
-  filename so reordering does not change it and Extra Comics cannot collide.
+- Internal image identity is derived from owning comic, page folder, and
+  normalized filename for thumbnail processing. It is not a public metadata or
+  anchor contract.
 - Refactors in this area should be tested carefully because many other features depend on page ordering, page metadata, and page inclusion rules.
 
 ## Supporting Documents

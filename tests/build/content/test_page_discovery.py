@@ -84,6 +84,8 @@ class TestPageDiscovery(TestCase):
         self.assertEqual(0, scheduled_count)
         self.assertEqual(["a-page", "b-page"], [page.page_name for page in pages])
         self.assertEqual(["a.png"], [image.filename for image in pages[0].images])
+        self.assertEqual("main/a-page/a.png", pages[0].images[0].id)
+        self.assertFalse(hasattr(pages[0].images[0], "anchor_id"))
         self.assertEqual("", pages[1].images[0].title)
         self.assertEqual("", pages[1].images[0].alt_text)
         self.assertEqual(["Alice", "Bob"], pages[1].characters)

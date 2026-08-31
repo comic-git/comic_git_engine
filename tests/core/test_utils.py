@@ -132,7 +132,6 @@ class TestGetSocialMediaData(TestCase):
             filename="page.png",
             source_path="page.png",
             web_path="your_content/comics/001/page.png",
-            anchor_id="comic-image-001",
             title="Page 1",
             alt_text="This is where your first comic page will go!",
             thumbnail_path="your_content/comics/001/_thumbnail.jpg",

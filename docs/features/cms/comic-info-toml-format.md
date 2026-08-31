@@ -71,6 +71,7 @@ allow_missing_variables_in_templates = false
 date_format = "%B %d, %Y"
 use_thumbnails = true
 show_uncategorized_comics = true
+show_text_only_posts = true
 entry_mode = "pages"
 image_title_fallback = "page_title"
 
@@ -186,6 +187,7 @@ exclude_own_comic_from_members = false
 | `Archive`            | `Date format`                          | `archive.date_format`                        |
 | `Archive`            | `Use thumbnails`                       | `archive.use_thumbnails`                     |
 | `Archive`            | `Show Uncategorized comics`            | `archive.show_uncategorized_comics`          |
+| `Archive`            | `Show text-only posts`                  | `archive.show_text_only_posts`               |
 | `Archive`            | `Entry mode`                            | `archive.entry_mode`                         |
 | `Archive`            | `Image title fallback`                  | `archive.image_title_fallback`               |
 | `Navigation Bar`     | `Use images`                           | `navigation.use_images`                      |
@@ -225,6 +227,8 @@ exclude_own_comic_from_members = false
 - Empty strings and default-looking values in the example represent supported keys and legacy-compatible values, not required file contents.
 - Optional values may be omitted when the engine can provide the same behavior from code defaults.
 - `archive.entry_mode` accepts `pages` or `images`; `pages` preserves one archive entry per publishing page.
+- `archive.show_text_only_posts` defaults to `true` and applies only when
+  `archive.entry_mode = "images"`. Page mode always includes text-only posts.
 - `archive.image_title_fallback` accepts `page_title` or `filename`.
 - `image_processing.overwrite_existing_images` regenerates conventional page
   and identity-derived image thumbnails. Explicitly configured thumbnail files

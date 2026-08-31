@@ -22,9 +22,9 @@
        For example, if the value passed in to `comic_base_dir` is `/comic_git`, then `{{ comic_base_dir }}/comic`
        becomes `/comic_git/comic` #}
     {%- if images %}
-    <div id="comic-page">
+    <div class="comic-page">
         {%- for image in images %}
-        <div class="comic-image-container" id="{{ image.anchor_id }}">
+        <div class="comic-image-container" id="comic-image-{{ loop.index }}">
         {% if _on_comic_click == "overlay" %}
         <a id="click-for-overlay">
         {% elif _on_comic_click == "open image" %}
@@ -32,7 +32,7 @@
         {% elif _on_comic_click == "open image window" %}
         <a id="open-image-window" href="{{ base_dir }}/{{ image.web_path | e }}" target="_blank">
         {% else %}
-        <a href="{{ comic_base_dir }}/comic/{{ next_id }}/#comic-page">
+        <a href="{{ comic_base_dir }}/comic/{{ next_id }}/#{{ next_anchor }}">
         {% endif %}
             <img class="comic-image" src="{{ base_dir }}/{{ image.web_path | e }}" alt="{{ image.alt_text | e }}"/>
         </a>

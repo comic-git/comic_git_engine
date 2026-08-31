@@ -40,6 +40,7 @@ BOOL_OPTIONS = {
     ("site", "allow_missing_variables_in_templates"): ("Comic Settings", "Allow missing variables in templates"),
     ("archive", "use_thumbnails"): ("Archive", "Use thumbnails"),
     ("archive", "show_uncategorized_comics"): ("Archive", "Show Uncategorized comics"),
+    ("archive", "show_text_only_posts"): ("Archive", "Show text-only posts"),
     ("navigation", "use_images"): ("Navigation Bar", "Use images"),
     ("navigation", "above_comic"): ("Navigation Bar", "Above comic"),
     ("navigation", "below_comic"): ("Navigation Bar", "Below comic"),

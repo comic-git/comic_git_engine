@@ -54,6 +54,10 @@ def get_archive_entry_mode(comic_info: RawConfigParser) -> ArchiveEntryMode:
     raise ValueError("Invalid [Archive] Entry mode. Expected 'Pages' or 'Images'.")
 
 
+def get_show_text_only_posts(comic_info: RawConfigParser) -> bool:
+    return comic_info.getboolean("Archive", "Show text-only posts", fallback=True)
+
+
 def get_image_title_fallback(comic_info: RawConfigParser) -> ImageTitleFallback:
     value = comic_info.get("Archive", "Image title fallback", fallback="Page title")
     value = value.strip().lower().replace("_", " ")

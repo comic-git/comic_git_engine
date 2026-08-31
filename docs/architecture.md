@@ -18,7 +18,7 @@
 | Build pipeline modules      | [`src/build/`](../src/build/)                                               | Purpose-built modules for the build pipeline, including site config, page discovery, comic data assembly, rendering, output handling, and image/transcript helpers. |
 | Shared utilities            | [`src/core/utils.py`](../src/core/utils.py)                                 | Cross-cutting helpers for root discovery, config parsing, path/url building, templating, social media data, and build checkpoints.        |
 | RSS generation              | [`src/integrations/rss.py`](../src/integrations/rss.py)                     | Builds RSS feed jobs and serializes RSS XML for the main comic and Extra Comics.                                                          |
-| Page and image models       | [`src/build/content/page_models.py`](../src/build/content/page_models.py)   | Structured page/image/archive models plus stable identity, anchor, and fallback helpers.                                                   |
+| Page and image models       | [`src/build/content/page_models.py`](../src/build/content/page_models.py)   | Structured page/image/archive models plus internal identity, navigation, and fallback helpers.                                            |
 | Shared build models         | [`src/core/models.py`](../src/core/models.py)                               | Small shared dataclasses used to pass per-comic build results between top-level steps.                                                     |
 | Public metadata contract    | [`src/build/content/page_metadata.py`](../src/build/content/page_metadata.py), [`schemas/`](../schemas/) | Serializes resolved page/image data and ships its versioned JSON Schema. |
 | Hooks and external data     | [`src/integrations/`](../src/integrations/)                                 | Theme hooks, RSS integration logic, and webring loading.                                                                                  |
@@ -105,6 +105,7 @@ This structure is intentionally file-based and low-friction:
 - API spec: none; this repo does not expose a network API
 - Internal page/image models: [`src/build/content/page_models.py`](../src/build/content/page_models.py)
 - Public page metadata schema: [`schemas/page_info_list.schema.json`](../schemas/page_info_list.schema.json)
+- Public image metadata uses ordered array position as its presentation-order contract and deliberately omits internal image IDs and HTML anchors. Standalone and infinite-scroll fragments are derived by their respective renderers.
 - Primary host-repo config/data inputs:
   - `your_content/comic_info.ini`
   - `your_content/comic_info.toml`

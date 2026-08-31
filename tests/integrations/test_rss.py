@@ -20,7 +20,6 @@ def make_image(
         filename=filename,
         source_path=filename,
         web_path=web_path or f"your_content/comics/Page 1/{filename}",
-        anchor_id=f"anchor-{filename}",
         title=filename,
         alt_text=alt_text,
     )

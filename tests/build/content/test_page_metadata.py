@@ -22,7 +22,6 @@ class TestPageMetadata(TestCase):
             filename="page.png",
             source_path="page.png",
             web_path="your_content/extras/story/comics/001/page.png",
-            anchor_id="comic-image-" + "a" * 64,
             title="Image title",
             alt_text="Image alt",
         )
@@ -66,6 +65,11 @@ class TestPageMetadata(TestCase):
             "/base/your_content/extras/story/comics/001/page.png",
             page["images"][0]["url"],
         )
+        self.assertEqual(
+            {"filename", "url", "title", "alt_text", "thumbnail_url"},
+            set(page["images"][0]),
+        )
+        self.assertNotIn("image_index", page["images"][0])
         self.assertNotIn("configured_title", page["images"][0])
 
     def test_save_metadata_uses_per_comic_output_path(self):
@@ -108,3 +112,11 @@ class TestPageMetadata(TestCase):
             set(schema["required"]),
         )
         self.assertEqual(1, schema["properties"]["schema_version"]["const"])
+        image_schema = schema["$defs"]["image"]
+        self.assertEqual(
+            {"filename", "url", "title", "alt_text", "thumbnail_url"},
+            set(image_schema["required"]),
+        )
+        self.assertNotIn("id", image_schema["properties"])
+        self.assertNotIn("anchor_id", image_schema["properties"])
+        self.assertNotIn("image_index", image_schema["properties"])

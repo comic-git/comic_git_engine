@@ -51,6 +51,12 @@ text, and thumbnails exposed here are resolved values. Hooks that need source
 parsing semantics belong at a source-specific boundary rather than reconstructing
 inheritance from the normalized model.
 
+`ComicImage.id` is an internal thumbnail-identity input, not a public URL or
+anchor. `ComicImage` does not expose `anchor_id`; renderers derive positional
+anchors from image order. Image-mode `ArchiveEntry` values expose a one-based
+`image_index`, while page and text-only entries use `None`. Hook code should keep
+the list order intact when positional links must remain stable.
+
 The current roadmap direction is to harden the existing hook contracts over time rather than replace the hook system wholesale.
 
 ## Product Rules

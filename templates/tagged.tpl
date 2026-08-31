@@ -17,7 +17,7 @@
                it runs through a list of all the pages with a particular tag and it generates a link
                for each of those. #}
             {%- for page in tagged_pages %}
-                <li><a href="{{ page.url | e }}#comic-page">{{ page.title }}</a> -- {{ page.display_post_date }}</li>
+                <li><a href="{{ page.url | e }}">{{ page.title }}</a> -- {{ page.display_post_date }}</li>
             {%- endfor %}
             </ul>
         </div>

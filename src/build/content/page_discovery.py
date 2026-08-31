@@ -11,7 +11,6 @@ from build.content.loaders import load_page_source
 from build.content.page_models import (
     ComicImage,
     ComicPage,
-    build_image_anchor_id,
     build_image_id,
     build_page_id,
     normalize_comic_id,
@@ -121,7 +120,6 @@ def build_discovered_page(
                 filename=filename,
                 source_path=source_path,
                 web_path=normalize_web_path(page_dir + filename),
-                anchor_id=build_image_anchor_id(image_id),
                 title=resolve_image_title(image_source.title, source.title, filename, fallback),
                 alt_text=resolve_image_alt_text(image_source.alt_text, source.alt_text),
                 thumbnail_path=thumbnail_path,

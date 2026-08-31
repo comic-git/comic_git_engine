@@ -168,11 +168,13 @@ class TestCliArgs(TestCase):
 
 
 class TestArchiveStorylines(TestCase):
-    def make_config(self, mode=ArchiveEntryMode.PAGES):
+    def make_config(self, mode=ArchiveEntryMode.PAGES, show_text_only_posts=None):
         config = RawConfigParser()
         config.add_section("Archive")
         config.set("Archive", "Entry mode", mode.value)
         config.set("Archive", "Show Uncategorized comics", "True")
+        if show_text_only_posts is not None:
+            config.set("Archive", "Show text-only posts", str(show_text_only_posts))
         config.add_section("Comic Settings")
         config.set("Comic Settings", "Theme", "default")
         return config
@@ -184,7 +186,6 @@ class TestArchiveStorylines(TestCase):
                 filename=f"page-{index}.png",
                 source_path=f"page-{index}.png",
                 web_path=f"your_content/comics/{name}/page-{index}.png",
-                anchor_id=f"anchor-{index}",
                 title=f"Image {index}",
                 alt_text="",
                 thumbnail_path=f"thumb-{index}.jpg",
@@ -217,6 +218,7 @@ class TestArchiveStorylines(TestCase):
         self.assertEqual("Page 001", entry.title)
         self.assertEqual("page-thumb.jpg", entry.thumbnail_path)
         self.assertIsNone(entry.image)
+        self.assertIsNone(entry.image_index)
         self.assertIs(page, mock_hook.call_args.args[2][1][0])
         self.assertIs(entry, mock_hook.call_args.args[2][2]["Arc"][0])
 
@@ -228,7 +230,7 @@ class TestArchiveStorylines(TestCase):
         )
 
         self.assertEqual(["Image 0", "Image 1"], [entry.title for entry in storylines["Arc"]])
-        self.assertEqual(["anchor-0", "anchor-1"], [entry.image.anchor_id for entry in storylines["Arc"]])
+        self.assertEqual([1, 2], [entry.image_index for entry in storylines["Arc"]])
 
     @patch("build.site_builder.run_hook", return_value=None)
     def test_image_mode_retains_one_entry_for_no_image_page(self, _mock_hook):
@@ -239,3 +241,104 @@ class TestArchiveStorylines(TestCase):
 
         self.assertEqual(1, len(storylines["Arc"]))
         self.assertIsNone(storylines["Arc"][0].image)
+        self.assertIsNone(storylines["Arc"][0].image_index)
+
+    @patch("build.site_builder.run_hook", return_value=None)
+    def test_image_mode_can_exclude_text_only_pages_without_empty_storylines(self, _mock_hook):
+        page = self.make_page(images=0)
+        page.storyline = "Text only arc"
+
+        storylines = site_builder.get_storylines(
+            self.make_config(ArchiveEntryMode.IMAGES, show_text_only_posts=False),
+            [page],
+        )
+
+        self.assertNotIn("Text only arc", storylines)
+        self.assertEqual({}, storylines)
+
+    @patch("build.site_builder.run_hook", return_value=None)
+    def test_page_mode_ignores_show_text_only_posts(self, _mock_hook):
+        storylines = site_builder.get_storylines(
+            self.make_config(ArchiveEntryMode.PAGES, show_text_only_posts=False),
+            [self.make_page(images=0)],
+        )
+
+        self.assertEqual(1, len(storylines["Arc"]))
+
+    @patch("build.site_builder.run_hook", return_value=None)
+    def test_text_only_setting_is_isolated_per_comic_config(self, _mock_hook):
+        page = self.make_page(images=0)
+
+        hidden = site_builder.get_storylines(
+            self.make_config(ArchiveEntryMode.IMAGES, show_text_only_posts=False),
+            [page],
+        )
+        shown = site_builder.get_storylines(
+            self.make_config(ArchiveEntryMode.IMAGES),
+            [page],
+        )
+
+        self.assertEqual({}, hidden)
+        self.assertEqual(1, len(shown["Arc"]))
+
+
+class TestInfiniteScrollChapters(TestCase):
+    def make_config(self, show_uncategorized=True):
+        config = RawConfigParser()
+        config.add_section("Archive")
+        config.set("Archive", "Entry mode", "Images")
+        config.set("Archive", "Show text-only posts", "False")
+        config.set("Archive", "Show Uncategorized comics", str(show_uncategorized))
+        return config
+
+    def make_page(self, name, storyline, has_images):
+        images = []
+        if has_images:
+            images.append(ComicImage(
+                id=f"main/{name}/page.png",
+                filename="page.png",
+                source_path="page.png",
+                web_path=f"your_content/comics/{name}/page.png",
+                title=name,
+                alt_text="",
+            ))
+        return ComicPage(
+            id=f"main/{name}",
+            comic_id="main",
+            comic_folder="",
+            page_name=name,
+            page_dir=f"your_content/comics/{name}/",
+            url=f"/comic/{name}/",
+            title=name,
+            post_date="2024-01-01",
+            display_post_date="January 01, 2024",
+            archive_post_date="Jan 1",
+            images=images,
+            storyline=storyline,
+        )
+
+    def test_chapters_select_first_image_page_and_ignore_archive_projection_settings(self):
+        text_only = self.make_page("intro", "Arc", False)
+        first_image = self.make_page("001", "Arc", True)
+        later_image = self.make_page("002", "Arc", True)
+        uncategorized = self.make_page("bonus", "", True)
+
+        chapters = site_builder.get_infinite_scroll_chapters(
+            self.make_config(),
+            [text_only, first_image, later_image, uncategorized],
+        )
+
+        self.assertIs(first_image, chapters["Arc"])
+        self.assertIs(uncategorized, chapters["Uncategorized"])
+        self.assertEqual(["Arc", "Uncategorized"], list(chapters))
+
+    def test_chapters_omit_text_only_and_hidden_uncategorized_groups(self):
+        chapters = site_builder.get_infinite_scroll_chapters(
+            self.make_config(show_uncategorized=False),
+            [
+                self.make_page("intro", "Text only", False),
+                self.make_page("bonus", "", True),
+            ],
+        )
+
+        self.assertEqual({}, chapters)

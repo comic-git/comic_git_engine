@@ -38,6 +38,7 @@ allow_missing_variables_in_templates = true
 use_thumbnails = true
 entry_mode = "images"
 image_title_fallback = "filename"
+show_text_only_posts = false
 
 [image_processing]
 create_thumbnails = true
@@ -63,6 +64,7 @@ image_width = "144"
         self.assertTrue(comic_info.getboolean("Archive", "Use thumbnails"))
         self.assertEqual("images", comic_info.get("Archive", "Entry mode"))
         self.assertEqual("filename", comic_info.get("Archive", "Image title fallback"))
+        self.assertFalse(comic_info.getboolean("Archive", "Show text-only posts"))
         self.assertTrue(comic_info.getboolean("Image Reprocessing", "Create thumbnails"))
         self.assertTrue(comic_info.getboolean("Image Reprocessing", "Overwrite existing images"))
         self.assertEqual("200x200", comic_info.get("Image Reprocessing", "Thumbnail size"))
@@ -263,6 +265,8 @@ about = "Legacy About"
         comic_info.set("Pages", "cast", "Cast")
         comic_info.add_section("Custom Section")
         comic_info.set("Custom Section", "Custom Option", "Custom Value")
+        comic_info.add_section("Archive")
+        comic_info.set("Archive", "Show text-only posts", "False")
 
         toml_text = comic_config_sources.serialize_comic_config_to_toml(comic_info)
         path = self.write_toml(toml_text)
@@ -275,6 +279,8 @@ about = "Legacy About"
         self.assertEqual("^https://example.com/", loaded.get("Links Bar", "cdn.example.com/button.png"))
         self.assertEqual("Cast", loaded.get("Pages", "cast"))
         self.assertEqual("Custom Value", loaded.get("Custom Section", "Custom Option"))
+        self.assertFalse(loaded.getboolean("Archive", "Show text-only posts"))
+        self.assertIn("show_text_only_posts = false", toml_text)
         self.assertIn("[engine]", toml_text)
         self.assertIn('version = "master"', toml_text)
         self.assertNotIn('"Engine version"', toml_text)

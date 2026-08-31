@@ -20,13 +20,12 @@ class TestComicData(TestCase):
         comic_info.set("Archive", "Date format", "%Y-%m-%d")
         return comic_info
 
-    def make_page(self, name="001", post_md="main body"):
+    def make_page(self, name="001", post_md="main body", with_image=True):
         image = ComicImage(
             id=f"main/{name}/page.png",
             filename="page.png",
             source_path="page.png",
             web_path=f"your_content/comics/{name}/page.png",
-            anchor_id="comic-image-id",
             title="Chapter One",
             alt_text="Alt",
         )
@@ -41,7 +40,7 @@ class TestComicData(TestCase):
             post_date="2024-01-02",
             display_post_date="January 02, 2024",
             archive_post_date="January 02, 2024",
-            images=[image],
+            images=[image] if with_image else [],
             post_md=post_md,
             extra={"Mood": "tense"},
         )
@@ -55,11 +54,18 @@ class TestComicData(TestCase):
         self.assertEqual("page_name", comic_data.format_user_variable("page_name"))
 
     def test_get_ids_handles_first_middle_and_last_pages(self):
-        pages = [self.make_page("001"), self.make_page("002"), self.make_page("003")]
+        pages = [
+            self.make_page("001"),
+            self.make_page("002", with_image=False),
+            self.make_page("003"),
+        ]
 
         self.assertEqual("001", comic_data.get_ids(pages, 0)["previous_id"])
         self.assertEqual("002", comic_data.get_ids(pages, 0)["next_id"])
         self.assertEqual("003", comic_data.get_ids(pages, 2)["next_id"])
+        self.assertEqual("comic-image-1", comic_data.get_ids(pages, 0)["first_anchor"])
+        self.assertEqual("post-body", comic_data.get_ids(pages, 0)["next_anchor"])
+        self.assertEqual("comic-image-1", comic_data.get_ids(pages, 2)["next_anchor"])
 
     @patch(MUT + "run_hook", return_value=None)
     def test_enrich_comic_page_adds_navigation_archive_date_and_post_wrappers(self, _mock_hook):
@@ -104,6 +110,8 @@ class TestComicData(TestCase):
         self.assertEqual(["001", "002"], [page.page_name for page in result])
         self.assertEqual("002", result[0].next_id)
         self.assertEqual("001", result[1].previous_id)
+        self.assertEqual("comic-image-1", result[0].next_anchor)
+        self.assertEqual("comic-image-1", result[1].previous_anchor)
 
     def test_template_context_exposes_structured_images_without_legacy_image_fields(self):
         page = self.make_page()

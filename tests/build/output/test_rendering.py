@@ -23,7 +23,6 @@ class TestRendering(TestCase):
             filename="page.png",
             source_path="page.png",
             web_path=f"your_content/comics/{name}/page.png",
-            anchor_id="comic-image-" + "a" * 64,
             title="Image",
             alt_text="Alt",
         )
@@ -166,19 +165,47 @@ class TestRendering(TestCase):
             comic_template = f.read()
         with open("templates/archive.tpl", encoding="utf-8") as f:
             archive_template = f.read()
+        with open("templates/navigation_bar.tpl", encoding="utf-8") as f:
+            navigation_template = f.read()
+        with open("templates/tagged.tpl", encoding="utf-8") as f:
+            tagged_template = f.read()
         with open("templates/infinite_scroll.tpl", encoding="utf-8") as f:
             infinite_scroll_template = f.read()
         with open("js/infinite_scroll.js", encoding="utf-8") as f:
             infinite_scroll_script = f.read()
 
-        self.assertIn("image.anchor_id", comic_template)
+        self.assertIn('class="comic-page"', comic_template)
+        self.assertIn('id="comic-image-{{ loop.index }}"', comic_template)
         self.assertIn('alt="{{ image.alt_text | e }}"', comic_template)
+        self.assertNotIn('id="comic-page"', comic_template)
+        self.assertNotIn("image.anchor_id", comic_template)
+        self.assertIn("next_anchor", comic_template)
         self.assertNotIn("comic_paths", comic_template)
         self.assertIn("entry.page_url", archive_template)
         self.assertIn("archive-thumbnail-text-only", archive_template)
+        self.assertEqual(2, archive_template.count('"comic-image-" ~ entry.image_index'))
+        self.assertEqual(2, archive_template.count('"post-body"'))
+        self.assertIn("first_anchor", navigation_template)
+        self.assertIn("previous_anchor", navigation_template)
+        self.assertIn("next_anchor", navigation_template)
+        self.assertIn("last_anchor", navigation_template)
+        self.assertNotIn("#comic-page", navigation_template)
+        self.assertIn('href="{{ page.url | e }}"', tagged_template)
+        self.assertNotIn("#post-body", tagged_template)
+        self.assertNotIn("#comic-page", tagged_template)
         self.assertIn('json["pages"]', infinite_scroll_script)
+        self.assertIn('filter(page => page["images"].length > 0)', infinite_scroll_script)
+        self.assertIn("No comic images have been published yet.", infinite_scroll_script)
+        self.assertIn("function image_fragment(page_name, image_index)", infinite_scroll_script)
+        self.assertIn("padStart(2, \"0\")", infinite_scroll_script)
+        self.assertIn('link_node.id = image_fragment(page["page_name"], index)', infinite_scroll_script)
+        self.assertIn('`${page["url"]}#comic-image-${index + 1}`', infinite_scroll_script)
+        self.assertIn('page_info_json[i].page_name === fragment', infinite_scroll_script)
+        self.assertIn('window.history.replaceState', infinite_scroll_script)
         self.assertIn('page["images"]', infinite_scroll_script)
-        self.assertIn('image["anchor_id"]', infinite_scroll_script)
         self.assertIn('image_node.alt = image["alt_text"]', infinite_scroll_script)
         self.assertNotIn("image_file_names", infinite_scroll_script)
+        self.assertNotIn('image["anchor_id"]', infinite_scroll_script)
+        self.assertIn("infinite_scroll_chapters", infinite_scroll_template)
+        self.assertIn("_01", infinite_scroll_template)
         self.assertIn('load_page("{{ comic_base_dir }}")', infinite_scroll_template)

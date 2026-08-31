@@ -31,6 +31,22 @@ Important current behavior:
 
 This feature is stable in concept, but it always carries compatibility risk because presentation changes are highly visible and template/JS overrides can stop inheriting engine fixes.
 
+### Structured-image presentation contract
+
+Theme overrides that render structured images follow these presentation rules:
+
+- the comic wrapper uses the `.comic-page` class
+- standalone image wrappers use `#comic-image-1`, `#comic-image-2`, and so on
+- post-oriented archive entries target `#post-body`, while tagged entries link
+  to the page without a fragment
+- `ComicImage` has no `anchor_id`, and public image records have no `id` or
+  `anchor_id`; ordered image position is authoritative
+- infinite-scroll image fragments use `#<page-name>_01`, with a minimum of two
+  index digits, while bare `#<page-name>` remains an accepted incoming alias
+
+Template and JavaScript replacements are responsible for implementing this
+contract because replacement-based overrides do not inherit engine behavior.
+
 ## Product Rules
 
 - Presentation customization should be approachable at multiple levels, from simple CSS edits to full template replacement.

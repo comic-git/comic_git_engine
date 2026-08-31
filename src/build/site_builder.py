@@ -11,7 +11,7 @@ from build.content.comic_data import build_comic_pages
 from build.content.page_discovery import discover_pages
 from build.content.page_metadata import save_page_metadata
 from build.content.page_models import ArchiveEntry, ArchiveEntryMode, ComicPage
-from build.content.site_config import get_archive_entry_mode, get_links_list
+from build.content.site_config import get_archive_entry_mode, get_links_list, get_show_text_only_posts
 from build.output.images import process_comic_images
 from build.output.rendering import write_html_files
 from integrations.hooks import run_hook
@@ -34,7 +34,10 @@ def get_storylines(comic_info: RawConfigParser, pages: list[ComicPage]) -> Order
     storylines_dict = OrderedDict()
     show_uncategorized = comic_info.getboolean("Archive", "Show Uncategorized comics", fallback=True)
     entry_mode = get_archive_entry_mode(comic_info)
+    show_text_only_posts = get_show_text_only_posts(comic_info)
     for page in pages:
+        if entry_mode == ArchiveEntryMode.IMAGES and not page.images and not show_text_only_posts:
+            continue
         storyline = page.storyline
         if not storyline:
             if not show_uncategorized:
@@ -52,8 +55,9 @@ def get_storylines(comic_info: RawConfigParser, pages: list[ComicPage]) -> Order
                     title=image.title,
                     thumbnail_path=image.thumbnail_path,
                     image=image,
+                    image_index=image_index,
                 )
-                for image in page.images
+                for image_index, image in enumerate(page.images, start=1)
             )
         else:
             storylines_dict[storyline].append(
@@ -74,6 +78,26 @@ def get_storylines(comic_info: RawConfigParser, pages: list[ComicPage]) -> Order
         [comic_info, pages, storylines_dict]
     )
     return hooked_storylines_dict if hooked_storylines_dict is not None else storylines_dict
+
+
+def get_infinite_scroll_chapters(
+        comic_info: RawConfigParser,
+        pages: list[ComicPage],
+) -> OrderedDict[str, ComicPage]:
+    chapters = OrderedDict()
+    show_uncategorized = comic_info.getboolean("Archive", "Show Uncategorized comics", fallback=True)
+    for page in pages:
+        if not page.images:
+            continue
+        storyline = page.storyline
+        if not storyline:
+            if not show_uncategorized:
+                continue
+            storyline = "Uncategorized"
+        chapters.setdefault(storyline, page)
+    if "Uncategorized" in chapters:
+        chapters.move_to_end("Uncategorized")
+    return chapters
 
 
 def load_home_page_text(comic_folder: str) -> str:
@@ -138,6 +162,7 @@ def build_and_publish_comic_pages(
         "links": get_links_list(comic_info),
         "use_thumbnails": comic_info.getboolean("Archive", "Use thumbnails"),
         "storylines": get_storylines(comic_info, pages),
+        "infinite_scroll_chapters": get_infinite_scroll_chapters(comic_info, pages),
         "home_page_text": home_page_text,
         "google_analytics_id": comic_info.get("Google Analytics", "Tracking ID", fallback=""),
         "scheduled_post_count": scheduled_post_count,

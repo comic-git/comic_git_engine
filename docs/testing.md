@@ -42,25 +42,32 @@ Tests live in the top-level [`tests/`](../tests/) directory.
 tests/
   build/
     test_build_site.py         - top-level build orchestration in `main()`
+    test_site_builder.py       - per-comic pipeline orchestration and shared page projections
     content/
+      test_archive_config.py   - archive entry-mode compatibility and defaults
+      test_comic_config_sources.py - comic-level INI/TOML source parsing and conversion
       test_comic_data.py       - structured comic page enrichment
+      test_loaders.py          - source selection and TOML-over-INI precedence
       test_page_discovery.py   - page discovery, scheduling, source resolution, and validation
       test_page_models.py      - page/image identity, navigation, and fallback rules
       test_page_metadata.py    - versioned public metadata serialization and schema artifact
+      test_page_sources.py     - page-level INI/TOML parsing and normalization
       test_site_config.py      - config parsing and extra-comic config merging
       test_transcripts.py      - transcript loading and ordering
+    migration/
+      test_toml_migration.py   - deterministic legacy-to-TOML conversion
     output/
       test_images.py           - page/image thumbnail resolution and generation behavior
       test_rendering.py        - template/page-writing orchestration
       test_site_output.py      - output cleanup and site_root/output copying
   core/
+    test_logging_config.py     - build logging configuration
     test_utils.py              - shared utility functions
   integrations/
     test_rss.py                - RSS XML output and RSS job-selection behavior
     test_webring.py            - webring data loading and validation
   scripts/
     test_entrypoints.py        - direct script execution by file path
-  extras/                      - fixture data used by a subset of tests
 ```
 
 Naming conventions:
@@ -69,7 +76,7 @@ Naming conventions:
 - test classes use `Test...`
 - test methods use `test_...`
 
-Keep [`tests/build/test_build_site.py`](../tests/build/test_build_site.py) focused on `main()` and other top-level orchestration seams. New lower-level behavior should usually be covered in the module-specific test file that matches the module being changed.
+Keep [`tests/build/test_build_site.py`](../tests/build/test_build_site.py) focused on `main()` and other top-level orchestration seams. Per-comic orchestration belongs in [`tests/build/test_site_builder.py`](../tests/build/test_site_builder.py); lower-level behavior should usually be covered in the module-specific test file that matches the module being changed.
 
 ## Testing Philosophy
 

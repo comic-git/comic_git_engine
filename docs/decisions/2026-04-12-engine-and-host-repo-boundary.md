@@ -15,7 +15,7 @@
 
 This split exists to keep as much behavior as possible centralized and updatable without asking non-technical users to copy code or modify workflow logic.
 
-The workflow entry point is especially sensitive. Most user-controlled engine version changes happen through `comic_info.ini`. Changing workflow wiring would instead require users to edit GitHub Actions YAML, which is much less accessible.
+The workflow entry point is especially sensitive. Most user-controlled engine version changes happen through `comic_info.toml` or legacy `comic_info.ini`. Changing workflow wiring would instead require users to edit GitHub Actions YAML, which is much less accessible.
 
 ## Decision
 

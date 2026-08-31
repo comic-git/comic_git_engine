@@ -100,6 +100,7 @@ python comic_git_engine\src\scripts\dev_server.py
 ```
 
 `dev_server.py` serves the site at `http://localhost:8000` and rebuilds when `.tpl`, `.txt`, `.html`, `.md`, and `.ini` files change.
+It does not currently watch `.toml` files, so rerun the build or restart the preview server after editing TOML-backed comic or page configuration.
 
 Do not use `--delete-scheduled-posts` during normal local development. That flag is appropriate for deployment builds because it removes future-dated page content from the published output, but locally it can delete uncommitted user data files.
 

@@ -37,7 +37,7 @@ Typical structure:
 
 ```text
 your_content/
-  comic_info.ini
+  comic_info.ini|comic_info.toml
   home page.txt|html
   site_root/
     .nojekyll
@@ -46,7 +46,7 @@ your_content/
   images/
   comics/
     <page-name>/
-      info.ini
+      info.ini|toml
       post.txt
       <comic image files>
       <transcript files>
@@ -57,17 +57,17 @@ your_content/
       templates/
       scripts/
   <extra-comic>/
-    comic_info.ini
+    comic_info.ini|comic_info.toml
     comics/
       <page-name>/
-        info.ini
+        info.ini|toml
         post.txt
         <comic image files>
 ```
 
 This structure is intentionally file-based and low-friction:
 
-- creators edit `.ini`, `.txt`, and image files directly
+- creators edit `.ini`, `.toml`, `.txt`, and image files directly
 - most configuration is designed to be understandable in a text editor on Windows
 - adding or changing content is usually done by creating, renaming, moving, or deleting files and folders
 - `your_content/site_root/` is part of the expected 1.1 host-repo layout, and should contain at minimum a `favicon.ico` and `.nojekyll` file.
@@ -75,7 +75,7 @@ This structure is intentionally file-based and low-friction:
 ## Data Flow
 
 1. A host `comic_git` repo invokes the engine locally or through the reusable [`build_site.yaml`](../.github/workflows/build_site.yaml) workflow.
-2. [`src/build/build_site.py`](../src/build/build_site.py) finds the project root, reads `your_content/comic_info.ini`, resolves the site URL, loads theme hooks, and orchestrates the build order for Extra Comics and the main comic.
+2. [`src/build/build_site.py`](../src/build/build_site.py) finds the project root, selects `your_content/comic_info.toml` when present or falls back to `comic_info.ini`, resolves the site URL, loads theme hooks, and orchestrates the build order for Extra Comics and the main comic.
 3. [`src/build/site_builder.py`](../src/build/site_builder.py) coordinates the per-comic build pipeline using the lower-level modules.
 4. [`src/build/content/page_sources.py`](../src/build/content/page_sources.py) parses legacy INI or TOML into source-only page/image models, preserving omitted versus explicitly blank values.
 5. [`src/build/content/page_discovery.py`](../src/build/content/page_discovery.py) scans page folders, applies scheduling and source precedence, validates image paths, resolves fallbacks once, and constructs ordered `ComicPage`/`ComicImage` models.
@@ -110,11 +110,11 @@ This structure is intentionally file-based and low-friction:
   - `your_content/comic_info.ini`
   - `your_content/comic_info.toml`
   - `your_content/comics/*/info.ini|info.toml`
-  - `your_content/<extra-comic>/comic_info.ini`
+  - `your_content/<extra-comic>/comic_info.ini|comic_info.toml`
 
 ## Features
 
-Feature intent and product rules are indexed in [`docs/features/`](features/README.md).
+Feature intent and product rules are indexed in [`docs/features/`](features/README.md), including the current [CMS and TOML roadmap](features/cms/).
 
 ## Design Decisions
 
@@ -122,5 +122,5 @@ Feature intent and product rules are indexed in [`docs/features/`](features/READ
 - The reusable [`build_site.yaml`](../.github/workflows/build_site.yaml) workflow is a core part of the architecture. Host `comic_git` repos are expected to call this workflow remotely so engine behavior can be centralized and updated for many users at once.
 - [`main.yaml`](../.github/workflows/main.yaml) is a maintainer workflow for releasing `comic_git_engine` itself and is not part of the end-user integration surface.
 - Host `comic_git` repos should be thought of primarily as user data stores plus a small amount of scaffolding. The engine repo is where the main build logic, defaults, and shared behavior live.
-- The user-content model prioritizes minimal technical intimidation. File formats, defaults, and content layout are designed so non-technical creators can work mostly through folders, `.ini` files, `.txt` files, and image assets.
+- The user-content model prioritizes minimal technical intimidation. File formats, defaults, and content layout are designed so non-technical creators can work mostly through folders, `.ini` or `.toml` files, `.txt` files, and image assets.
 - Runtime dependencies should stay minimal because they are installed during GitHub Actions runs for end-user sites. Developer-only tools should not become required engine runtime dependencies.

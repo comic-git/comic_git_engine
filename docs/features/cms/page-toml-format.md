@@ -4,9 +4,9 @@
 
 ## Purpose
 
-This document defines the first concrete TOML migration contract for comic pages.
+This document defines the current TOML migration contract for comic pages.
 
-It exists so the engine read path and the future migration writer use the same rules instead of re-inventing the schema in two places.
+The engine read path and migration writer use these same rules instead of re-inventing the schema in two places.
 
 ## Scope
 

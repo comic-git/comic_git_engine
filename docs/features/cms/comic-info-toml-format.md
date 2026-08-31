@@ -4,11 +4,11 @@
 
 ## Status
 
-Provisional. This schema is intended to guide the first `comic_info.toml` reader and migration work before CMS UX testing. It should be revised if Decap editing proves awkward or if the implementation exposes avoidable complexity.
+Implemented as the current `comic_info.toml` reader and migration contract. It remains provisional for CMS UX and may be revised if Decap editing exposes avoidable complexity.
 
 ## Purpose
 
-This document defines the first proposed TOML replacement for legacy comic-level config.
+This document defines the current TOML replacement for legacy comic-level config.
 
 It covers:
 
@@ -30,7 +30,7 @@ It does not replace the public/shared `webring.json` endpoint data file.
 - Define every engine-supported option, but do not require every option to be present in every `comic_info.toml` file.
 - Continue using code-owned defaults for omitted optional values.
 
-When `comic_info.toml` exists for a logical comic config, it is the source of truth for that config. The loader should not merge same-item values from `comic_info.ini`.
+When `comic_info.toml` exists for a logical comic config, it is the source of truth for that config. The loader does not merge same-item values from `comic_info.ini`.
 
 The schema below is a supported-key contract, not a required full-file template. Migration and generated examples should stay sparse when code defaults are sufficient, so the TOML file remains approachable for manual editors.
 

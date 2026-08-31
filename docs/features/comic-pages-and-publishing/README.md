@@ -46,12 +46,14 @@ Important current behavior:
   = False` / `archive.show_text_only_posts = false` hides them without changing
   page-mode archives
 - no-image pages keep their post, navigation, RSS item, and page archive entry
+- generated sites are staged into `build/` by default; an empty output-directory
+  setting retains the legacy in-place build mode
 
 This feature is under active long-term architectural pressure from the roadmap:
 
-- output-directory-first builds are a planned future direction
 - destructive scheduled-post deletion is legacy behavior that should eventually be replaced by selective publishing
-- generated output structure may become more intentionally separated from source structure in a future major release
+- generated output structure may continue to evolve independently now that build
+  output is staged separately from host-repo source by default
 
 ## Product Rules
 

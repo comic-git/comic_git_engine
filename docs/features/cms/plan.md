@@ -6,13 +6,13 @@
 
 ## Status
 
-Planning document only. This is not an implementation commitment and should be revised during PoC work.
+Current roadmap for the browser-based CMS work. The TOML read path and deterministic migration foundation are implemented; the Decap admin surface and hosted integration remain planned.
 
 ## Summary
 
-The goal is to add Decap CMS to `comic_git` as an optional site-wide feature that exposes a built `/admin/` interface for editing comic content over the web. The engine side of the work lives in `comic_git_engine`: it will generate the static admin files, emit a Decap config during builds, provide deterministic local migration helpers, and read a new TOML-backed content format alongside the existing legacy INI/TXT/JSON format. Authentication and hosted orchestration may be handled by a separate GitHub App and OAuth backend, but the exact migration boundary will be decided after testing the integration.
+The goal is to add Decap CMS to `comic_git` as an optional site-wide feature that exposes a built `/admin/` interface for editing comic content over the web. `comic_git_engine` already reads TOML-backed comic and page content alongside legacy INI/TXT/JSON sources and provides deterministic local migration helpers. The remaining engine work will generate the static admin files and Decap config. Authentication and hosted orchestration may be handled by a separate GitHub App and OAuth backend, but the exact migration boundary will be decided after testing the integration.
 
-The current direction is a one-way migration: when CMS is enabled, migrated TOML files become the source of truth and legacy files are ignored for the same logical item. The TOML format is intended to remain human-readable so creators can still edit files locally without the CMS if they want to.
+Migration is one-way: whenever a TOML file exists, it is the source of truth and legacy files are ignored for that same logical item, regardless of whether CMS output is enabled later. The TOML format remains human-readable so creators can still edit files locally without the CMS.
 
 ## Product Goal
 
@@ -342,91 +342,31 @@ If CMS is enabled but required CMS metadata/config is missing, the build behavio
 
 If implementation options are otherwise equal, prefer the clearer failure mode.
 
-## Implementation Direction In Phases
+## Current Engine Foundation
 
-### Phase 0: Pre-CMS Refactors
+- mode-agnostic loaders select TOML when present and otherwise fall back to legacy sources
+- comic-level and page-level TOML parsers normalize into the same build-facing shapes as legacy content
+- page discovery is separate from format-specific parsing
+- precedence, validation, mixed-repo behavior, and deterministic migration are covered by unit tests
+- migration supports both page content and comic-level configuration without requiring TOML during normal runtime builds
 
-Before adding real CMS behavior, refactor the engine so TOML support and admin generation can land as a sequence of lower-risk steps rather than one large feature merge.
+## Remaining Implementation Direction
 
-The first concrete pattern should be a mode-agnostic loader chain:
-
-- add TOML-first loader entry points for each logical content/config type
-- have those TOML loaders return a structured "not found / not applicable" result at first
-- keep the existing legacy loader as the fallback
-- switch orchestration code to call the new wrapper loader rather than calling legacy parsing directly
-
-That lets the read-path refactor land early, before any real TOML parsing logic exists.
-
-Recommended Phase 0 refactors:
-
-1. Introduce wrapper loader functions for each major config/content boundary.
-   Start with:
-   - main comic config
-   - Extra Comic config
-   - page config/content
-   - site-level social media config
-   - webring participation settings
-
-   Each wrapper should follow the same pattern:
-   - try TOML loader
-   - if TOML is present and valid, use it
-   - if TOML is absent, use the legacy loader
-
-2. Separate "load raw content" from "normalize to build data".
-   Right now some engine code likely mixes file reading, format parsing, defaults, and downstream normalization in the same area. CMS work will be easier if the system can first load a format-specific source object and only then map that object into the existing build data shape.
-
-3. Define stable intermediate data shapes for page data and comic config.
-   Add clear internal shapes for:
-   - comic/site config
-   - page source content
-   - page social media override data
-
-   The goal is for legacy and TOML loaders to produce the same internal shape so the rest of the build pipeline stays format-agnostic.
-
-4. Isolate singleton-config loading into dedicated functions/modules.
-   Social media defaults and webring participation settings are good candidates here. They should not remain ad hoc reads buried deep in unrelated logic if they are going to gain alternate TOML-backed sources.
-
-5. Isolate page-folder discovery from page-file parsing.
-   CMS mode will still use the same folder model, but the file set inside the folder changes. Discovery should identify candidate page folders and their owning comic; format-specific parsing should happen later.
-
-6. Add explicit tests for "loader precedence" before adding real TOML parsing.
-   Even with stub TOML loaders, add tests that prove the intended precedence contract:
-   - TOML present -> TOML path wins
-   - TOML absent -> legacy fallback
-   - no mixed merge behavior
-
-7. Add a small admin-output seam in the build pipeline.
-   Do not generate real CMS files yet, but create a clear step boundary where optional `admin/` output would be emitted later. This reduces the chance that CMS output generation gets tangled into unrelated rendering/output code.
-
-8. Make config-file naming and lookup rules explicit in one place.
-   Avoid scattering literals like `comic_info.ini`, `info.ini`, and future `*.toml` names across many modules. A central lookup/constant layer will make migration work and future renames safer.
-
-These refactors are intentionally useful even before CMS ships. They reduce coupling, make the parsing rules easier to test, and let TOML support land incrementally.
-
-### Phase 1: PoC Foundations
+### Decap PoC
 
 - confirm Decap collection/file patterns against the real `comic_git` repo layout
-- prototype `info.toml` parsing for comic pages
 - prototype generated `admin/config.yml`
 - verify same-folder image upload and ordered image lists
 - verify nested singleton config editing is tolerable
 
-### Phase 2: Engine Read Path
-
-- teach the engine to read `comic_info.toml`
-- teach the engine to read page `info.toml`
-- add explicit precedence rules over legacy files
-- add tests for TOML parsing and mixed legacy/TOML repos
-- expand migration helpers from page-level `info.toml` conversion to site-level config conversion after the provisional `comic_info.toml` schema is validated
-
-### Phase 3: Static Admin Output
+### Static Admin Output
 
 - add CMS enable config
 - generate `admin/index.html`
 - generate `admin/config.yml`
 - include only the needed collections based on the current repo/config
 
-### Phase 4: GitHub App Migration Flow
+### GitHub App Migration Flow
 
 - decide whether first-time migration is locally run, externally orchestrated, or both
 - reuse engine-owned deterministic conversion helpers rather than duplicating migration logic in a hosted service
@@ -435,7 +375,7 @@ These refactors are intentionally useful even before CMS ships. They reduce coup
 - seed CMS defaults and backend config
 - gate setup on compatible engine version
 
-### Phase 5: Docs And Local Workflow
+### Docs And Local Workflow
 
 - write end-user CMS docs
 - explain migration expectations clearly

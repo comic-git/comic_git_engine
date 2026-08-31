@@ -25,7 +25,7 @@ This allows unmodified or partially modified sites to keep benefiting from engin
 Important current behavior:
 
 - the default theme is a normal theme and can be edited directly in the host repo
-- theme switching is controlled through `comic_info.ini`
+- theme switching is controlled through the TOML or legacy INI comic configuration
 - homepage content can be customized through simple content files or through full template override
 - many visual assets are user-owned files in `your_content/`, even when the rendering logic comes from the engine
 

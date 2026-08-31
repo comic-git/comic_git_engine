@@ -16,14 +16,14 @@ It is a user-facing site feature built on top of an external JSON contract, with
 
 The current webring model is endpoint-driven and opt-in:
 
-- webring support is disabled unless enabled in `comic_info.ini`
+- webring support is disabled unless enabled in the main comic configuration
 - the site reads either a shared JSON endpoint or an explicit local-development JSON file
 - the webring can render as previous/next navigation or as a full member list
 - the same external data source can be reused by multiple sites in the same ring
 
 Important current behavior:
 
-- the webring is configured per site through the `[Webring]` section
+- the webring is configured per site through `[webring]` in TOML or `[Webring]` in legacy INI
 - previous/next behavior depends on the site's configured member ID within the shared member list
 - local development can use `Endpoint = local`, which loads `your_content/webring.json` from the host repo
 - the feature depends on external or externally-authored JSON data, so endpoint correctness is part of the effective product contract

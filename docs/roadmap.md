@@ -13,16 +13,18 @@ It is not a task backlog. The goal is to capture:
 - what makes it risky
 - the rough release horizon
 
-## Output-directory-first builds
+## Selective output asset staging
+
+### Current state
+
+`comic_git_engine` now builds into `build/` by default, while retaining an explicit legacy in-place mode. The staged build still copies the complete `your_content/` tree, and deployment mode protects future assets by deleting scheduled source page folders before that copy. Source and public assets are therefore not yet fully separated.
 
 ### Desired future state
 
-`comic_git_engine` should build into an explicit output directory by default instead of mixing generated files into the host repo root.
-
-Long term, source files and generated output should be fully separated:
+Source files and generated output should be fully separated:
 
 - source content stays in the host repo
-- generated site files go into an output directory such as `_site`
+- generated site files remain in the configured output directory
 - deployment publishes only that output directory
 
 ### Why this is desirable
@@ -39,10 +41,9 @@ This is a high-risk migration for existing users.
 
 Potential risks include:
 
-- existing users relying on generated files appearing in the repo root
-- GitHub workflow assumptions tied to the current output layout
-- local preview and manual-testing workflows assuming the current file locations
-- theme or customization code depending on current generated paths
+- existing themes or hooks relying on arbitrary `your_content/` files being copied
+- incomplete asset-reference discovery omitting files that templates or posts need
+- local preview and manual-testing workflows assuming the complete source tree is public
 - hidden compatibility issues that only appear in long-lived user repos
 
 Because host repos follow patch updates automatically, this must not be introduced as a patch-level behavior change.
@@ -51,11 +52,11 @@ Because host repos follow patch updates automatically, this must not be introduc
 
 `2.0+`
 
-This should be treated as a major architectural migration and planned with explicit compatibility review.
+The initial output-directory default is part of 1.1, but selective asset staging remains a separate compatibility-sensitive migration.
 
 ### Likely follow-on work
 
-Once output-directory-first builds are established, the engine should be able to move away from destructive scheduled-post deletion and instead publish only the files needed for the final site output.
+Once selective asset staging is established, the engine should be able to move away from destructive scheduled-post deletion and publish only the files needed for the final site output.
 
 This may also be the point where the output structure itself is redesigned more aggressively. Instead of leaving source-style assets under `your_content/` in the published site, a future build could copy only the required assets into the generated site structure alongside the relevant HTML output.
 
@@ -69,7 +70,7 @@ That behavior was a rational solution to the original GitHub Pages deployment mo
 
 ### Desired future state
 
-Once output-directory-first builds exist, scheduled-post handling should become non-destructive:
+With staged output now available, scheduled-post handling should become non-destructive once the engine can selectively copy public assets:
 
 - source files for future comics should remain in the repo
 - normal builds should publish only pages and assets whose post date is in the past
@@ -84,7 +85,7 @@ Once output-directory-first builds exist, scheduled-post handling should become 
 
 ### Why this is risky
 
-This depends on the output-directory migration and should not be attempted as an isolated patch-level cleanup.
+This depends on selective asset staging and should not be attempted as an isolated patch-level cleanup.
 
 Risks include:
 
@@ -96,7 +97,7 @@ Risks include:
 
 `2.0+`
 
-This should be treated as a follow-on architectural migration after output-directory-first builds are established.
+This should be treated as a follow-on architectural migration after selective asset staging is established.
 
 ## Remove `Allow missing variables in templates`
 

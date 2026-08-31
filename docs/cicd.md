@@ -22,7 +22,7 @@
 | [`requirements.txt`](../requirements.txt)                                                       | Core runtime Python dependencies installed during build workflow execution                 |
 | [`requirements_migration.txt`](../requirements_migration.txt)                                   | Migration-only Python dependencies for local one-off conversion tooling                    |
 | [`src/scripts/make_requirements_hooks_file.py`](../src/scripts/make_requirements_hooks_file.py) | Generates optional hook dependency requirements during the build workflow                  |
-| [`requirements_hooks.txt`](../requirements_hooks.txt)                                           | Generated file used only when theme hook dependencies are needed during workflow execution |
+| `requirements_hooks.txt`                                                                        | Generated file used only when theme hook dependencies are needed during workflow execution |
 
 ## Non-Obvious Decisions
 
@@ -42,7 +42,7 @@ For `1.1`, the engine version source of truth is:
 
 The maintainer release workflow in [`.github/workflows/main.yaml`](../.github/workflows/main.yaml) updates the `VERSION` constant and the reusable workflow fallback before it creates version branches, tags, and the GitHub release.
 
-When checking release readiness, verify these three things together:
+When checking release readiness, verify these checks together:
 
 - `main.yaml` still edits `src/build/site_builder.py`
 - `main.yaml` still updates `DEFAULT_ENGINE_VERSION` in `build_site.yaml` to the release major/minor value

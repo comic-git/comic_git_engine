@@ -42,7 +42,8 @@ It also means:
 
 ## Files Affected
 
-- `src/build/build_site.py`
+- `src/build/content/page_discovery.py`
+- `src/build/content/page_models.py`
 - `your_content/comics/*/info.ini`
 - `docs/architecture.md`
 - `docs/coding-principles.md`

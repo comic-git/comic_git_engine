@@ -13,7 +13,7 @@
 
 Built output is not only for rendered HTML pages. It is also consumed by client-side JavaScript, feed readers, and external scrapers.
 
-At the same time, not every piece of source metadata should become public just because it exists in a page `info.ini`.
+At the same time, not every piece of source metadata should become public just because it exists in a page source file.
 
 ## Decision
 
@@ -35,7 +35,7 @@ It also means:
 
 ## Files Affected
 
-- `src/build/build_site.py`
+- `src/build/content/page_metadata.py`
 - `comic/page_info_list.json`
 - `docs/architecture.md`
 - `docs/integration/`

@@ -1,6 +1,6 @@
 """
 Creates dev_server.py to run build_site.main, start an HTTP server, and watch for changes in
-.tpl, .txt, .html, .md, and .ini files to rerun build_site.main in the background.
+.tpl, .txt, .html, .md, .ini, and .toml files to rerun build_site.main in the background.
 """
 
 import os
@@ -31,7 +31,7 @@ Install it by running:
 Then re-run this script.""")
     exit(1)
 
-WATCH_EXTENSIONS = {'.tpl', '.txt', '.html', '.md', '.ini'}
+WATCH_EXTENSIONS = {'.tpl', '.txt', '.html', '.md', '.ini', '.toml'}
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 HTTP_ROOT = None

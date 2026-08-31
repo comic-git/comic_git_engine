@@ -281,6 +281,30 @@ class TestArchiveStorylines(TestCase):
         self.assertEqual({}, hidden)
         self.assertEqual(1, len(shown["Arc"]))
 
+    @patch("build.site_builder.run_hook", return_value=None)
+    def test_uncategorized_pages_can_be_hidden(self, _mock_hook):
+        config = self.make_config()
+        config.set("Archive", "Show Uncategorized comics", "False")
+        page = self.make_page()
+        page.storyline = ""
+
+        storylines = site_builder.get_storylines(config, [page])
+
+        self.assertEqual({}, storylines)
+
+    @patch("build.site_builder.run_hook", return_value=None)
+    def test_uncategorized_storyline_is_listed_last(self, _mock_hook):
+        uncategorized = self.make_page("001")
+        uncategorized.storyline = ""
+        categorized = self.make_page("002")
+
+        storylines = site_builder.get_storylines(
+            self.make_config(),
+            [uncategorized, categorized],
+        )
+
+        self.assertEqual(["Arc", "Uncategorized"], list(storylines))
+
 
 class TestInfiniteScrollChapters(TestCase):
     def make_config(self, show_uncategorized=True):

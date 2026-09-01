@@ -1,13 +1,21 @@
 import os
 from dataclasses import dataclass, field
 from glob import iglob
+from typing import Callable
 
 from configparser import RawConfigParser
 
 from build.content import content_paths
-from build.content.comic_config_sources import serialize_comic_config_to_toml
+from build.content.comic_config_sources import (
+    load_comic_config_from_toml,
+    serialize_comic_config_to_toml,
+)
 from build.content.loaders import load_legacy_comic_info, load_legacy_extra_comic_info
-from build.content.page_sources import load_legacy_page_source, serialize_page_source_to_toml
+from build.content.page_sources import (
+    load_legacy_page_source,
+    load_page_source_from_toml,
+    serialize_page_source_to_toml,
+)
 from build.content.site_config import get_extra_comics_list
 
 
@@ -73,7 +81,9 @@ def run_page_migration(
                 report.written.append(target)
             else:
                 report.planned.append(target)
-        if delete_legacy:
+    if delete_legacy:
+        validate_replacement_toml_files(comic_contexts)
+        for comic_folder, _comic_info in comic_contexts:
             delete_legacy_files_for_migrated_comic_configs(comic_folder, report)
             delete_legacy_files_for_migrated_pages(comic_folder, report)
     return report
@@ -178,6 +188,32 @@ def write_comic_config_target(target: ComicConfigMigrationTarget) -> None:
     toml_text = serialize_comic_config_target(target)
     with open(target.toml_info_path, "x", encoding="utf-8", newline="\n") as f:
         f.write(toml_text)
+
+
+def validate_replacement_toml_files(comic_contexts: list[tuple[str, RawConfigParser]]) -> None:
+    for comic_folder, _comic_info in comic_contexts:
+        comic_toml_path, _legacy_path = (
+            content_paths.get_main_comic_info_candidates()
+            if not comic_folder
+            else content_paths.get_extra_comic_info_candidates(comic_folder.strip("/"))
+        )
+        validate_replacement_toml_file(comic_toml_path, load_comic_config_from_toml)
+
+        for page_path in sorted(iglob(f"your_content/{comic_folder}comics/*/")):
+            page_toml_path, _legacy_path = content_paths.get_page_info_candidates(page_path)
+            validate_replacement_toml_file(page_toml_path, load_page_source_from_toml)
+
+
+def validate_replacement_toml_file(path: str, loader: Callable[[str], object]) -> None:
+    if not os.path.exists(path):
+        return
+    try:
+        loader(path)
+    except Exception as e:
+        normalized_path = normalize_filesystem_path(path)
+        raise ValueError(
+            f"Cannot delete legacy files because replacement TOML is invalid: {normalized_path}: {e}"
+        ) from e
 
 
 def delete_legacy_files_for_migrated_comic_configs(comic_folder: str, report: PageMigrationReport) -> None:

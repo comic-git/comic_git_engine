@@ -1,11 +1,15 @@
 import ast
+import argparse
+import importlib.util
 import os
 import re
 import subprocess
 import sys
 import tempfile
 import textwrap
+from types import ModuleType
 from unittest import TestCase
+from unittest.mock import MagicMock, patch
 
 
 ENGINE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -62,6 +66,48 @@ class TestEntrypoints(TestCase):
         self.assertNotIn("ModuleNotFoundError", combined_output)
         self.assertIn("Couldn't find a folder", combined_output)
 
+    def test_make_requirements_hooks_file_prefers_toml_config(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            os.makedirs(os.path.join(temp_dir, "comic_git_engine"))
+            toml_theme_dir = os.path.join(
+                temp_dir,
+                "your_content",
+                "themes",
+                "toml-theme",
+                "scripts",
+            )
+            ini_theme_dir = os.path.join(
+                temp_dir,
+                "your_content",
+                "themes",
+                "ini-theme",
+                "scripts",
+            )
+            os.makedirs(toml_theme_dir)
+            os.makedirs(ini_theme_dir)
+            with open(os.path.join(temp_dir, "your_content", "comic_info.toml"), "w", encoding="utf-8") as f:
+                f.write('[site]\ntheme = "toml-theme"\n')
+            with open(os.path.join(temp_dir, "your_content", "comic_info.ini"), "w", encoding="utf-8") as f:
+                f.write("[Comic Settings]\nTheme = ini-theme\n")
+            with open(os.path.join(toml_theme_dir, "requirements.txt"), "w", encoding="utf-8") as f:
+                f.write("toml-package\n")
+            with open(os.path.join(ini_theme_dir, "requirements.txt"), "w", encoding="utf-8") as f:
+                f.write("ini-package\n")
+
+            result = subprocess.run(
+                [sys.executable, MAKE_REQUIREMENTS],
+                cwd=temp_dir,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(0, result.returncode, msg=result.stderr)
+            with open(
+                    os.path.join(temp_dir, "comic_git_engine", "requirements_hooks.txt"),
+                    encoding="utf-8",
+            ) as f:
+                self.assertEqual("toml-package", f.read())
+
     def test_dev_server_watches_toml_files(self):
         with open(DEV_SERVER, "r", encoding="utf-8") as f:
             module = ast.parse(f.read())
@@ -76,6 +122,68 @@ class TestEntrypoints(TestCase):
         )
 
         self.assertIn(".toml", watch_extensions)
+
+    def test_dev_server_uses_discovered_host_root_and_toml_loader(self):
+        watchdog = ModuleType("watchdog")
+        observers = ModuleType("watchdog.observers")
+        events = ModuleType("watchdog.events")
+        observers.Observer = MagicMock
+        events.FileSystemEventHandler = object
+        spec = importlib.util.spec_from_file_location("test_dev_server_module", DEV_SERVER)
+        module = importlib.util.module_from_spec(spec)
+        observer = MagicMock()
+        thread = MagicMock()
+        args = argparse.Namespace(
+            delete_scheduled_posts=False,
+            publish_all_comics=False,
+            output_dir=None,
+        )
+
+        with (
+            patch.dict(sys.modules, {
+                "watchdog": watchdog,
+                "watchdog.observers": observers,
+                "watchdog.events": events,
+            }),
+            tempfile.TemporaryDirectory() as temp_dir,
+        ):
+            cwd = os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                spec.loader.exec_module(module)
+                with (
+                    patch.object(module.utils, "find_project_root"),
+                    patch.object(module.build_site, "parse_args", return_value=args),
+                    patch.object(module.build_site, "apply_cli_environment_overrides") as mock_apply_overrides,
+                    patch.object(module, "load_main_comic_info", return_value=object()) as mock_load_config,
+                    patch.object(module.utils, "get_comic_url", return_value=("https://example.com/comic", "/comic")),
+                    patch.object(module.utils, "get_output_dir", return_value="build"),
+                    patch.object(module.build_site, "main") as mock_build,
+                    patch.object(module, "watch_and_rebuild", return_value=observer) as mock_watch,
+                    patch.object(module.threading, "Thread", return_value=thread),
+                    patch.object(module, "start_http_server"),
+                    patch.object(module, "delete_output_file_space"),
+                ):
+                    module.main()
+
+                request_handler = object.__new__(module.PreviewRequestHandler)
+                request_handler.directory = module.HTTP_ROOT
+                translated_path = request_handler.translate_path("/comic/comic/001/")
+            finally:
+                os.chdir(cwd)
+
+        self.assertEqual(temp_dir, module.PROJECT_ROOT)
+        self.assertEqual(os.path.join(temp_dir, "build"), module.HTTP_ROOT)
+        self.assertEqual("/comic", module.PREVIEW_SUBDIRECTORY)
+        mock_load_config.assert_called_once_with()
+        mock_apply_overrides.assert_called_once_with(args)
+        mock_build.assert_called_once_with(False, False)
+        mock_watch.assert_called_once_with([False, False])
+        thread.start.assert_called_once_with()
+        self.assertEqual(
+            os.path.normpath(os.path.join(temp_dir, "build", "comic", "001")),
+            os.path.normpath(translated_path),
+        )
 
 
 class TestWorkflowEntrypoints(TestCase):

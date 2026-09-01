@@ -5,6 +5,7 @@ from typing import Set
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from build.content.loaders import load_main_comic_info
 from build.content.site_config import get_extra_comics_list, get_extra_comic_info
 from core import utils
 from core.logging_config import configure_logging
@@ -23,7 +24,7 @@ def get_requirements(theme: str) -> Set[str]:
 def main():
     configure_logging()
     utils.find_project_root()
-    comic_info = utils.read_info("your_content/comic_info.ini")
+    comic_info = load_main_comic_info()
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
     requirements = get_requirements(theme)
     logger.debug("Hook requirements for main comic: %s", requirements)

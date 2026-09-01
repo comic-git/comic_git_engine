@@ -30,6 +30,7 @@ Important current behavior:
 - the engine reads both comic-level `comic_info.toml` and page-level `info.toml`
 - a TOML file takes precedence over the corresponding legacy INI file without merging same-item values
 - the migration command deterministically converts supported legacy comic and page content, with legacy-file deletion kept as an explicit step
+- before legacy deletion begins, every replacement TOML file in the migration scope must load successfully through the engine's normal parser; one invalid file aborts the entire deletion step
 - TOML-backed repos build normally without enabling a CMS
 - admin output is planned but not implemented yet
 

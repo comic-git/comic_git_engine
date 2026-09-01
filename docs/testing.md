@@ -202,7 +202,7 @@ When a test file patches the same runtime module repeatedly, define a `MUT` cons
 ```python
 MUT = "build.build_site."
 
-@patch(MUT + "read_info")
+@patch(MUT + "load_main_comic_info")
 @patch(MUT + "utils.get_comic_url", return_value=(COMIC_URL, "/comic_git_dev"))
 class TestMain(TestCase):
     ...
@@ -224,7 +224,7 @@ MUT = "build.build_site."
 @patch(MUT + "checkpoint")
 class TestMain(TestCase):
 
-    @patch(MUT + "read_info")
+    @patch(MUT + "load_main_comic_info")
     @patch(MUT + "get_extra_comics_list", return_value=[])
     def test_main_builds_rss_feed_job_from_main_comic(self, *_mocks):
         ...
@@ -232,7 +232,7 @@ class TestMain(TestCase):
 
 Patch where the code looks up the symbol, not where the symbol was originally defined. For example:
 
-- patch `build.build_site.read_info` when testing [`build.build_site`](../src/build/build_site.py)
+- patch `build.build_site.load_main_comic_info` when testing [`build.build_site`](../src/build/build_site.py)
 - patch `build.output.site_output.shutil.copytree` when testing [`build.output.site_output`](../src/build/output/site_output.py)
 - patch `core.utils.os.environ` or use `patch.dict(os.environ, ...)` when testing environment-sensitive helpers in [`core.utils`](../src/core/utils.py)
 
@@ -253,13 +253,13 @@ def get_mock_dict(mocks):
 
 MUT = "build.build_site."
 
-@patch(MUT + "read_info")
+@patch(MUT + "load_main_comic_info")
 class TestMain(TestCase):
 
     @patch(MUT + "get_extra_comics_list", return_value=[])
     def test_main_builds_rss_feed_job_from_main_comic(self, *_mocks):
         m = get_mock_dict(_mocks)
-        m["read_info"].return_value = self.make_comic_info()
+        m["load_main_comic_info"].return_value = self.make_comic_info()
         m["get_extra_comics_list"].assert_not_called()
 ```
 

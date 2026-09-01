@@ -8,11 +8,13 @@ import sys
 import logging
 import threading
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+from functools import partial
 from typing import Any
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from build import build_site
+from build.content.loaders import load_main_comic_info
 from build.output.site_output import delete_output_file_space
 from core import utils
 from core.logging_config import configure_logging
@@ -33,10 +35,19 @@ Then re-run this script.""")
 
 WATCH_EXTENSIONS = {'.tpl', '.txt', '.html', '.md', '.ini', '.toml'}
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-HTTP_ROOT = None
-SRC_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..'))
+HTTP_ROOT: str | None = None
+PROJECT_ROOT: str | None = None
+PREVIEW_SUBDIRECTORY = ""
 SKIP_REBUILD = False
+
+
+class PreviewRequestHandler(SimpleHTTPRequestHandler):
+    def translate_path(self, path: str) -> str:
+        request_path = path.split("?", 1)[0].split("#", 1)[0]
+        prefix = PREVIEW_SUBDIRECTORY.rstrip("/")
+        if prefix and (request_path == prefix or request_path.startswith(prefix + "/")):
+            path = request_path[len(prefix):] or "/"
+        return super().translate_path(path)
 
 
 class WatchdogEventHandler(FileSystemEventHandler):
@@ -56,7 +67,7 @@ class WatchdogEventHandler(FileSystemEventHandler):
             if ext in WATCH_EXTENSIONS:
                 logger.info("Change detected: %s. Rebuilding...", event.src_path)
                 SKIP_REBUILD = True
-                os.chdir(SRC_ROOT)
+                os.chdir(PROJECT_ROOT)
                 try:
                     build_site.main(*self.build_args)
                 except Exception:
@@ -71,9 +82,11 @@ class WatchdogEventHandler(FileSystemEventHandler):
 
 
 def watch_and_rebuild(build_args: list[Any]) -> Observer:
+    if PROJECT_ROOT is None:
+        raise RuntimeError("Project root was not initialized before starting the file watcher.")
     observer = Observer()
     event_handler = WatchdogEventHandler(observer, build_args)
-    observer.schedule(event_handler, SRC_ROOT, recursive=True)
+    observer.schedule(event_handler, PROJECT_ROOT, recursive=True)
     return observer
 
 
@@ -87,33 +100,33 @@ def start_observer(observer: Observer):
 
 
 def start_http_server(subdirectory: str):
-    os.chdir(HTTP_ROOT)
+    if HTTP_ROOT is None:
+        raise RuntimeError("HTTP root was not initialized before starting the preview server.")
     server_address = ('', 8000)
-    httpd = HTTPServer(server_address, SimpleHTTPRequestHandler)
+    request_handler = partial(PreviewRequestHandler, directory=HTTP_ROOT)
+    httpd = HTTPServer(server_address, request_handler)
     url = f"http://localhost:{server_address[1]}{subdirectory}"
     logger.info("Starting web server.\nGo to %s in your browser to view your site.\nUse Ctrl+C to stop the server.", url)
     httpd.serve_forever()
 
 
 def main():
-    global HTTP_ROOT
+    global HTTP_ROOT, PREVIEW_SUBDIRECTORY, PROJECT_ROOT
 
-    # Change working directory
-    os.chdir(SRC_ROOT)
+    utils.find_project_root()
+    PROJECT_ROOT = os.getcwd()
 
     # Get build args
     args = build_site.parse_args()
+    build_site.apply_cli_environment_overrides(args)
     build_args = [args.delete_scheduled_posts, args.publish_all_comics]
 
     # Set HTTP_ROOT
-    comic_info = build_site.read_info("your_content/comic_info.ini")
-    comic_url, subdirectory = utils.get_comic_url(comic_info)
-    if not subdirectory:
-        # If subdirectory is empty, leave HTTP_ROOT the same as SRC_ROOT
-        HTTP_ROOT = SRC_ROOT
-    else:
-        # Otherwise, put HTTP_ROOT one directory up so the website is served properly.
-        HTTP_ROOT = os.path.abspath(os.path.join(SRC_ROOT, ".."))
+    comic_info = load_main_comic_info()
+    _comic_url, subdirectory = utils.get_comic_url(comic_info)
+    PREVIEW_SUBDIRECTORY = subdirectory
+    output_dir = utils.get_output_dir()
+    HTTP_ROOT = os.path.abspath(output_dir) if output_dir else PROJECT_ROOT
 
     # Initial build
     build_site.main(*build_args)
@@ -132,7 +145,7 @@ def main():
 
     observer.stop()
     logger.info("Web server stopped. Deleting auto-generated files...")
-    os.chdir(SRC_ROOT)
+    os.chdir(PROJECT_ROOT)
     delete_output_file_space()
 
 

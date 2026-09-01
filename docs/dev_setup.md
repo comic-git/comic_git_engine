@@ -99,7 +99,10 @@ $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
 python comic_git_engine\src\scripts\dev_server.py
 ```
 
-`dev_server.py` serves the site at `http://localhost:8000` and rebuilds when `.tpl`, `.txt`, `.html`, `.md`, `.ini`, and `.toml` files change.
+`dev_server.py` serves generated output from `build/` by default, honors
+`--output-dir`, and preserves the configured comic subdirectory under
+`http://localhost:8000`. It rebuilds when `.tpl`, `.txt`, `.html`, `.md`,
+`.ini`, and `.toml` files change.
 
 Do not use `--delete-scheduled-posts` during normal local development. That flag is appropriate for deployment builds because it removes future-dated page content from the published output, but locally it can delete uncommitted user data files.
 

@@ -172,26 +172,24 @@ class TestTomlMigration(TestCase):
                 sorted(report.deleted_legacy_files),
             )
 
-    def test_delete_legacy_cleans_already_migrated_page(self):
+    def test_delete_legacy_rejects_invalid_replacement_page_toml(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             self.write_main_comic_info(temp_dir)
             page_dir = self.write_page(temp_dir, "", "001")
             with open(os.path.join(page_dir, "info.toml"), "w", encoding="utf-8") as f:
                 f.write('post_date = "2024-01-02"\nimages = ["first.png"]\n')
 
-            report = self.run_in_host(
-                temp_dir,
-                lambda: toml_migration.run_page_migration(write=False, delete_legacy=True),
-            )
+            with self.assertRaisesRegex(ValueError, "replacement TOML is invalid"):
+                self.run_in_host(
+                    temp_dir,
+                    lambda: toml_migration.run_page_migration(write=False, delete_legacy=True),
+                )
 
-            self.assertEqual(0, len(report.written))
-            self.assertEqual(1, len(report.skipped))
-            self.assertFalse(os.path.exists(os.path.join(page_dir, "info.ini")))
-            self.assertFalse(os.path.exists(os.path.join(page_dir, "post.txt")))
-            self.assertFalse(os.path.exists(os.path.join(page_dir, "English.md")))
-            self.assertFalse(os.path.exists(os.path.join(page_dir, "social_media.json")))
+            self.assertTrue(os.path.exists(os.path.join(page_dir, "info.ini")))
+            self.assertTrue(os.path.exists(os.path.join(page_dir, "post.txt")))
+            self.assertTrue(os.path.exists(os.path.join(page_dir, "English.md")))
+            self.assertTrue(os.path.exists(os.path.join(page_dir, "social_media.json")))
             self.assertTrue(os.path.exists(os.path.join(page_dir, "info.toml")))
-            self.assertEqual(4, len(report.deleted_legacy_files))
 
     def test_dry_run_reports_comic_config_without_writing_toml(self):
         with tempfile.TemporaryDirectory() as temp_dir:

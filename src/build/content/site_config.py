@@ -37,6 +37,13 @@ def get_pages_list(comic_info: RawConfigParser, section_name="Pages"):
     return []
 
 
+def is_page_configured(comic_info: RawConfigParser, template_name: str) -> bool:
+    return any(
+        page["template_name"].casefold() == template_name.casefold()
+        for page in get_pages_list(comic_info)
+    )
+
+
 def get_extra_comics_list(comic_info: RawConfigParser) -> List[str]:
     return utils.str_to_list(comic_info.get("Comic Settings", "Extra comics", fallback=""))
 

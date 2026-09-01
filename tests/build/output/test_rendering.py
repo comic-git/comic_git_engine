@@ -1,7 +1,10 @@
 import os
+import re
 from configparser import RawConfigParser
 from unittest import TestCase
 from unittest.mock import patch
+
+from jinja2 import Environment, FileSystemLoader
 
 from build.content.page_models import ComicImage, ComicPage
 from build.output import rendering
@@ -16,6 +19,12 @@ class TestRendering(TestCase):
         comic_info.add_section("Comic Settings")
         comic_info.set("Comic Settings", "Theme", "theme-name")
         return comic_info
+
+    @staticmethod
+    def add_page_config(comic_info, template_name, title=""):
+        if not comic_info.has_section("Pages"):
+            comic_info.add_section("Pages")
+        comic_info.set("Pages", template_name, title)
 
     def make_page(self, name="001", characters=None, tags=None):
         image = ComicImage(
@@ -40,6 +49,21 @@ class TestRendering(TestCase):
             images=[image],
             characters=characters or [],
             tags=tags or [],
+        )
+
+    @staticmethod
+    def render_comic_template(tagged_pages_enabled):
+        environment = Environment(loader=FileSystemLoader("templates"))
+        return environment.get_template("comic.tpl").render(
+            tagged_pages_enabled=tagged_pages_enabled,
+            _characters=["Alice", "Bob"],
+            _tags=["mystery", "action"],
+            images=[],
+            links=[],
+            social_media={},
+            transcripts={},
+            comic_folder="",
+            post_html="",
         )
 
     @patch(MUT + "utils.write_to_template")
@@ -159,6 +183,136 @@ class TestRendering(TestCase):
             "build_other_pages",
             ["extras/story/", comic_info, [page]],
         )
+
+    @patch(MUT + "run_hook")
+    @patch(MUT + "write_other_pages")
+    @patch(MUT + "utils.write_to_template")
+    @patch(MUT + "utils.get_social_media_data", return_value={})
+    @patch(MUT + "utils.build_markdown_parser")
+    @patch(MUT + "utils.build_jinja_environment")
+    def test_write_html_files_disables_tagged_links_and_warns_once_per_comic(
+            self,
+            _mock_environment,
+            _mock_markdown,
+            _mock_social,
+            mock_write,
+            _mock_write_other,
+            _mock_hook,
+    ):
+        pages = [
+            self.make_page("001", characters=["Alice"], tags=["mystery"]),
+            self.make_page("002", characters=["Bob"], tags=["action"]),
+        ]
+
+        with self.assertLogs(rendering.logger.name, level="WARNING") as logs:
+            rendering.write_html_files(
+                "extras/story/",
+                self.make_comic_info(),
+                pages,
+                {"theme": "theme-name", "tagged_pages_enabled": True},
+            )
+
+        self.assertEqual(1, len(logs.output))
+        self.assertIn("extras/story", logs.output[0])
+        self.assertIn("tagged", logs.output[0].lower())
+        self.assertIn("plain text", logs.output[0].lower())
+        self.assertTrue(all(
+            call.args[2]["tagged_pages_enabled"] is False
+            for call in mock_write.call_args_list
+        ))
+
+    @patch(MUT + "run_hook")
+    @patch(MUT + "write_other_pages")
+    @patch(MUT + "utils.write_to_template")
+    @patch(MUT + "utils.get_social_media_data", return_value={})
+    @patch(MUT + "utils.build_markdown_parser")
+    @patch(MUT + "utils.build_jinja_environment")
+    def test_write_html_files_enables_tagged_links_without_warning_when_configured(
+            self,
+            _mock_environment,
+            _mock_markdown,
+            _mock_social,
+            mock_write,
+            _mock_write_other,
+            _mock_hook,
+    ):
+        comic_info = self.make_comic_info()
+        self.add_page_config(comic_info, "TaGgEd", "Tagged Posts")
+
+        with self.assertLogs(rendering.logger.name, level="DEBUG") as logs:
+            rendering.write_html_files(
+                "",
+                comic_info,
+                [self.make_page(characters=["Alice"], tags=["mystery"])],
+                {"theme": "theme-name", "tagged_pages_enabled": False},
+            )
+
+        self.assertFalse(any("tagged page" in message.lower() for message in logs.output))
+        self.assertTrue(mock_write.call_args.args[2]["tagged_pages_enabled"])
+
+    @patch(MUT + "run_hook")
+    @patch(MUT + "write_other_pages")
+    @patch(MUT + "utils.write_to_template")
+    @patch(MUT + "utils.get_social_media_data", return_value={})
+    @patch(MUT + "utils.build_markdown_parser")
+    @patch(MUT + "utils.build_jinja_environment")
+    def test_write_html_files_does_not_warn_without_tagged_metadata(
+            self,
+            _mock_environment,
+            _mock_markdown,
+            _mock_social,
+            _mock_write,
+            _mock_write_other,
+            _mock_hook,
+    ):
+        with self.assertLogs(rendering.logger.name, level="DEBUG") as logs:
+            rendering.write_html_files(
+                "",
+                self.make_comic_info(),
+                [self.make_page()],
+                {"theme": "theme-name"},
+            )
+
+        self.assertFalse(any("tagged page" in message.lower() for message in logs.output))
+
+    @patch(MUT + "utils.write_to_template")
+    @patch(MUT + "utils.get_social_media_data", return_value={})
+    def test_write_other_pages_disables_tagged_links_in_inherited_latest_context(
+            self,
+            _mock_social,
+            mock_write,
+    ):
+        comic_info = self.make_comic_info()
+        self.add_page_config(comic_info, "latest", "Latest Page")
+
+        rendering.write_other_pages(
+            "",
+            comic_info,
+            [self.make_page()],
+            {"theme": "theme-name", "tagged_pages_enabled": True},
+        )
+
+        self.assertFalse(mock_write.call_args.args[2]["tagged_pages_enabled"])
+
+    def test_comic_template_links_tagged_metadata_only_when_enabled(self):
+        linked_html = self.render_comic_template(tagged_pages_enabled=True)
+        plain_html = self.render_comic_template(tagged_pages_enabled=False)
+
+        normalized_linked_html = re.sub(r"\s+", " ", linked_html)
+        self.assertIn(
+            'Characters: <a href="/tagged/Alice/">Alice</a>, '
+            '<a href="/tagged/Bob/">Bob</a>',
+            normalized_linked_html,
+        )
+        self.assertIn(
+            'Tags: <a class="tag-link" href="/tagged/mystery/">mystery</a>, '
+            '<a class="tag-link" href="/tagged/action/">action</a>',
+            normalized_linked_html,
+        )
+        self.assertNotIn('/tagged/', plain_html)
+        normalized_plain_html = re.sub(r"\s+", " ", plain_html)
+        self.assertIn("Characters: Alice, Bob", normalized_plain_html)
+        self.assertIn("Tags: mystery, action", normalized_plain_html)
 
     def test_templates_reference_structured_images_and_archive_entries(self):
         with open("templates/comic.tpl", encoding="utf-8") as f:

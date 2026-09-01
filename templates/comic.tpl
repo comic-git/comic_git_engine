@@ -69,7 +69,7 @@
             {%- for character in _characters %}
                 {# The `if not loop.last` block at the end of the next line means that the ", " string will be added
                    after every character link EXCEPT the last one. #}
-                <a href="{{ comic_base_dir }}/tagged/{{ character }}/">{{ character }}</a>{% if not loop.last %}, {% endif %}
+                {% if tagged_pages_enabled %}<a href="{{ comic_base_dir }}/tagged/{{ character }}/">{{ character }}</a>{% else %}{{ character }}{% endif %}{% if not loop.last %}, {% endif %}
             {%- endfor %}
             </div>
         {%- endif %}
@@ -77,7 +77,7 @@
             <div id="tags">
             Tags:
             {%- for tag in _tags %}
-                <a class="tag-link" href="{{ comic_base_dir }}/tagged/{{ tag }}/">{{ tag }}</a>{% if not loop.last %}, {% endif %}
+                {% if tagged_pages_enabled %}<a class="tag-link" href="{{ comic_base_dir }}/tagged/{{ tag }}/">{{ tag }}</a>{% else %}{{ tag }}{% endif %}{% if not loop.last %}, {% endif %}
             {%- endfor %}
             </div>
         {%- endif %}

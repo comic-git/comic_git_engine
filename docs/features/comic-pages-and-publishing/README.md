@@ -47,6 +47,11 @@ Important current behavior:
 - image-mode archives include text-only posts by default; `Show text-only posts
   = False` / `archive.show_text_only_posts = false` hides them without changing
   page-mode archives
+- configured `[Pages]` entries remain authoritative; character and tag metadata
+  does not implicitly enable the `tagged` page or generate tag archives
+- when `tagged` is configured, the built-in comic template links character and
+  tag values to their archives; otherwise it displays the same ordered values as
+  plain text and logs one actionable warning for the affected comic
 - no-image pages keep their post, navigation, RSS item, and page archive entry
 - generated sites are staged into `build/` by default; an empty output-directory
   setting retains the legacy in-place build mode
@@ -70,6 +75,9 @@ This feature is under active long-term architectural pressure from the roadmap:
 - Internal image identity is derived from owning comic, page folder, and
   normalized filename for thumbnail processing. It is not a public metadata or
   anchor contract.
+- Missing optional site pages must not make otherwise valid page metadata
+  disappear or create broken built-in links. The build should preserve the
+  metadata, explain the disabled behavior, and continue successfully.
 - Refactors in this area should be tested carefully because many other features depend on page ordering, page metadata, and page inclusion rules.
 
 ## Supporting Documents

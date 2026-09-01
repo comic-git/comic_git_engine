@@ -68,6 +68,18 @@ class TestSiteConfig(TestCase):
             site_config.get_pages_list(comic_info),
         )
 
+    def test_is_page_configured_uses_pages_as_case_insensitive_source_of_truth(self):
+        missing_pages = RawConfigParser()
+        empty_pages = self.make_comic_info()
+        configured_pages = self.make_comic_info()
+        configured_pages.set("Pages", "TaGgEd", "Tagged Posts")
+
+        self.assertFalse(site_config.is_page_configured(missing_pages, "tagged"))
+        self.assertFalse(site_config.is_page_configured(empty_pages, "tagged"))
+        self.assertTrue(site_config.is_page_configured(configured_pages, "tagged"))
+        self.assertTrue(site_config.is_page_configured(configured_pages, "TAGGED"))
+        self.assertFalse(site_config.is_page_configured(configured_pages, "archive"))
+
     def test_get_extra_comics_list_handles_empty_and_csv_values(self):
         comic_info = self.make_comic_info()
 

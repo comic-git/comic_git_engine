@@ -5,7 +5,7 @@ from configparser import RawConfigParser
 
 from build.content.comic_data import page_to_template_context
 from build.content.page_models import ComicPage
-from build.content.site_config import get_pages_list
+from build.content.site_config import get_pages_list, is_page_configured
 from core import utils
 from integrations.hooks import run_hook
 
@@ -18,6 +18,19 @@ def write_html_files(
         pages: list[ComicPage],
         global_values: dict,
 ) -> None:
+    tagged_pages_enabled = is_page_configured(comic_info, "tagged")
+    if not tagged_pages_enabled and any(page.characters or page.tags for page in pages):
+        comic_label = (
+            f"Extra Comic '{comic_folder.strip('/')}'"
+            if comic_folder
+            else "Main comic"
+        )
+        logger.warning(
+            "%s has published character or tag metadata, but no tagged page is configured. "
+            "Built-in templates will display that metadata as plain text. Add a tagged page "
+            "to [Pages] to generate character and tag archives.",
+            comic_label,
+        )
     template_folders = ["comic_git_engine/templates"]
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
     if theme:
@@ -32,6 +45,7 @@ def write_html_files(
         html_path = f"{comic_folder}comic/{page.page_name}/index.html"
         context = page_to_template_context(page)
         context.update(global_values)
+        context["tagged_pages_enabled"] = tagged_pages_enabled
         context["social_media"] = utils.get_social_media_data(
             comic_info,
             context,
@@ -56,6 +70,7 @@ def write_other_pages(
     else:
         base_context = page_to_template_context(pages[-1])
     base_context.update(global_values)
+    base_context["tagged_pages_enabled"] = is_page_configured(comic_info, "tagged")
     for page_config in get_pages_list(comic_info):
         if page_config["template_name"] == "tagged":
             write_tagged_pages(comic_info, pages, base_context)

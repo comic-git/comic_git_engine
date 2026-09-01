@@ -48,6 +48,19 @@ Theme overrides that render structured images follow these presentation rules:
 Template and JavaScript replacements are responsible for implementing this
 contract because replacement-based overrides do not inherit engine behavior.
 
+### Tagged metadata template context
+
+Engine-rendered comic pages and pages that inherit `comic.tpl`, including
+`latest`, receive an authoritative `tagged_pages_enabled` boolean. The engine
+derives it independently for each main or Extra Comic from that comic's resolved
+`[Pages]` configuration. The built-in template links character and tag values
+only when the `tagged` page is configured; otherwise, it renders those values as
+plain text.
+
+A theme-owned `comic.tpl` replacement does not inherit that conditional markup,
+but it can use `tagged_pages_enabled` to match the built-in behavior. Values
+provided by a code hook cannot override this engine-owned flag.
+
 ## Product Rules
 
 - Presentation customization should be approachable at multiple levels, from simple CSS edits to full template replacement.

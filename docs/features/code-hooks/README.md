@@ -51,6 +51,13 @@ text, and thumbnails exposed here are resolved values. Hooks that need source
 parsing semantics belong at a source-specific boundary rather than reconstructing
 inheritance from the normalized model.
 
+`extra_global_values` can add custom template values, but the engine may apply
+authoritative values derived from resolved comic configuration afterward. In
+particular, `tagged_pages_enabled` is calculated separately for each comic from
+its `[Pages]` configuration, so a hook cannot enable tagged links by returning a
+conflicting value. Theme templates may read the final flag; see
+[Themes and presentation overrides](../themes-and-presentation-overrides/).
+
 `ComicImage.id` is an internal thumbnail-identity input, not a public URL or
 anchor. `ComicImage` does not expose `anchor_id`; renderers derive positional
 anchors from image order. Image-mode `ArchiveEntry` values expose their one-based

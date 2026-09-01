@@ -227,6 +227,32 @@ class TestRendering(TestCase):
     @patch(MUT + "utils.get_social_media_data", return_value={})
     @patch(MUT + "utils.build_markdown_parser")
     @patch(MUT + "utils.build_jinja_environment")
+    def test_write_html_files_labels_main_comic_tagged_warning(
+            self,
+            _mock_environment,
+            _mock_markdown,
+            _mock_social,
+            _mock_write,
+            _mock_write_other,
+            _mock_hook,
+    ):
+        with self.assertLogs(rendering.logger.name, level="WARNING") as logs:
+            rendering.write_html_files(
+                "",
+                self.make_comic_info(),
+                [self.make_page(tags=["mystery"])],
+                {"theme": "theme-name"},
+            )
+
+        self.assertEqual(1, len(logs.output))
+        self.assertIn("Main comic", logs.output[0])
+
+    @patch(MUT + "run_hook")
+    @patch(MUT + "write_other_pages")
+    @patch(MUT + "utils.write_to_template")
+    @patch(MUT + "utils.get_social_media_data", return_value={})
+    @patch(MUT + "utils.build_markdown_parser")
+    @patch(MUT + "utils.build_jinja_environment")
     def test_write_html_files_enables_tagged_links_without_warning_when_configured(
             self,
             _mock_environment,

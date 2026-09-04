@@ -37,14 +37,16 @@ Rollback is currently a version-pointer problem, not an infrastructure rollback 
 Typical engine rollback flow:
 
 - identify the last known good engine version branch
-- move the `latest` branch and the current major/minor branch back to that known good commit
-- remove or stop pointing users at the bad version branch/tag as needed
+- move `latest` and the affected moving minor branch/tag back to the known-good release when an immediate rollback is necessary
+- publish a new patch release for the correction
+- direct exactly pinned users to another exact release; never move an exact version branch or tag
 
 One important wrinkle:
 
-- the reusable workflow integration surface is also tracked through the `v1` tag for host repos that reference `uses: comic-git/comic_git_engine/.github/workflows/build_site.yaml@v1`
+- reusable-workflow and engine revisions are independent selectors
+- `v1` is frozen at the 1.0 workflow contract, while 1.1 consumers normally follow the moving `v1.1` workflow tag
 
-That means workflow-level rollback needs to account for both version branches and the reusable-workflow tag users may be pinned to.
+That means rollback needs to account for both selectors. Moving workflow tags and engine branches can be repointed, but exact references remain immutable. Major tags are changed only through a deliberate manual operation, never through normal release automation.
 
 ## Infrastructure as Code
 

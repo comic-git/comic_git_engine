@@ -29,6 +29,7 @@ Use [`_template.md`](_template.md) to create a new doc. Name files `YYYY-MM-DD-s
 
 ## Index
 
+- [Release reference policy](2026-09-04-release-reference-policy.md) - Keep exact refs immutable, minor refs moving, major tags manual, and workflow and engine selectors independent, `active`
 - [Positional image anchors and minimal public metadata](2026-08-30-positional-image-anchors-and-minimal-metadata.md) - Derive presentation fragments from ordered image position and keep internal identity out of public metadata, `active`
 - [Code hooks as a supported expert API](2026-04-12-code-hooks-as-supported-expert-api.md) - Preserve theme hooks as a documented advanced extension surface, `active`
 - [Host repo root discovery and execution context](2026-04-12-host-repo-root-discovery-and-execution-context.md) - Discover the host repo root via `your_content/` and treat host-repo execution as the real runtime context, `active`

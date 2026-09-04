@@ -65,7 +65,6 @@ comic_subdirectory = ""
 extra_comics = ["extras/story"]
 on_comic_click = "Next comic"
 markdown_extras = []
-allow_missing_variables_in_templates = false
 
 [archive]
 date_format = "%B %d, %Y"
@@ -183,7 +182,6 @@ exclude_own_comic_from_members = false
 | `Comic Settings`     | `Extra comics`                         | `site.extra_comics`                          |
 | `Comic Settings`     | `On comic click`                       | `site.on_comic_click`                        |
 | `Comic Settings`     | `Markdown extras`                      | `site.markdown_extras`                       |
-| `Comic Settings`     | `Allow missing variables in templates` | `site.allow_missing_variables_in_templates`  |
 | `Archive`            | `Date format`                          | `archive.date_format`                        |
 | `Archive`            | `Use thumbnails`                       | `archive.use_thumbnails`                     |
 | `Archive`            | `Show Uncategorized comics`            | `archive.show_uncategorized_comics`          |
@@ -209,7 +207,7 @@ exclude_own_comic_from_members = false
 | `RSS Feed`           | `Image width`                          | `rss.image_width`                            |
 | `RSS Feed`           | `Image height`                         | `rss.image_height`                           |
 | `RSS Feed`           | `RSS title format`                     | `rss.title_format`                           |
-| `RSS Feed`           | `Channel description`                  | `rss.channel_description`                    |
+| `RSS Feed`           | `Description`                          | `rss.channel_description`                    |
 | `RSS Feed`           | `Combine with Main RSS Feed`           | `rss.combine_with_main`                      |
 | `Webring`            | `Enable webring`                       | `webring.enabled`                            |
 | `Webring`            | `Endpoint`                             | `webring.endpoint`                           |

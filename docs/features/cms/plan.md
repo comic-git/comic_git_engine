@@ -211,7 +211,9 @@ Likely additional fields:
 
 The simplest likely starting point is to merge CMS-relevant singleton config into the main comic config rather than keep many separate singleton files.
 
-The first local migration helper is page-scoped only, but site-level config migration is still intended once the provisional `comic_info.toml` schema is validated.
+The local migration helper now converts both page-level content and comic-level
+configuration. The provisional `comic_info.toml` schema includes the current
+site-level engine settings and remains the starting point for CMS integration.
 
 Likely areas to merge into `comic_info.toml`:
 

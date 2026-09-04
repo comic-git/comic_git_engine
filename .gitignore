@@ -8,6 +8,21 @@ __pycache__/
 requirements_hooks.txt
 
 .codex/*
+!.codex/README.md
 !.codex/rules/
-!.codex/rules/**
+.codex/rules/*
+!.codex/rules/default.rules
+!.codex/skills/
+.codex/skills/*
+!.codex/skills/install-skill-junctions.ps1
+!.codex/skills/docs/
+!.codex/skills/docs/**
+!.codex/skills/implement/
+!.codex/skills/implement/**
+!.codex/skills/plan/
+!.codex/skills/plan/**
+!.codex/skills/review/
+!.codex/skills/review/**
+!.codex/skills/test/
+!.codex/skills/test/**
 specs/

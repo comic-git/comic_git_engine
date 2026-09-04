@@ -32,7 +32,6 @@ date_format = "%Y-%m-%d"
 timezone = "UTC"
 extra_comics = ["extras/story", "bonus"]
 markdown_extras = ["tables", "fenced-code-blocks"]
-allow_missing_variables_in_templates = true
 
 [archive]
 use_thumbnails = true
@@ -49,6 +48,7 @@ thumbnail_size = "200x200"
 build = true
 newest_first = false
 image_width = "144"
+channel_description = "Feed Description"
 """
         )
 
@@ -60,7 +60,6 @@ image_width = "144"
         self.assertEqual("custom", comic_info.get("Comic Settings", "Theme"))
         self.assertEqual("extras/story, bonus", comic_info.get("Comic Settings", "Extra comics"))
         self.assertEqual("tables, fenced-code-blocks", comic_info.get("Comic Settings", "Markdown extras"))
-        self.assertTrue(comic_info.getboolean("Comic Settings", "Allow missing variables in templates"))
         self.assertTrue(comic_info.getboolean("Archive", "Use thumbnails"))
         self.assertEqual("images", comic_info.get("Archive", "Entry mode"))
         self.assertEqual("filename", comic_info.get("Archive", "Image title fallback"))
@@ -71,6 +70,7 @@ image_width = "144"
         self.assertTrue(comic_info.getboolean("RSS Feed", "Build RSS feed"))
         self.assertFalse(comic_info.getboolean("RSS Feed", "Newest first"))
         self.assertEqual("144", comic_info.get("RSS Feed", "Image width"))
+        self.assertEqual("Feed Description", comic_info.get("RSS Feed", "Description"))
 
     def test_load_comic_config_from_toml_keeps_sparse_optional_values_omitted(self):
         path = self.write_toml(
@@ -177,6 +177,20 @@ timezome = "UTC"
         with self.assertRaisesRegex(ValueError, "Unsupported key site.timezome in comic_info.toml"):
             comic_config_sources.load_comic_config_from_toml(path)
 
+    def test_load_comic_config_from_toml_rejects_removed_allow_missing_variables_option(self):
+        path = self.write_toml(
+            """
+[site]
+allow_missing_variables_in_templates = true
+"""
+        )
+
+        with self.assertRaisesRegex(
+                ValueError,
+                "Unsupported key site.allow_missing_variables_in_templates in comic_info.toml",
+        ):
+            comic_config_sources.load_comic_config_from_toml(path)
+
     def test_load_comic_config_from_toml_rejects_unknown_link_key(self):
         path = self.write_toml(
             """
@@ -267,6 +281,8 @@ about = "Legacy About"
         comic_info.set("Custom Section", "Custom Option", "Custom Value")
         comic_info.add_section("Archive")
         comic_info.set("Archive", "Show text-only posts", "False")
+        comic_info.add_section("RSS Feed")
+        comic_info.set("RSS Feed", "Description", "Feed Description")
 
         toml_text = comic_config_sources.serialize_comic_config_to_toml(comic_info)
         path = self.write_toml(toml_text)
@@ -280,7 +296,20 @@ about = "Legacy About"
         self.assertEqual("Cast", loaded.get("Pages", "cast"))
         self.assertEqual("Custom Value", loaded.get("Custom Section", "Custom Option"))
         self.assertFalse(loaded.getboolean("Archive", "Show text-only posts"))
+        self.assertEqual("Feed Description", loaded.get("RSS Feed", "Description"))
         self.assertIn("show_text_only_posts = false", toml_text)
+        self.assertIn('channel_description = "Feed Description"', toml_text)
         self.assertIn("[engine]", toml_text)
         self.assertIn('version = "master"', toml_text)
         self.assertNotIn('"Engine version"', toml_text)
+
+    def test_removed_allow_missing_variables_option_is_preserved_as_legacy_migration_data(self):
+        comic_info = RawConfigParser()
+        comic_info.optionxform = str
+        comic_info.add_section("Comic Settings")
+        comic_info.set("Comic Settings", "Allow missing variables in templates", "True")
+
+        toml_text = comic_config_sources.serialize_comic_config_to_toml(comic_info)
+
+        self.assertIn('[legacy."Comic Settings"]', toml_text)
+        self.assertIn('"Allow missing variables in templates" = "True"', toml_text)

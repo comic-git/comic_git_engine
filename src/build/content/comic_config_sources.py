@@ -31,13 +31,12 @@ STRING_OPTIONS = {
     ("rss", "image_width"): ("RSS Feed", "Image width"),
     ("rss", "image_height"): ("RSS Feed", "Image height"),
     ("rss", "title_format"): ("RSS Feed", "RSS title format"),
-    ("rss", "channel_description"): ("RSS Feed", "Channel description"),
+    ("rss", "channel_description"): ("RSS Feed", "Description"),
     ("webring", "endpoint"): ("Webring", "Endpoint"),
     ("webring", "id"): ("Webring", "Webring ID"),
 }
 
 BOOL_OPTIONS = {
-    ("site", "allow_missing_variables_in_templates"): ("Comic Settings", "Allow missing variables in templates"),
     ("archive", "use_thumbnails"): ("Archive", "Use thumbnails"),
     ("archive", "show_uncategorized_comics"): ("Archive", "Show Uncategorized comics"),
     ("archive", "show_text_only_posts"): ("Archive", "Show text-only posts"),

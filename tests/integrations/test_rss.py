@@ -127,6 +127,13 @@ class TestRssFeed(TestCase):
         self.assertNotIn("alt_text=", description)
         self.assertIn("<p>Post text</p>", description)
 
+    def test_build_rss_feed_uses_configured_channel_description(self):
+        _, output, _ = self.build_feed_output()
+
+        channel = self.get_channel(output)
+
+        self.assertEqual("Feed Description", channel.find("description").text)
+
     def test_build_rss_feed_keeps_one_item_per_multi_image_page(self):
         page = make_page(images=[make_image("one.png"), make_image("two.png")])
 

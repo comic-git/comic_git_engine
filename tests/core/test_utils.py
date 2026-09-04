@@ -4,11 +4,25 @@ from copy import deepcopy
 from unittest import TestCase
 from unittest.mock import patch, mock_open, call
 
+from jinja2 import StrictUndefined
+
 from build.content.page_models import ComicImage, ComicPage
 from core import utils
 
 
 MUT = "core.utils."
+
+
+class TestBuildJinjaEnvironment(TestCase):
+
+    def test_always_uses_strict_undefined_even_with_removed_legacy_option(self):
+        comic_info = RawConfigParser()
+        comic_info.add_section("Comic Settings")
+        comic_info.set("Comic Settings", "Allow missing variables in templates", "True")
+
+        utils.build_jinja_environment(comic_info, ["templates"])
+
+        self.assertIs(StrictUndefined, utils.jinja_environment.undefined)
 
 
 class TestGetComicUrl(TestCase):

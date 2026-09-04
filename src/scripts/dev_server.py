@@ -146,7 +146,7 @@ def main():
     observer.stop()
     logger.info("Web server stopped. Deleting auto-generated files...")
     os.chdir(PROJECT_ROOT)
-    delete_output_file_space()
+    delete_output_file_space(comic_info)
 
 
 if __name__ == "__main__":

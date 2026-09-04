@@ -3,8 +3,9 @@ import os
 import shutil
 from configparser import RawConfigParser
 
+from build.content.loaders import load_main_comic_info
 from build.content.site_config import get_extra_comics_list, get_pages_list
-from core.utils import get_output_dir, read_info
+from core.utils import get_output_dir
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ def delete_output_file_space(comic_info: RawConfigParser = None):
     if os.path.isfile("feed.xml"):
         os.remove("feed.xml")
     if comic_info is None:
-        comic_info = read_info("your_content/comic_info.ini")
+        comic_info = load_main_comic_info()
     for page in get_pages_list(comic_info):
         if page["template_name"] == "index":
             if os.path.exists("index.html"):

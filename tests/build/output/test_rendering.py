@@ -120,6 +120,29 @@ class TestRendering(TestCase):
         self.assertEqual("Index", mock_write_to_template.call_args.args[2]["_title"])
 
     @patch(MUT + "utils.write_to_template")
+    @patch(MUT + "get_pages_list", return_value=[
+        {"template_name": "TaGgEd", "title": "Tagged Posts"},
+    ])
+    @patch(MUT + "write_tagged_pages")
+    def test_write_other_pages_dispatches_tagged_case_insensitively(
+            self,
+            mock_write_tagged_pages,
+            _mock_get_pages_list,
+            mock_write_to_template,
+    ):
+        comic_info = self.make_comic_info()
+
+        rendering.write_other_pages(
+            "",
+            comic_info,
+            [self.make_page(tags=["mystery"])],
+            {"comic_url": "https://example.com"},
+        )
+
+        mock_write_tagged_pages.assert_called_once()
+        mock_write_to_template.assert_not_called()
+
+    @patch(MUT + "utils.write_to_template")
     @patch(MUT + "utils.get_social_media_data", return_value={"x": 1})
     def test_write_tagged_pages_groups_structured_page_tags(self, _mock_social, mock_write):
         pages = [

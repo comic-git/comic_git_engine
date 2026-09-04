@@ -35,10 +35,10 @@ def get_output_dir() -> str:
 def build_jinja_environment(comic_info: RawConfigParser, template_folders: list[str]) -> None:
     global jinja_environment
     try:
-        if comic_info.getboolean("Comic Settings", "Allow missing variables in templates", fallback=False):
-            jinja_environment = Environment(loader=FileSystemLoader(template_folders))  # noqa
-        else:
-            jinja_environment = Environment(loader=FileSystemLoader(template_folders), undefined=StrictUndefined)  # noqa
+        jinja_environment = Environment(
+            loader=FileSystemLoader(template_folders),
+            undefined=StrictUndefined,
+        )
     except Exception as e:
         raise ValueError(
             f"Error initializing Jinja2 environment with template folders: {template_folders}\n"

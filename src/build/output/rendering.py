@@ -72,7 +72,7 @@ def write_other_pages(
     base_context.update(global_values)
     base_context["tagged_pages_enabled"] = is_page_configured(comic_info, "tagged")
     for page_config in get_pages_list(comic_info):
-        if page_config["template_name"] == "tagged":
+        if page_config["template_name"].casefold() == "tagged":
             write_tagged_pages(comic_info, pages, base_context)
             continue
         template_name = page_config["template_name"]

@@ -138,6 +138,7 @@ class TestEntrypoints(TestCase):
             publish_all_comics=False,
             output_dir=None,
         )
+        comic_info = object()
 
         with (
             patch.dict(sys.modules, {
@@ -155,14 +156,14 @@ class TestEntrypoints(TestCase):
                     patch.object(module.utils, "find_project_root"),
                     patch.object(module.build_site, "parse_args", return_value=args),
                     patch.object(module.build_site, "apply_cli_environment_overrides") as mock_apply_overrides,
-                    patch.object(module, "load_main_comic_info", return_value=object()) as mock_load_config,
+                    patch.object(module, "load_main_comic_info", return_value=comic_info) as mock_load_config,
                     patch.object(module.utils, "get_comic_url", return_value=("https://example.com/comic", "/comic")),
                     patch.object(module.utils, "get_output_dir", return_value="build"),
                     patch.object(module.build_site, "main") as mock_build,
                     patch.object(module, "watch_and_rebuild", return_value=observer) as mock_watch,
                     patch.object(module.threading, "Thread", return_value=thread),
                     patch.object(module, "start_http_server"),
-                    patch.object(module, "delete_output_file_space"),
+                    patch.object(module, "delete_output_file_space") as mock_delete_output,
                 ):
                     module.main()
 
@@ -180,6 +181,7 @@ class TestEntrypoints(TestCase):
         mock_build.assert_called_once_with(False, False)
         mock_watch.assert_called_once_with([False, False])
         thread.start.assert_called_once_with()
+        mock_delete_output.assert_called_once_with(comic_info)
         self.assertEqual(
             os.path.normpath(os.path.join(temp_dir, "build", "comic", "001")),
             os.path.normpath(translated_path),
@@ -188,12 +190,27 @@ class TestEntrypoints(TestCase):
 
 class TestWorkflowEntrypoints(TestCase):
 
-    def extract_engine_version_script(self) -> str:
+    def read_build_workflow(self) -> str:
         with open(BUILD_SITE_WORKFLOW, "r", encoding="utf-8") as f:
-            workflow = f.read()
+            return f.read()
+
+    def extract_engine_version_script(self) -> str:
+        workflow = self.read_build_workflow()
         match = re.search(r"ENGINE_VERSION=\$\(python - <<'PY'\n(?P<script>.*?)\n\s*PY", workflow, re.DOTALL)
         self.assertIsNotNone(match)
         return textwrap.dedent(match.group("script"))
+
+    def test_build_workflow_preserves_output_directory_across_artifact_jobs(self):
+        workflow = self.read_build_workflow()
+        download_paths = re.findall(
+            r"- name: Download build artifact\s+"
+            r"uses: actions/download-artifact@v4\s+"
+            r"with:\s+name: site\s+path: (.+)",
+            workflow,
+        )
+
+        self.assertEqual(["${{ inputs.OUTPUT_DIR || '.' }}"] * 2, download_paths)
+        self.assertIn("dist_dir: ${{ inputs.OUTPUT_DIR || '.' }}", workflow)
 
     def run_engine_version_script(self, fixture_files: dict[str, str]) -> subprocess.CompletedProcess[str]:
         script = self.extract_engine_version_script()

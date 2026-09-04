@@ -160,7 +160,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: site
-          path: .
+          path: ${{ inputs.OUTPUT_DIR || '.' }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -187,13 +187,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: site
-          path: .
+          path: ${{ inputs.OUTPUT_DIR || '.' }}
 
       - name: Deploy to neocities
         uses: bcomnes/deploy-to-neocities@v3
         with:
           api_key: ${{ secrets.NEOCITIES_API_TOKEN }}
-          dist_dir: ${{ inputs.OUTPUT_DIR }}
+          dist_dir: ${{ inputs.OUTPUT_DIR || '.' }}
           cleanup: ${{ inputs.NEOCITIES_CLEAN }}
           neocities_supporter: ${{ inputs.NEOCITIES_SUPPORTER }}
           preview_before_deploy: true

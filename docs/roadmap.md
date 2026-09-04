@@ -99,39 +99,6 @@ Risks include:
 
 This should be treated as a follow-on architectural migration after selective asset staging is established.
 
-## Remove `Allow missing variables in templates`
-
-### Current behavior
-
-`Allow missing variables in templates` disables the default strict Jinja behavior and allows templates to render even when expected variables are missing.
-
-The option exists today, and it has been documented as a valid config option in the end-user docs.
-
-### Desired future state
-
-Remove this option and keep strict template-variable checking as the only supported behavior.
-
-### Why this is desirable
-
-- Strict failures are better for catching real template/data problems early.
-- Allowing missing variables weakens error detection and can hide broken or incomplete output.
-- The option does not fit the broader product preference for clear, predictable behavior.
-
-### Why this is risky
-
-Because the option is documented, it should be treated as part of the public contract even if it is rarely used.
-
-Risks include:
-
-- breaking sites that currently rely on silent rendering with missing variables
-- user confusion if the docs and engine behavior are not updated together
-
-### Likely release horizon
-
-`1.1`
-
-This is a candidate for removal in `1.1`, with matching doc updates and a clear note in release/migration information.
-
 ## Harden code hook contracts
 
 ### Current behavior

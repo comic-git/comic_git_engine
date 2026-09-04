@@ -72,6 +72,33 @@ class TestSiteOutput(TestCase):
             self.assertFalse(os.path.exists(os.path.join(temp_dir, "index.html")))
             self.assertFalse(os.path.exists(os.path.join(temp_dir, "404.html")))
 
+    def test_delete_output_file_space_loads_toml_for_legacy_in_place_output(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cwd = os.getcwd()
+            os.makedirs(os.path.join(temp_dir, "your_content"))
+            os.makedirs(os.path.join(temp_dir, "comic"))
+            os.makedirs(os.path.join(temp_dir, "about"))
+            os.makedirs(os.path.join(temp_dir, "extras", "story"))
+            with open(
+                    os.path.join(temp_dir, "your_content", "comic_info.toml"),
+                    "w",
+                    encoding="utf-8",
+            ) as f:
+                f.write(
+                    '[site]\nextra_comics = ["extras/story"]\n\n'
+                    '[[pages]]\ntemplate_name = "about"\ntitle = "About"\n'
+                )
+            try:
+                os.chdir(temp_dir)
+                with patch.dict(os.environ, {"OUTPUT_DIR": ""}, clear=False):
+                    site_output.delete_output_file_space()
+            finally:
+                os.chdir(cwd)
+
+            self.assertFalse(os.path.exists(os.path.join(temp_dir, "comic")))
+            self.assertFalse(os.path.exists(os.path.join(temp_dir, "about")))
+            self.assertFalse(os.path.exists(os.path.join(temp_dir, "extras", "story")))
+
     @patch(MUT + "delete_output_file_space")
     def test_setup_output_file_space_delegates_to_delete(self, mock_delete_output_file_space):
         comic_info = self.make_comic_info()

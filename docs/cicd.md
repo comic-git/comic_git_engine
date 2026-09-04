@@ -27,6 +27,8 @@
 ## Non-Obvious Decisions
 
 - `build_site.yaml` is part of the product surface, not just internal CI. Host repos call it remotely via `uses: comic-git/comic_git_engine/.github/workflows/build_site.yaml@...`, so changes to that workflow affect end-user builds directly.
+- Artifact paths must remain symmetric across jobs. The build uploads the contents of the resolved `OUTPUT_DIR`, so each deployment job must download the named artifact into that same directory before passing it to the hosting action.
+- GitHub's artifact upload excludes files and directories whose names begin with `.` by default. As a result, generated paths such as `.well-known/` are not deployed through this workflow unless hidden-file upload is enabled deliberately. Underscore-prefixed generated files such as `_thumbnail.jpg` are ordinary files and are included. Keep the safer default unless the complete output tree has been reviewed for hidden files that should not be published.
 - Runtime dependency changes are CI/CD-sensitive because every end-user build installs them. Treat dependency additions as product-impacting changes, not just local tooling changes.
 - Migration-only dependencies belong in `requirements_migration.txt`, not `requirements.txt`, unless they become required for normal site builds.
 - `main.yaml` updates version branches and tags for the engine repo, but reusable workflow consumers may also be following the separate `v1` tag. Release and rollback thinking should include both version branches and workflow tag consumers.

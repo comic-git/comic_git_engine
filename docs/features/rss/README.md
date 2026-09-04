@@ -26,6 +26,9 @@ Important current behavior:
 - `Build RSS feed` controls whether a comic participates in RSS at all
 - `Combine with Main RSS Feed` applies only to Extra Comics, but may be inherited from the main comic as a default
 - `RSS title format` follows the comic that owns the post, not the feed file where that post appears
+- RSS remains one item per page even when that page has multiple images
+- each image in an item uses its own resolved alt text
+- no-image pages remain in the feed with their post content
 - feed metadata has built-in defaults for language and channel image, with `Description` falling back to the comic's normal description
 - feed output paths are part of the published site contract
 

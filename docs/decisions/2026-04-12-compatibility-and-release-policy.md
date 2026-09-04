@@ -39,7 +39,7 @@ It also means:
 
 ## Files Affected
 
-- `scripts/**/*.py`
+- `src/**/*.py`
 - `tests/`
 - `.github/workflows/main.yaml`
 - `.github/workflows/build_site.yaml`

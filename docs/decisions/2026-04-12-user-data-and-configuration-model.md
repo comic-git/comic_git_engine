@@ -24,9 +24,9 @@ More structured or more automated approaches are possible, but they raise the su
 
 Keep the user-facing data model simple, file-based, and conservative.
 
-- User content lives in `your_content/` as folders, images, INI files, TXT files, and similar simple assets.
-- Prefer INI and TXT for user-editable config/content because they open easily on Windows and are forgiving to edit.
-- Keep `comic_info.ini` intentionally small. Only surface options users are likely to change often.
+- User content lives in `your_content/` as folders, images, INI or TOML files, TXT files, and similar simple assets.
+- Keep legacy INI/TXT editing approachable while allowing sparse, human-readable TOML for structured content and future CMS editing.
+- Keep comic configuration sparse. Only surface options users are likely to change often, regardless of whether the source is TOML or legacy INI.
 - Advanced options should usually exist as hidden defaults with documentation, not as visible defaults in the sample config.
 - Favor safe, understandable defaults over clever automation or hidden behavior.
 
@@ -43,11 +43,14 @@ It also means:
 ## Files Affected
 
 - `your_content/`
-- `scripts/utils.py`
-- `scripts/build_site.py`
-- `scripts/rss.py`
+- `src/core/utils.py`
+- `src/build/content/comic_config_sources.py`
+- `src/build/content/page_sources.py`
+- `src/build/content/loaders.py`
+- `src/integrations/rss.py`
 - `templates/`
-- `default_files/`
+- `css/`
+- `js/`
 - `docs/architecture.md`
 - `docs/coding-principles.md`
 - `docs/glossary.md`

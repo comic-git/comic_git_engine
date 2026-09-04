@@ -31,7 +31,13 @@ python -m venv venv
 .\venv\Scripts\Activate.ps1
 
 pip install --upgrade pip
-pip install -r scripts/requirements.txt
+pip install -r requirements.txt
+```
+
+If you need to run the TOML migration script or the full test suite, also install the migration-only dependencies:
+
+```powershell
+pip install -r requirements_migration.txt
 ```
 
 If you are testing a custom theme that has Python hook dependencies, also run:
@@ -40,7 +46,7 @@ If you are testing a custom theme that has Python hook dependencies, also run:
 pip install -r path/to/custom/theme/requirements.txt
 ```
 
-That second step is optional for normal engine development. Most work only needs `scripts/requirements.txt`.
+The migration and hook dependency steps are optional for normal site builds. Keep one-off migration tooling out of `requirements.txt` so regular build installs stay minimal.
 
 For manual site testing, load this repo into a host `comic_git` repo such as `comic_git_dev`:
 
@@ -53,7 +59,7 @@ The symlinked workflow is usually more flexible when you need to edit both repos
 
 | Variable            | Purpose                                                                                                                                              | How to get the value                                                                                                            |
 |---------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
-| `OUTPUT_DIR`        | If set, writes generated site files into a separate output directory instead of mixing build output into the repo root.                              | Choose any local output folder path when you want isolated build output. Leave unset to use the legacy in-place build behavior. |
+| `OUTPUT_DIR`        | Controls where generated site files are written. By default, builds go into `build/`.                                                              | Usually leave unset for local builds and prefer `--output-dir` on the command line when you want a one-off override. Set it manually for workflow-style testing or set it to an empty value for legacy in-place output. |
 | `GITHUB_REPOSITORY` | Lets local builds emulate the GitHub Actions environment when the host repo should keep `comic_info.ini` close to what end users receive by default. | Set this manually for local development in host repos like `comic_git_dev`, for example `ryanvilbrandt/comic_git_dev`.          |
 | `INPUTS`            | Optional GitHub Actions-style multiline input string consumed by `build_site.py`.                                                                    | Usually not needed for normal local development. Set manually only when reproducing workflow behavior.                          |
 | `SECRETS`           | Optional GitHub Actions-style multiline secret string consumed by `build_site.py`.                                                                   | Usually not needed for normal local development. Set manually only when reproducing workflow behavior.                          |
@@ -65,16 +71,15 @@ For a quick manual build inside a host repo such as `comic_git_dev`:
 ```powershell
 # Run from the root of the host comic_git repo
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-python comic_git_engine\scripts\build_site.py
+python comic_git_engine\src\build\build_site.py
 ```
 
-If you want generated files written to a separate directory:
+By default, generated files are written to `build/`. If you want a different output directory:
 
 ```powershell
 # Run from the root of the host comic_git repo
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-$env:OUTPUT_DIR='output'
-python comic_git_engine\scripts\build_site.py
+python comic_git_engine\src\build\build_site.py --output-dir output
 ```
 
 If you want to preview pages that have future `Post date` values without deleting anything:
@@ -82,7 +87,7 @@ If you want to preview pages that have future `Post date` values without deletin
 ```powershell
 # Run from the root of the host comic_git repo
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-python comic_git_engine\scripts\build_site.py --publish-all-comics
+python comic_git_engine\src\build\build_site.py --publish-all-comics
 ```
 
 For an auto-rebuilding local preview server:
@@ -91,10 +96,13 @@ For an auto-rebuilding local preview server:
 # Run from the root of the host comic_git repo
 pip install watchdog
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-python comic_git_engine\scripts\dev_server.py
+python comic_git_engine\src\scripts\dev_server.py
 ```
 
-`dev_server.py` serves the site at `http://localhost:8000` and rebuilds when `.tpl`, `.txt`, `.html`, `.md`, and `.ini` files change.
+`dev_server.py` serves generated output from `build/` by default, honors
+`--output-dir`, and preserves the configured comic subdirectory under
+`http://localhost:8000`. It rebuilds when `.tpl`, `.txt`, `.html`, `.md`,
+`.ini`, and `.toml` files change.
 
 Do not use `--delete-scheduled-posts` during normal local development. That flag is appropriate for deployment builds because it removes future-dated page content from the published output, but locally it can delete uncommitted user data files.
 
@@ -103,15 +111,13 @@ Do not use `--delete-scheduled-posts` during normal local development. That flag
 Run tests from the `comic_git_engine` repo root:
 
 ```powershell
-$env:PYTHONPATH='scripts'
-.\venv\Scripts\python.exe -m unittest
+.\venv\Scripts\python.exe -m unittest discover -s tests -t .
 ```
 
 Run a single test file:
 
 ```powershell
-$env:PYTHONPATH='scripts'
-.\venv\Scripts\python.exe -m unittest tests.test_rss_feed
+.\venv\Scripts\python.exe -m unittest tests.integrations.test_rss
 ```
 
 See [`docs/testing.md`](testing.md) for more detail on test structure and conventions.
@@ -124,3 +130,4 @@ See [`docs/testing.md`](testing.md) for more detail on test structure and conven
 - **PyCharm can show the same file through multiple paths when this repo is symlinked into another repo.** If the duplicate views become confusing, mark the symlinked copy as `Excluded` in PyCharm so you only work from one visible path.
 - **Be careful about setting `Comic domain` or `Comic subdirectory` directly in a host repo during local development.** For repos intended to be distributed to end users, prefer setting `GITHUB_REPOSITORY` locally instead so `comic_info.ini` stays close to the fresh-install defaults.
 - **`requirements_hooks.txt` is generated during the GitHub Action, not hand-maintained.** Do not create or commit this file to the repo. If you need to install custom dependencies from a custom theme, install directly from the requirements.txt in that theme.
+- If you want the old in-place build behavior for debugging or ad-hoc previewing, set `OUTPUT_DIR` to an empty value before running the build script. `--output-dir` is the cleaner option for normal one-off local overrides.

@@ -41,7 +41,7 @@ This repo is moving toward stronger unit-test coverage. If you are about to refa
 
 ### Extract cohesive modules, not random helpers
 
-When splitting code out of [`scripts/build_site.py`](../scripts/build_site.py), move related responsibilities into purpose-built modules. Do not shorten files by dumping unrelated helpers into [`scripts/utils.py`](../scripts/utils.py).
+When splitting code out of [`src/build/build_site.py`](../src/build/build_site.py), move related responsibilities into purpose-built modules. Do not shorten files by dumping unrelated helpers into [`src/core/utils.py`](../src/core/utils.py).
 
 ### Prefer explicit behavior over hidden magic
 
@@ -93,9 +93,9 @@ When refactoring, prefer explicit data flow over introducing additional globals.
 
 Working assumptions for code structure:
 
-- [`scripts/build_site.py`](../scripts/build_site.py) is still the main entry point
-- [`scripts/rss.py`](../scripts/rss.py) owns RSS-specific logic
-- [`scripts/utils.py`](../scripts/utils.py) provides shared helpers, but should not become a grab bag for unrelated logic
+- [`src/build/build_site.py`](../src/build/build_site.py) is still the main entry point
+- [`src/integrations/rss.py`](../src/integrations/rss.py) owns RSS-specific logic
+- [`src/core/utils.py`](../src/core/utils.py) provides shared helpers, but should not become a grab bag for unrelated logic
 - reusable GitHub workflow behavior in [`.github/workflows/build_site.yaml`](../.github/workflows/build_site.yaml) is part of the product architecture, not just CI glue
 
 ## Testing Conventions

@@ -26,7 +26,44 @@ Important current behavior:
 - code hooks are part of the supported expert feature surface
 - hooks are intentionally more powerful and more flexible than declarative customization options
 - hooks are not the preferred first-line customization path for ordinary site changes
-- compatibility in this area matters, because advanced users may depend on the data passed into hooks and on when those hooks run
+- the 1.1 hook contract passes structured `ComicPage` and `ComicImage` models;
+  legacy comic dictionaries and page-wide image fields are not maintained in
+  parallel
+- compatibility in this area matters within a release line, because advanced
+  users may depend on the data passed into hooks and on when those hooks run
+
+### Structured Hook Inputs
+
+Existing hook names and lifecycle points are retained. Their page-bearing inputs
+are now:
+
+| Hook | Relevant 1.1 input |
+|------|--------------------|
+| `extra_page_info_processing` | one normalized `ComicPage` after source parsing and fallback resolution |
+| `extra_comic_dict_processing` | one enriched `ComicPage`; the historical hook name remains unchanged |
+| `extra_get_storylines_processing` | `list[ComicPage]` plus grouped `ArchiveEntry` projections |
+| `extra_global_values` | `list[ComicPage]` |
+| `build_other_pages` | `list[ComicPage]` |
+| `postprocess` | the main comic's `list[ComicPage]` |
+
+Configured source values are not duplicated on public models. Image titles, alt
+text, and thumbnails exposed here are resolved values. Hooks that need source
+parsing semantics belong at a source-specific boundary rather than reconstructing
+inheritance from the normalized model.
+
+`extra_global_values` can add custom template values, but the engine may apply
+authoritative values derived from resolved comic configuration afterward. In
+particular, `tagged_pages_enabled` is calculated separately for each comic from
+its `[Pages]` configuration, so a hook cannot enable tagged links by returning a
+conflicting value. Theme templates may read the final flag; see
+[Themes and presentation overrides](../themes-and-presentation-overrides/).
+
+`ComicImage.id` is an internal thumbnail-identity input, not a public URL or
+anchor. `ComicImage` does not expose `anchor_id`; renderers derive positional
+anchors from image order. Image-mode `ArchiveEntry` values expose their one-based
+`image_index`; image-bearing page-mode entries expose `1`, while text-only entries
+use `None`. Hook code should keep
+the list order intact when positional links must remain stable.
 
 The current roadmap direction is to harden the existing hook contracts over time rather than replace the hook system wholesale.
 

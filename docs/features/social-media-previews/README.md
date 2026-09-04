@@ -25,9 +25,12 @@ The current social-preview model is default-first with selective override:
 Important current behavior:
 
 - preview metadata is generated as part of normal page rendering
-- comic pages default to article-like metadata, including page text and thumbnail-based image fields
+- comic pages default to article-like metadata, including page text, the
+  resolved page thumbnail, and the first image's resolved alt text
+- when a page has no usable resolved thumbnail, its preview image falls back to
+  `your_content/images/preview_image.png`; no-image pages use a blank image alt
 - fallback metadata still exists when no custom JSON file is provided
-- Extra Comics can have different social-media metadata because data is scoped per comic folder
+- Extra Comics can override social-media metadata with their own `social_media.json`, and otherwise fall back to the main comic's `social_media.json`
 
 This feature is stable in purpose, but changes here are externally visible and can affect how pages appear when shared across third-party platforms.
 

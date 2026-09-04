@@ -23,8 +23,12 @@
 
 **Reusable workflow** - The GitHub Actions workflow in [`.github/workflows/build_site.yaml`](../.github/workflows/build_site.yaml) that host repos call remotely via `uses: ...`. This is part of the product surface, not just internal CI.
 
+**Engine selector** - The engine version configured in a host repo's `comic_info.toml` or legacy `comic_info.ini`. It is independent of the reusable-workflow revision.
+
+**Workflow selector** - The Git reference after `@` in a host repo's reusable-workflow `uses:` declaration. It chooses the workflow contract, not the engine version used by that workflow.
+
 **Theme hook** - A Python extension point in a host repo theme that can alter build behavior. Hook dependencies are optional and separate from the normal engine runtime requirements.
 
-**v1 tag** - The reusable-workflow tag used by host repos when they reference `build_site.yaml`. This is separate from the engine's version branches and tags, and matters during release/rollback thinking.
+**v1 tag** - The frozen reusable-workflow tag for the 1.0 workflow contract. It is not advanced by normal release automation; 1.1 hosts normally use the separate moving `v1.1` tag.
 
 **your_content** - The top-level input directory in a host repo. It contains user data such as `comic_info.ini`, comic pages, images, themes, transcripts, and Extra Comic folders.

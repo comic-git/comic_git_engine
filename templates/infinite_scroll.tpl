@@ -5,13 +5,13 @@
    parts of the website after the links bar and before the "Powered by comic_git" footer go. #}
 {% block content %}
     <div id="jump-to">
-        {%- if storylines.keys() | list != ["Uncategorized"] %}
+        {%- if infinite_scroll_chapters.keys() | list != ["Uncategorized"] %}
         <h2>Jump to...</h2>
         {%- endif %}
         {# For loops let you take a list of a values and do something for each of those values. In this case,
            it runs through list of all the storylines in the comic (Chapter 1, Chapter 2, etc.) it generates a link
            for each of those them connecting to the first page in that storyline. #}
-        {%- for name, pages in storylines.items() %}
+        {%- for name, page in infinite_scroll_chapters.items() %}
             {# When text is surrounded by {{ these double curly braces }}, it's representing a variable that's passed in by
                the Python script that generates the HTML file. That value is dropped into the existing HTML with no changes.
                For example, if `pages` is a list of items and the first item has a variable on it called `page_name`,
@@ -20,7 +20,7 @@
             {%- if name != "Uncategorized" %}
             {# `| replace(" ", "-")` takes the value in the variable, in this case `name`, and replaces all
                spaces with hyphens. This is important when building links to other parts of the site. #}
-            <a class="button chapter-links" href="#{{ pages[0].page_name }}" id="infinite-scroll-{{ name | replace(' ', '-') }}">{{ name }}</a>
+            <a class="button chapter-links" href="#{{ page.page_name }}_01" id="infinite-scroll-{{ name | replace(' ', '-') }}">{{ name }}</a>
             {%- endif %}
         {%- endfor %}
     </div>
@@ -39,6 +39,6 @@
 {% block script %}
 <script type="module">
     import { load_page } from "{{ base_dir }}/comic_git_engine/js/infinite_scroll.js";
-    load_page("{{ comic_base_dir }}", "{{ content_base_dir }}");
+    load_page("{{ comic_base_dir }}");
 </script>
 {% endblock %}

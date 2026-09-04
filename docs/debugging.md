@@ -9,20 +9,26 @@ This doc is focused on local development and manual debugging.
 
 ## Reading Logs
 
-This repo does not have a separate application log system for local development. Most useful debugging output appears directly in:
+Build scripts log directly to the console. Most useful debugging output appears in:
 
 - the terminal running `build_site.py`
 - the terminal running `dev_server.py`
-- Python tracebacks printed to stderr
+- GitHub Actions job logs
+
+The default log level is `INFO`. To change it for a local run, set `COMIC_GIT_LOG_LEVEL` to a standard Python logging level such as `DEBUG`, `INFO`, `WARNING`, or `ERROR`.
 
 ```powershell
 # Run a local build and read the console output directly
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-python comic_git_engine\scripts\build_site.py
+python comic_git_engine\src\build\build_site.py
+
+# Run with debug logging
+$env:COMIC_GIT_LOG_LEVEL='DEBUG'
+python comic_git_engine\src\build\build_site.py
 
 # Run the local preview server and watch rebuild output live
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-python comic_git_engine\scripts\dev_server.py
+python comic_git_engine\src\scripts\dev_server.py
 ```
 
 ## Common Failures
@@ -42,7 +48,7 @@ Example:
 
 ```powershell
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-python comic_git_engine\scripts\build_site.py
+python comic_git_engine\src\build\build_site.py
 ```
 
 ### Wrong working directory
@@ -57,7 +63,7 @@ By default, future-dated pages are not published. If you need to inspect them lo
 
 ```powershell
 $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
-python comic_git_engine\scripts\build_site.py --publish-all-comics
+python comic_git_engine\src\build\build_site.py --publish-all-comics
 ```
 
 Do not use `--delete-scheduled-posts` for normal local debugging. That flag is for deployment-oriented builds and can delete future-dated content from the host repo.
@@ -72,19 +78,19 @@ Get-Location
 Get-ChildItem your_content
 
 # Run one focused test file while debugging a specific area
-$env:PYTHONPATH='scripts'
-.\venv\Scripts\python.exe -m unittest tests.test_rss_feed
+.\venv\Scripts\python.exe -m unittest tests.integrations.test_rss
 
 # Run build orchestration tests
-$env:PYTHONPATH='scripts'
-.\venv\Scripts\python.exe -m unittest tests.test_build_site
+.\venv\Scripts\python.exe -m unittest tests.build.test_build_site
 ```
 
 ## Environment Quirks
 
 - Local manual builds are most useful when run through a host repo such as `comic_git_dev`, not by treating `comic_git_engine` as a standalone app.
 - If `comic_git_engine` is symlinked into a host repo and both repos are open in PyCharm, the same file may appear at multiple paths.
-- `OUTPUT_DIR` changes where generated files are written. If output seems to be missing, check whether it was written into a separate directory instead of the host repo root.
+- Builds now default to writing generated files into `build/`. If output seems to be missing, check that folder first, or verify whether `OUTPUT_DIR` was set to a different value.
+- In 1.1, host repos are expected to contain `your_content/site_root/`. If the build fails complaining that the folder is missing, create it even if you do not have any custom root-level files yet.
+- If expected root-level files such as `favicon.ico`, `robots.txt`, or `CNAME` are missing from the built site, check `your_content/site_root/` in the host repo. Those files are copied into the site root late in the build.
 
 ## Related
 

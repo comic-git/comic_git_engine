@@ -40,10 +40,10 @@ It also means:
 
 ## Files Affected
 
-- `default_files/css/`
-- `default_files/js/`
+- `css/`
+- `js/`
 - `templates/`
 - `your_content/themes/`
-- `scripts/build_site.py`
+- `src/build/output/rendering.py`
 - `docs/architecture.md`
 - `docs/coding-principles.md`

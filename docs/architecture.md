@@ -14,16 +14,20 @@
 
 | Component                   | Location                                                                    | Responsibility                                                                                                                            |
 |-----------------------------|-----------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| Build entry point           | [`scripts/build_site.py`](../scripts/build_site.py)                         | Main orchestration entry point. Reads host-repo config and content, builds pages, writes output, and triggers RSS generation.             |
-| Shared utilities            | [`scripts/utils.py`](../scripts/utils.py)                                   | Common helpers for config parsing, path/url building, templating, markdown parsing, social media data, and build checkpoints.             |
-| RSS generation              | [`scripts/rss.py`](../scripts/rss.py)                                       | Builds RSS feed jobs and serializes RSS XML for the main comic and Extra Comics.                                                          |
-| Data models                 | [`scripts/models.py`](../scripts/models.py)                                 | Small shared dataclasses used to pass build results between steps.                                                                        |
+| Build entry point           | [`src/build/build_site.py`](../src/build/build_site.py)                     | Thin orchestration entry point. Handles env input setup, host-root discovery, hook boundaries, main/extra comic coordination, and RSS.    |
+| Build pipeline modules      | [`src/build/`](../src/build/)                                               | Purpose-built modules for the build pipeline, including site config, page discovery, comic data assembly, rendering, output handling, and image/transcript helpers. |
+| Shared utilities            | [`src/core/utils.py`](../src/core/utils.py)                                 | Cross-cutting helpers for root discovery, config parsing, path/url building, templating, social media data, and build checkpoints.        |
+| RSS generation              | [`src/integrations/rss.py`](../src/integrations/rss.py)                     | Builds RSS feed jobs and serializes RSS XML for the main comic and Extra Comics.                                                          |
+| Page and image models       | [`src/build/content/page_models.py`](../src/build/content/page_models.py)   | Structured page/image/archive models plus internal identity, navigation, and fallback helpers.                                            |
+| Shared build models         | [`src/core/models.py`](../src/core/models.py)                               | Small shared dataclasses used to pass per-comic build results between top-level steps.                                                     |
+| Public metadata contract    | [`src/build/content/page_metadata.py`](../src/build/content/page_metadata.py), [`schemas/`](../schemas/) | Serializes resolved page/image data and ships its versioned JSON Schema. |
+| Hooks and external data     | [`src/integrations/`](../src/integrations/)                                 | Theme hooks, RSS integration logic, and webring loading.                                                                                  |
 | Built-in presentation layer | [`templates/`](../templates/), [`css/`](../css/), [`js/`](../js/)           | Default templates, CSS, and JavaScript shipped with the engine. These provide the default site behavior and appearance.                   |
 | Host-repo content layer     | `your_content/` in the loading `comic_git` repo                             | User-controlled data source: comic config, page metadata, images, themes, transcripts, home page content, and Extra Comic content.        |
 | Theme extension layer       | `your_content/themes/...` in the loading repo                               | Optional theme-level templates, CSS, images, and Python hook scripts that override or extend default engine behavior.                     |
 | Reusable build workflow     | [`.github/workflows/build_site.yaml`](../.github/workflows/build_site.yaml) | Reusable GitHub Actions workflow intended to be called from host `comic_git` repos to build and deploy sites with shared engine behavior. |
 | Release workflow            | [`.github/workflows/main.yaml`](../.github/workflows/main.yaml)             | Maintainer-only workflow for version bumps, tags, branches, and GitHub releases for `comic_git_engine` itself.                            |
-| Test suite                  | [`tests/`](../tests/)                                                       | Unit tests for engine behavior. This is the primary long-term safety net for refactors and bug fixes.                                     |
+| Test suite                  | [`tests/`](../tests/)                                                       | Unit tests for engine behavior, split by module so refactors can lock down behavior before moving code.                                   |
 
 ## Host Repo Data Model
 
@@ -33,13 +37,16 @@ Typical structure:
 
 ```text
 your_content/
-  comic_info.ini
+  comic_info.ini|comic_info.toml
   home page.txt|html
+  site_root/
+    .nojekyll
+    favicon.ico
   webring.json
   images/
   comics/
     <page-name>/
-      info.ini
+      info.ini|toml
       post.txt
       <comic image files>
       <transcript files>
@@ -50,32 +57,35 @@ your_content/
       templates/
       scripts/
   <extra-comic>/
-    comic_info.ini
+    comic_info.ini|comic_info.toml
     comics/
       <page-name>/
-        info.ini
+        info.ini|toml
         post.txt
         <comic image files>
 ```
 
 This structure is intentionally file-based and low-friction:
 
-- creators edit `.ini`, `.txt`, and image files directly
+- creators edit `.ini`, `.toml`, `.txt`, and image files directly
 - most configuration is designed to be understandable in a text editor on Windows
 - adding or changing content is usually done by creating, renaming, moving, or deleting files and folders
+- `your_content/site_root/` is part of the expected 1.1 host-repo layout, and should contain at minimum a `favicon.ico` and `.nojekyll` file.
 
 ## Data Flow
 
 1. A host `comic_git` repo invokes the engine locally or through the reusable [`build_site.yaml`](../.github/workflows/build_site.yaml) workflow.
-2. [`scripts/build_site.py`](../scripts/build_site.py) finds the project root, reads `your_content/comic_info.ini`, resolves the site URL, and loads any theme hook behavior.
-3. The build scans `your_content/comics/` and any configured Extra Comics for page folders and page metadata.
-4. Page metadata is normalized into full comic data dictionaries, including post text, transcripts, navigation IDs, derived titles, and other template variables.
-5. A generated `page_info_list.json` file is written into the built `comic/` output tree as a page index and metadata source. It is used by features such as infinite scroll and is also useful to external scrapers.
-6. The engine optionally creates thumbnails and other image derivatives.
-7. Jinja templates from the built-in template set and any theme overrides are rendered into HTML output.
-8. [`scripts/rss.py`](../scripts/rss.py) builds any enabled RSS feeds for the main comic and Extra Comics.
-9. The final output is written either directly into the host repo root or into `OUTPUT_DIR`, depending on environment configuration.
-10. The host repo then publishes that output, typically to GitHub Pages and optionally to Neocities.
+2. [`src/build/build_site.py`](../src/build/build_site.py) finds the project root, selects `your_content/comic_info.toml` when present or falls back to `comic_info.ini`, resolves the site URL, loads theme hooks, and orchestrates the build order for Extra Comics and the main comic.
+3. [`src/build/site_builder.py`](../src/build/site_builder.py) coordinates the per-comic build pipeline using the lower-level modules.
+4. [`src/build/content/page_sources.py`](../src/build/content/page_sources.py) parses legacy INI or TOML into source-only page/image models, preserving omitted versus explicitly blank values.
+5. [`src/build/content/page_discovery.py`](../src/build/content/page_discovery.py) scans page folders, applies scheduling and source precedence, validates image paths, resolves fallbacks once, and constructs ordered `ComicPage`/`ComicImage` models.
+6. [`src/build/content/comic_data.py`](../src/build/content/comic_data.py) enriches pages with navigation, post HTML, archive dates, and the structured hook boundary.
+7. [`src/build/output/images.py`](../src/build/output/images.py) resolves page and image thumbnails according to archive mode, generation, explicit-asset, and overwrite policies.
+8. [`src/build/content/page_metadata.py`](../src/build/content/page_metadata.py) writes resolved public metadata after thumbnail processing. Every build also deploys [`schemas/page_info_list.schema.json`](../schemas/page_info_list.schema.json).
+9. [`src/build/output/rendering.py`](../src/build/output/rendering.py) projects narrow template contexts and renders built-in or theme templates.
+10. [`src/integrations/rss.py`](../src/integrations/rss.py) builds page-level RSS items from structured pages for the main comic and Extra Comics.
+11. [`src/build/output/site_output.py`](../src/build/output/site_output.py) handles cleanup, staging into the configured output directory, and copying any host-managed root files from `your_content/site_root/` into the built site root.
+12. The host repo then publishes that output, typically to GitHub Pages and optionally to Neocities.
 
 ## Key Dependencies
 
@@ -93,15 +103,18 @@ This structure is intentionally file-based and low-friction:
 ## API / Data Model
 
 - API spec: none; this repo does not expose a network API
-- Data models: [`scripts/models.py`](../scripts/models.py)
+- Internal page/image models: [`src/build/content/page_models.py`](../src/build/content/page_models.py)
+- Public page metadata schema: [`schemas/page_info_list.schema.json`](../schemas/page_info_list.schema.json)
+- Public image metadata uses ordered array position as its presentation-order contract and deliberately omits internal image IDs and HTML anchors. Standalone and infinite-scroll fragments are derived by their respective renderers.
 - Primary host-repo config/data inputs:
   - `your_content/comic_info.ini`
-  - `your_content/comics/*/info.ini`
-  - `your_content/<extra-comic>/comic_info.ini`
+  - `your_content/comic_info.toml`
+  - `your_content/comics/*/info.ini|info.toml`
+  - `your_content/<extra-comic>/comic_info.ini|comic_info.toml`
 
 ## Features
 
-No feature-specific folders have been created yet in [`docs/features/`](features/README.md).
+Feature intent and product rules are indexed in [`docs/features/`](features/README.md), including the current [CMS and TOML roadmap](features/cms/).
 
 ## Design Decisions
 
@@ -109,5 +122,5 @@ No feature-specific folders have been created yet in [`docs/features/`](features
 - The reusable [`build_site.yaml`](../.github/workflows/build_site.yaml) workflow is a core part of the architecture. Host `comic_git` repos are expected to call this workflow remotely so engine behavior can be centralized and updated for many users at once.
 - [`main.yaml`](../.github/workflows/main.yaml) is a maintainer workflow for releasing `comic_git_engine` itself and is not part of the end-user integration surface.
 - Host `comic_git` repos should be thought of primarily as user data stores plus a small amount of scaffolding. The engine repo is where the main build logic, defaults, and shared behavior live.
-- The user-content model prioritizes minimal technical intimidation. File formats, defaults, and content layout are designed so non-technical creators can work mostly through folders, `.ini` files, `.txt` files, and image assets.
+- The user-content model prioritizes minimal technical intimidation. File formats, defaults, and content layout are designed so non-technical creators can work mostly through folders, `.ini` or `.toml` files, `.txt` files, and image assets.
 - Runtime dependencies should stay minimal because they are installed during GitHub Actions runs for end-user sites. Developer-only tools should not become required engine runtime dependencies.

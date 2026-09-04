@@ -43,11 +43,11 @@ It also means:
 
 ## Files Affected
 
-- `scripts/build_site.py`
-- `scripts/rss.py`
+- `src/build/build_site.py`
+- `src/integrations/rss.py`
 - `templates/`
-- `default_files/css/`
-- `default_files/js/`
+- `css/`
+- `js/`
 - `themes/`
 - `comic/`
 - `page_info_list.json`

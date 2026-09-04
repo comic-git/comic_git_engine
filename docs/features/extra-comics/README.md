@@ -18,7 +18,7 @@ The current Extra Comics model is built around inheritance plus selective overri
 
 - an Extra Comic lives under its own folder in `your_content/`
 - it inherits the main comic's settings by default
-- it can override those settings with its own `comic_info.ini`
+- it can override those settings with its own `comic_info.toml` or legacy `comic_info.ini`
 - it can use its own theme, links bar, pages, and RSS behavior
 
 Important current behavior:

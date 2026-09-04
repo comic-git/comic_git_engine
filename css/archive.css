@@ -10,8 +10,15 @@
 
 .archive-thumbnail {
     width: 100px;
+    min-height: 100px;
     margin: 10px;
     text-align: center;
+}
+
+.archive-thumbnail-text-only {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .archive-section {
@@ -20,6 +27,11 @@
 
 .archive-thumbnail-page {
     margin-bottom: 2px;
+}
+
+.archive-thumbnail-page img {
+    max-width: 100%;
+    height: auto;
 }
 
 .archive-thumbnail-title {

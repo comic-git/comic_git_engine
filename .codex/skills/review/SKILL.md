@@ -18,7 +18,7 @@ Read `AGENTS.md`, `docs/coding-principles.md`, `docs/gotchas.md`, and `docs/deci
 
 1. **Find the branch point**
    ```bash
-   git merge-base main HEAD
+   git merge-base master HEAD
    ```
    Use that commit hash with `git diff <hash>..HEAD` to see the full branch diff, including tests and doc changes.
 

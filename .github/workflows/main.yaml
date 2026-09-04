@@ -1,109 +1,245 @@
+name: Release Engine
+
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'New script version'
+        description: "New engine version (X.Y.Z)"
         required: true
-
+        type: string
 
 jobs:
-  update_version:
+  validate_release:
+    name: Validate release request
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      version: ${{ steps.validate_version.outputs.version }}
+      major: ${{ steps.validate_version.outputs.major }}
+      minor: ${{ steps.validate_version.outputs.minor }}
+      minor_version: ${{ steps.validate_version.outputs.minor_version }}
+      master_sha: ${{ steps.validate_refs.outputs.master_sha }}
     steps:
-      - name: Load repository
-        uses: actions/checkout@v2
+      - name: Validate version and dispatch ref
+        id: validate_version
+        env:
+          DISPATCH_REF: ${{ github.ref }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ "$DISPATCH_REF" != "refs/heads/master" ]]; then
+            echo "Release Engine must be dispatched from the master branch."
+            exit 1
+          fi
+
+          if [[ ! "$RELEASE_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Version must be a complete numeric version in X.Y.Z form, such as 1.1.0."
+            exit 1
+          fi
+
+          IFS=. read -r MAJOR MINOR PATCH <<< "$RELEASE_VERSION"
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+          echo "minor_version=$MAJOR.$MINOR" >> "$GITHUB_OUTPUT"
+
+      - name: Reject overlapping release runs
+        uses: actions/github-script@v7
         with:
-          ref: master
-      - name: Update version in site_builder.py
-        run: |
-          VERSION=${{ github.event.inputs.version }}
-          MAJOR=$(echo $VERSION | cut -d. -f1)
-          MINOR=$(echo $VERSION | cut -d. -f2)
-          sed -i "s/VERSION = \".*\"/VERSION = \"$VERSION\"/" src/build/site_builder.py
-          sed -i "s/DEFAULT_ENGINE_VERSION = \".*\"/DEFAULT_ENGINE_VERSION = \"$MAJOR.$MINOR\"/" .github/workflows/build_site.yaml
-          git config --local user.name "Github Action"
-          git config --local user.email "action@github.com"
-          git add --all
-          git commit -m "Version ${{ github.event.inputs.version }}"
-          git push origin HEAD:master
-      - name: Update version branches and tags
-        run: |
-          VERSION=${{ github.event.inputs.version }}
-          MAJOR=$(echo $VERSION | cut -d. -f1)
-          MINOR=$(echo $VERSION | cut -d. -f2)
-          MAJOR_TAG="v$MAJOR"
-          MINOR_TAG="v$MAJOR.$MINOR"
-          FULL_TAG="v$VERSION"
+          script: |
+            const activeStatuses = new Set([
+              "in_progress",
+              "pending",
+              "queued",
+              "requested",
+              "waiting",
+            ]);
+            const runs = await github.paginate(
+              github.rest.actions.listWorkflowRuns,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: "main.yaml",
+                event: "workflow_dispatch",
+                per_page: 100,
+              },
+            );
+            const olderRun = runs
+              .filter((run) => run.id < context.runId && activeStatuses.has(run.status))
+              .sort((left, right) => right.id - left.id)[0];
+            if (olderRun) {
+              core.setFailed(
+                `Release run ${context.runId} is newer than active release run ` +
+                `${olderRun.id}: ${olderRun.html_url}`,
+              );
+            }
 
-          # Create and reset branches
-          git fetch --all
-          git checkout -B latest origin/master
-          git push -f origin latest
-
-          git checkout -B "$MAJOR.$MINOR" origin/master
-          git push -f origin "$MAJOR.$MINOR"
-
-          git checkout -B $VERSION origin/master
-          git push -f origin $VERSION
-
-          # Delete existing tags if present
-          git tag -d $MAJOR_TAG || true
-          git tag -d $MINOR_TAG || true
-          git tag -d $FULL_TAG || true
-          git push --delete origin $MAJOR_TAG || true
-          git push --delete origin $MINOR_TAG || true
-          git push --delete origin $FULL_TAG || true
-
-          # Create new tags
-          git tag $MAJOR_TAG
-          git tag $MINOR_TAG
-          git tag $FULL_TAG
-          git push --tags
-
-  make_release:
-    needs: update_version
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+      - name: Load master
+        uses: actions/checkout@v4
         with:
           ref: master
           fetch-depth: 0
+
+      - name: Validate exact refs and capture master
+        id: validate_refs
+        env:
+          RELEASE_VERSION: ${{ steps.validate_version.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --heads origin "refs/heads/$RELEASE_VERSION" > /dev/null 2>&1; then
+            echo "Exact release branch $RELEASE_VERSION already exists and is immutable."
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/v$RELEASE_VERSION" > /dev/null 2>&1; then
+            echo "Exact release tag v$RELEASE_VERSION already exists and is immutable."
+            exit 1
+          fi
+
+          echo "master_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  update_version:
+    name: Update version and publish refs
+    needs: validate_release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: comic-git-engine-release-mutation
+      cancel-in-progress: false
+      queue: max
+    steps:
+      - name: Load repository
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Reject stale repository context
+        env:
+          EXPECTED_MASTER_SHA: ${{ needs.validate_release.outputs.master_sha }}
+        run: |
+          git fetch origin master
+          CURRENT_MASTER_SHA=$(git rev-parse origin/master)
+          if [[ "$CURRENT_MASTER_SHA" != "$EXPECTED_MASTER_SHA" ]]; then
+            echo "master changed after release validation."
+            echo "Expected: $EXPECTED_MASTER_SHA"
+            echo "Current:  $CURRENT_MASTER_SHA"
+            echo "Review the new repository state and dispatch a new release run."
+            exit 1
+          fi
+
+      - name: Update version sources
+        env:
+          MINOR_VERSION: ${{ needs.validate_release.outputs.minor_version }}
+          RELEASE_VERSION: ${{ needs.validate_release.outputs.version }}
+        run: |
+          sed -i "s/VERSION = \".*\"/VERSION = \"$RELEASE_VERSION\"/" src/build/site_builder.py
+          sed -i "s/DEFAULT_ENGINE_VERSION = \".*\"/DEFAULT_ENGINE_VERSION = \"$MINOR_VERSION\"/" .github/workflows/build_site.yaml
+
+          grep -F "VERSION = \"$RELEASE_VERSION\"" src/build/site_builder.py
+          grep -F "DEFAULT_ENGINE_VERSION = \"$MINOR_VERSION\"" .github/workflows/build_site.yaml
+
+          git config --local user.name "GitHub Action"
+          git config --local user.email "action@github.com"
+          git add src/build/site_builder.py .github/workflows/build_site.yaml
+          if git diff --cached --quiet; then
+            echo "Version sources already match $RELEASE_VERSION; reusing the existing master commit."
+          else
+            git commit -m "Version $RELEASE_VERSION"
+          fi
+          git push origin HEAD:master
+
+      - name: Publish version branches and tags
+        env:
+          MINOR_VERSION: ${{ needs.validate_release.outputs.minor_version }}
+          RELEASE_VERSION: ${{ needs.validate_release.outputs.version }}
+        run: |
+          git fetch --all --tags
+
+          if git ls-remote --exit-code --heads origin "refs/heads/$RELEASE_VERSION" > /dev/null 2>&1; then
+            echo "Exact release branch $RELEASE_VERSION appeared after validation; refusing to move it."
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/v$RELEASE_VERSION" > /dev/null 2>&1; then
+            echo "Exact release tag v$RELEASE_VERSION appeared after validation; refusing to move it."
+            exit 1
+          fi
+
+          RELEASE_SHA=$(git rev-parse HEAD)
+          MINOR_TAG="v$MINOR_VERSION"
+          FULL_TAG="v$RELEASE_VERSION"
+
+          git branch -f latest "$RELEASE_SHA"
+          git push --force-with-lease origin latest
+
+          git branch -f "$MINOR_VERSION" "$RELEASE_SHA"
+          git push --force-with-lease origin "$MINOR_VERSION"
+
+          git branch "$RELEASE_VERSION" "$RELEASE_SHA"
+          git push origin "$RELEASE_VERSION"
+
+          git tag -f "$MINOR_TAG" "$RELEASE_SHA"
+          git push --force origin "refs/tags/$MINOR_TAG"
+
+          git tag "$FULL_TAG" "$RELEASE_SHA"
+          git push origin "refs/tags/$FULL_TAG"
+
+  make_release:
+    name: Create draft release
+    needs:
+      - validate_release
+      - update_version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
       - name: Get previous tag
         id: prev_tag
+        env:
+          RELEASE_VERSION: ${{ needs.validate_release.outputs.version }}
         run: |
-          PREV_TAG=$(git tag --sort=-creatordate | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 2 | tail -n 1)
-          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+          PREV_TAG=$(git tag --sort=-creatordate | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -v "^v$RELEASE_VERSION$" | head -n 1)
+          echo "prev_tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+
       - name: Get commits since previous tag
         id: changelog
+        env:
+          PREV_TAG: ${{ steps.prev_tag.outputs.prev_tag }}
         run: |
-          PREV_TAG="${{ steps.prev_tag.outputs.prev_tag }}"
-          NEW_TAG="v${{ github.event.inputs.version }}"
-          if [ -z "$PREV_TAG" ]; then
+          if [[ -z "$PREV_TAG" ]]; then
             RANGE=""
           else
             RANGE="$PREV_TAG..HEAD"
           fi
           COMMITS=$(git log $RANGE --pretty=format:'* [%s](https://github.com/${{ github.repository }}/commit/%H)' --no-merges)
-          echo "commits<<EOF" >> $GITHUB_OUTPUT
-          echo "$COMMITS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "commits<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$COMMITS" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
       - name: Create release notes
-        id: notes
+        env:
+          COMMITS: ${{ steps.changelog.outputs.commits }}
+          PREV_TAG: ${{ steps.prev_tag.outputs.prev_tag }}
+          RELEASE_VERSION: ${{ needs.validate_release.outputs.version }}
         run: |
-          NEW_TAG="v${{ github.event.inputs.version }}"
-          PREV_TAG="${{ steps.prev_tag.outputs.prev_tag }}"
+          NEW_TAG="v$RELEASE_VERSION"
           echo "## What's New" > release.md
           echo "" >> release.md
-          echo "${{ steps.changelog.outputs.commits }}" >> release.md
+          echo "$COMMITS" >> release.md
           echo "" >> release.md
           echo "" >> release.md
           echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...$NEW_TAG" >> release.md
-      - name: Create GitHub Release
+
+      - name: Create draft GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ github.event.inputs.version }}
-          name: v${{ github.event.inputs.version }}
+          tag_name: v${{ needs.validate_release.outputs.version }}
+          name: v${{ needs.validate_release.outputs.version }}
           body_path: release.md
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          draft: true

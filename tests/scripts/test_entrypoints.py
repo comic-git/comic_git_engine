@@ -194,6 +194,10 @@ class TestWorkflowEntrypoints(TestCase):
         with open(BUILD_SITE_WORKFLOW, "r", encoding="utf-8") as f:
             return f.read()
 
+    def read_release_workflow(self) -> str:
+        with open(RELEASE_WORKFLOW, "r", encoding="utf-8") as f:
+            return f.read()
+
     def extract_engine_version_script(self) -> str:
         workflow = self.read_build_workflow()
         match = re.search(r"ENGINE_VERSION=\$\(python - <<'PY'\n(?P<script>.*?)\n\s*PY", workflow, re.DOTALL)
@@ -283,9 +287,85 @@ class TestWorkflowEntrypoints(TestCase):
         self.assertIn("Expected your_content/comic_info.toml or your_content/comic_info.ini", result.stderr)
 
     def test_release_workflow_updates_build_workflow_engine_version_fallback(self):
-        with open(RELEASE_WORKFLOW, "r", encoding="utf-8") as f:
-            workflow = f.read()
+        workflow = self.read_release_workflow()
 
-        self.assertIn("MAJOR=$(echo $VERSION | cut -d. -f1)", workflow)
-        self.assertIn("MINOR=$(echo $VERSION | cut -d. -f2)", workflow)
-        self.assertIn('DEFAULT_ENGINE_VERSION = \\"$MAJOR.$MINOR\\"', workflow)
+        self.assertIn('echo "minor_version=$MAJOR.$MINOR"', workflow)
+        self.assertIn("MINOR_VERSION: ${{ needs.validate_release.outputs.minor_version }}", workflow)
+        self.assertIn('DEFAULT_ENGINE_VERSION = \\"$MINOR_VERSION\\"', workflow)
+
+    def test_release_workflow_accepts_only_complete_canonical_versions(self):
+        workflow = self.read_release_workflow()
+        match = re.search(
+            r'if \[\[ ! "\$RELEASE_VERSION" =~ (?P<pattern>\^.*\$) \]\]; then',
+            workflow,
+        )
+        self.assertIsNotNone(match)
+        version_pattern = re.compile(match.group("pattern"))
+
+        for version in ("0.0.0", "1.1.0", "12.34.567"):
+            with self.subTest(version=version):
+                self.assertIsNotNone(version_pattern.fullmatch(version))
+
+        for version in ("1.1", "v1.1.0", "1.1.0-beta", "01.1.0", "1.01.0", "1.1.00", "1;echo bad"):
+            with self.subTest(version=version):
+                self.assertIsNone(version_pattern.fullmatch(version))
+
+        self.assertIn('DISPATCH_REF: ${{ github.ref }}', workflow)
+        self.assertIn('if [[ "$DISPATCH_REF" != "refs/heads/master" ]]', workflow)
+        self.assertLess(workflow.index("validate_release:"), workflow.index("update_version:"))
+
+    def test_release_workflow_rejects_existing_exact_refs_before_mutation(self):
+        workflow = self.read_release_workflow()
+        validate_refs = workflow.index("- name: Validate exact refs and capture master")
+        update_version = workflow.index("  update_version:")
+
+        self.assertLess(validate_refs, update_version)
+        self.assertGreaterEqual(
+            workflow.count('git ls-remote --exit-code --heads origin "refs/heads/$RELEASE_VERSION"'),
+            2,
+        )
+        self.assertGreaterEqual(
+            workflow.count('git ls-remote --exit-code --tags origin "refs/tags/v$RELEASE_VERSION"'),
+            2,
+        )
+        self.assertIn("already exists and is immutable", workflow)
+        self.assertIn("appeared after validation; refusing to move it", workflow)
+
+    def test_release_workflow_rejects_overlap_and_stale_master(self):
+        workflow = self.read_release_workflow()
+
+        self.assertIn("actions/github-script@v7", workflow)
+        self.assertIn("github.rest.actions.listWorkflowRuns", workflow)
+        self.assertIn("run.id < context.runId", workflow)
+        self.assertIn("active release run", workflow)
+        self.assertIn("group: comic-git-engine-release-mutation", workflow)
+        self.assertIn("cancel-in-progress: false", workflow)
+        self.assertIn("queue: max", workflow)
+        self.assertIn("EXPECTED_MASTER_SHA: ${{ needs.validate_release.outputs.master_sha }}", workflow)
+        self.assertIn('if [[ "$CURRENT_MASTER_SHA" != "$EXPECTED_MASTER_SHA" ]]', workflow)
+        self.assertIn("Review the new repository state and dispatch a new release run.", workflow)
+
+    def test_release_workflow_manages_minor_and_exact_refs_but_not_major_tags(self):
+        workflow = self.read_release_workflow()
+
+        self.assertNotIn("MAJOR_TAG", workflow)
+        self.assertNotIn("git push --delete", workflow)
+        self.assertIn('MINOR_TAG="v$MINOR_VERSION"', workflow)
+        self.assertIn('FULL_TAG="v$RELEASE_VERSION"', workflow)
+        self.assertIn('git branch -f "$MINOR_VERSION"', workflow)
+        self.assertIn('git tag -f "$MINOR_TAG"', workflow)
+        self.assertIn('git branch "$RELEASE_VERSION"', workflow)
+        self.assertNotIn('git branch -f "$RELEASE_VERSION"', workflow)
+        self.assertIn('git tag "$FULL_TAG"', workflow)
+        self.assertNotIn('git tag -f "$FULL_TAG"', workflow)
+        self.assertNotIn('git push --force origin "refs/tags/$FULL_TAG"', workflow)
+
+    def test_release_workflow_uses_scoped_permissions_safe_reruns_and_draft_release(self):
+        workflow = self.read_release_workflow()
+
+        self.assertIn("actions: read\n      contents: read", workflow)
+        self.assertEqual(2, workflow.count("contents: write"))
+        self.assertIn("if git diff --cached --quiet; then", workflow)
+        self.assertIn("reusing the existing master commit", workflow)
+        self.assertIn("- name: Create draft GitHub Release", workflow)
+        self.assertIn("draft: true", workflow)

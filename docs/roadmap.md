@@ -60,6 +60,85 @@ Once selective asset staging is established, the engine should be able to move a
 
 This may also be the point where the output structure itself is redesigned more aggressively. Instead of leaving source-style assets under `your_content/` in the published site, a future build could copy only the required assets into the generated site structure alongside the relevant HTML output.
 
+## Modernize analytics integration
+
+### Current behavior
+
+comic_git retains a simple Google Analytics compatibility feature: when a value is set in the legacy `[Google Analytics]` `Tracking ID` option or the TOML `analytics.google_analytics_id` key, templates load Google's tag on every generated page.
+
+The basic tag shape remains compatible with Google Analytics 4, but the integration has no ID validation or consent handling. It also uses legacy configuration terminology, and bundled or user-owned base-template overrides can duplicate the tag markup.
+
+### Desired future state
+
+Treat analytics as an intentional, privacy-aware feature rather than a snippet enabled by one unexplained value:
+
+- use current Google tag terminology and clearly define the supported tag-ID contract
+- preserve existing configuration as a carefully documented compatibility alias
+- diagnose obsolete Universal Analytics `UA-` IDs and malformed values
+- validate and safely render configured IDs
+- provide a conservative consent experience that does not load the tag before consent by default
+- let visitors decline analytics, remember their choice, and change it later
+- keep privacy text and a privacy-information link customizable without implying guaranteed legal compliance
+- build on a site-wide cookie and browser-storage consent model rather than creating analytics-only controls
+- centralize the generated markup and test the default and bundled-theme behavior
+- expose the feature through a future CMS only when the generated-site behavior is ready
+
+### Why this is desirable
+
+- Current Universal Analytics examples no longer work with Google's supported analytics product.
+- A bare tag ID does not address modern consent and disclosure expectations.
+- comic_git's non-technical users should not need to design their own consent system before they can use a documented feature responsibly.
+- Centralizing and testing the integration reduces drift between default and bundled themes.
+
+### Why this is risky
+
+Consent and disclosure requirements vary by location and can change over time. A built-in interface must therefore be conservative, customizable, accessible, and clear about the site owner's responsibilities without presenting itself as legal advice.
+
+Changing configuration or template behavior also affects existing sites, including custom themes and users who already provide their own consent-management solution. Compatibility and override behavior need an explicit design before implementation.
+
+### Likely release horizon
+
+`later`
+
+This is intentionally not assigned to a version. It may ship alongside the planned CMS because the CMS is a natural place for approachable configuration, but the generated-site consent behavior should remain independent and should not be blocked indefinitely on the CMS.
+
+## Add site-wide cookie and browser-storage consent handling
+
+### Current behavior
+
+The engine has generic JavaScript helpers for reading and writing cookies, but it does not have a central inventory of browser storage or a site-wide consent interface. The current transcript-language selector does not persist its selection; any future transcript preference, analytics consent choice, or similar state would need to define its own storage behavior.
+
+### Desired future state
+
+Provide one small, reusable privacy and preference layer for features that use cookies or browser storage:
+
+- inventory engine-owned cookies, local storage, and third-party storage behavior
+- distinguish strictly necessary state, user-requested preferences, analytics, and any future categories that materially need different handling
+- document necessary storage clearly even when it does not require an opt-in choice
+- ask before enabling non-essential storage or third-party measurement by default
+- persist consent choices and make them easy to review, change, or clear
+- let a transcript-language preference or similar convenience setting be saved only after an intentional user interaction
+- give themes accessible extension points without requiring each theme to recreate consent logic
+- keep the generated site usable when all optional storage is declined or unavailable
+
+### Why this is desirable
+
+- It prevents each feature from inventing a different banner, preference format, or cookie policy.
+- It gives non-technical creators one understandable place to configure privacy-related behavior.
+- It makes future analytics support and small quality-of-life preferences easier to test and explain.
+
+### Why this is risky
+
+Not every cookie or stored preference has the same legal or product requirements, and those requirements vary by location. Treating all storage identically could produce confusing prompts, while treating too much as necessary could undermine meaningful consent.
+
+Existing themes and custom JavaScript may also set their own storage outside engine control. The built-in interface should accurately describe what comic_git manages without claiming to audit arbitrary user customizations or guarantee legal compliance.
+
+### Likely release horizon
+
+`later`
+
+Plan this alongside the analytics modernization and CMS configuration work, while keeping the generated-site implementation independently usable.
+
 ## Replace destructive scheduled-post deletion with selective publishing
 
 ### Current behavior

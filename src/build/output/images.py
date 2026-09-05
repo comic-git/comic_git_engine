@@ -13,11 +13,12 @@ logger = logging.getLogger(__name__)
 
 def resize(im: Image.Image, size: str) -> Image.Image:
     image_width, image_height = im.size
+    size = size.strip()
     if "," in size:
-        w, h = size.strip().split(",")
+        w, h = size.split(",")
         w, h = w.strip(), h.strip()
     elif size.endswith("%"):
-        scale = float(size.strip().strip("%")) / 100
+        scale = float(size.strip("%")) / 100
         w, h = image_width * scale, image_height * scale
     elif size.endswith("h"):
         h = int(size[:-1].strip())

@@ -47,13 +47,13 @@ The maintainer release workflow in [`.github/workflows/main.yaml`](../.github/wo
 
 For a release such as `1.1.0`, the workflow manages these references:
 
-| Reference | Stability | Purpose |
-|-----------|-----------|---------|
-| `latest` | Moving | Most recent engine release |
-| `1.1` | Moving | Engine selector that receives compatible 1.1 patch releases |
-| `v1.1` | Moving | Reusable-workflow selector that receives compatible 1.1 patch releases |
-| `1.1.0` | Immutable | Exact engine branch |
-| `v1.1.0` | Immutable | Exact reusable-workflow tag and GitHub Release tag |
+| Reference | Stability | Purpose                                                                |
+|-----------|-----------|------------------------------------------------------------------------|
+| `latest`  | Moving    | Most recent engine release                                             |
+| `1.1`     | Moving    | Engine selector that receives compatible 1.1 patch releases            |
+| `v1.1`    | Moving    | Reusable-workflow selector that receives compatible 1.1 patch releases |
+| `1.1.0`   | Immutable | Exact engine branch                                                    |
+| `v1.1.0`  | Immutable | Exact reusable-workflow tag and GitHub Release tag                     |
 
 The normal host defaults are workflow `@v1.1` and engine version `1.1`. A host that requires an exactly reproducible build must pin both selectors independently to `@v1.1.0` and `1.1.0`.
 

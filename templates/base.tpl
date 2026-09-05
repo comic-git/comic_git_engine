@@ -9,11 +9,11 @@
        the "Tracking ID" value of the "Google Analytics" section in the comic_info.ini file). If so, it then
        includes all the text between the `{% if ... %}` and `{% endif %}` blocks. #}
     {%- if google_analytics_id %}
-    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <!-- Google tag (gtag.js) - Google Analytics -->
     {# When text is surrounded by {{ these double curly braces }}, it's representing a variable that's passed in by
        the Python script that generates the HTML file. That value is dropped into the existing HTML with no changes.
-       For example, if the value passed in to `google_analytics_id` is `UA-123456789-0`, then
-       `id={{ google_analytics_id }}` becomes `id=UA-123456789-0` #}
+       For example, if the value passed in to `google_analytics_id` is `G-XXXXXXXXXX`, then
+       `id={{ google_analytics_id }}` becomes `id=G-XXXXXXXXXX` #}
     <script async src="https://www.googletagmanager.com/gtag/js?id={{ google_analytics_id }}"></script>
     <script>
       window.dataLayer = window.dataLayer || [];

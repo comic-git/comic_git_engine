@@ -2,6 +2,7 @@ import html
 import os
 from configparser import RawConfigParser
 from dataclasses import dataclass
+from datetime import datetime, timezone as datetime_timezone
 from re import sub
 from string import Formatter
 from time import strftime, strptime
@@ -11,7 +12,10 @@ from xml.dom import minidom
 from xml.etree import ElementTree
 from xml.etree.ElementTree import register_namespace
 
+from pytz import InvalidTimeError, timezone
+
 from build.content.page_models import ComicImage, ComicPage
+from build.content.page_sources import parse_iso_post_date, post_date_to_datetime
 from core.models import ComicBuildResult
 from core.utils import get_comic_url, get_output_dir
 
@@ -26,6 +30,7 @@ class FeedPage:
     page: ComicPage
     title: str
     comic_page_relative_path: str | None = None
+    comic_info: RawConfigParser | None = None
 
 
 @dataclass(slots=True)
@@ -69,6 +74,27 @@ def format_guid(direct_link: str) -> str:
 
 
 def parse_item_pub_date(page: ComicPage, comic_info: RawConfigParser) -> str:
+    try:
+        source_post_date = parse_iso_post_date(page.post_date)
+    except ValueError as e:
+        raise ValueError(
+            f"Invalid post date '{page.post_date}' for page '{page.page_name}'\n"
+            "Expected an ISO date or datetime."
+        ) from e
+
+    if isinstance(source_post_date, datetime):
+        try:
+            tz_info = timezone(comic_info.get("Comic Settings", "Timezone", fallback="UTC"))
+            post_date = post_date_to_datetime(page.post_date, tz_info)
+        except (ValueError, InvalidTimeError) as e:
+            raise ValueError(
+                f"Invalid post date '{page.post_date}' for page '{page.page_name}'\n"
+                "Expected a valid ISO datetime and comic timezone."
+            ) from e
+        return post_date.astimezone(datetime_timezone.utc).strftime(
+            "%a, %d %b %Y %H:%M:%S +0000"
+        )
+
     date_format = comic_info.get("Comic Settings", "Date format")
     try:
         post_date = strptime(page.display_post_date, date_format)
@@ -142,6 +168,7 @@ def normalize_feed_item(
         item_index: int,
 ) -> dict[str, Any]:
     page = feed_page.page
+    page_comic_info = feed_page.comic_info or comic_info
     direct_link = build_item_link(
         comic_url,
         feed_page.comic_page_relative_path or default_comic_page_relative_path,
@@ -150,7 +177,7 @@ def normalize_feed_item(
     return {
         "title": feed_page.title,
         "author": comic_info.get("Comic Info", "Author"),
-        "pub_date": parse_item_pub_date(page, comic_info),
+        "pub_date": parse_item_pub_date(page, page_comic_info),
         "link": direct_link,
         "guid": format_guid(direct_link),
         "categories": normalize_item_categories(page),
@@ -376,6 +403,7 @@ def build_feed_pages_for_comic_result(comic_result: ComicBuildResult) -> list[Fe
         FeedPage(
             page=page,
             title=get_rss_feed_item_title(comic_result, page),
+            comic_info=comic_result.comic_info,
         )
         for page in comic_result.pages
     ]

@@ -97,7 +97,7 @@ This structure is intentionally file-based and low-friction:
 | Jinja2                  | HTML template rendering             | Used for both built-in templates and host-repo theme overrides.                                                                            |
 | markdown2               | Markdown to HTML conversion         | Used for post text, markdown pages, and transcript-related content.                                                                        |
 | Pillow                  | Image processing                    | Used for thumbnails and image format handling.                                                                                             |
-| pytz                    | Timezone-aware scheduling           | Used when deciding which scheduled pages are publishable.                                                                                  |
+| pytz                    | Timezone-aware page dates            | Used for scheduling, date display, and RSS publication timestamps.                                                                          |
 | Theme hook dependencies | Optional extension point            | Theme-specific Python dependencies are not part of the normal runtime install and are only added when needed.                              |
 
 ## API / Data Model

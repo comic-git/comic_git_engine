@@ -25,63 +25,44 @@
     </div>
 
     {# Comic Page #}
-    <div id="comic-page">
-        {%- for comic_path in comic_paths %}
-        <a href="{{ comic_base_dir }}/comic/{{ next_id }}/#comic-page">
-            <img class="comic-image" src="{{ base_dir }}/{{ comic_path }}" title="{{ escaped_alt_text }}"/>
-        </a>
+    <div class="comic-page">
+        {%- for image in images %}
+        <div class="comic-image-container" id="comic-image-{{ loop.index }}">
+            <img class="comic-image" src="{{ base_dir }}/{{ image.web_path | e }}" alt="{{ image.alt_text | e }}"/>
+        </div>
         {%- endfor %}
     </div>
 
-    {# Navigation Bar. Supports disabling the links when you're at the first or last page. #}
-    <div class="navigation-bar">
-    {% if first_id == current_id %}
-        <a class="navigation-button-disabled first-button">‹‹ First</a>
-        <a class="navigation-button-disabled previous-button">‹ Previous</a>
-    {% else %}
-        <a class="navigation-button first-button" href="{{ comic_base_dir }}/comic/{{ first_id }}/#comic-page">‹‹ First</a>
-        <a class="navigation-button previous-button" href="{{ comic_base_dir }}/comic/{{ previous_id }}/#comic-page">‹ Previous</a>
-    {% endif %}
-    {% if last_id == current_id %}
-        <a class="navigation-button-disabled next-button">Next ›</a>
-        <a class="navigation-button-disabled last-button">Latest ››</a>
-    {% else %}
-        <a class="navigation-button next-button" href="{{ comic_base_dir }}/comic/{{ next_id }}/#comic-page">Next ›</a>
-        <a class="navigation-button last-button" href="{{ comic_base_dir }}/comic/{{ last_id }}/#comic-page">Latest ››</a>
-    {% endif %}
-    </div>
+    {# Use comic_git_engine's maintained navigation instead of copying it here. #}
+    {% include "navigation_bar.tpl" %}
 
     {# Post text and metadata like Title, Post Date, Storyline, Characters, and Tags #}
     <div id="blurb">
         <h1 id="post-title">{{ page_title }}</h1>
         <h3 id="post-date">Posted on: {{ _post_date }}</h3>
 
-        {# The storyline this page is in, with a link to the first page in that storyline #}
+        {# Basic page metadata #}
         {%- if _storyline %}
             <div id="storyline">
                 Storyline: <a href="{{ comic_base_dir }}/archive/#archive-section-{{ _storyline | replace(" ", "-") }}">{{ _storyline }}</a>
             </div>
         {%- endif %}
 
-        {# List of characters in this comic, with a link to a web page that lists all comics with that character #}
         {%- if _characters %}
             <div id="characters">
-            Characters:
-            {%- for character in _characters %}
-                {# "if not loop.last" puts commas after every link except at the very end #}
+                Characters:
+                {%- for character in _characters %}
                 <a href="{{ comic_base_dir }}/tagged/{{ character }}/">{{ character }}</a>{% if not loop.last %}, {% endif %}
-            {%- endfor %}
+                {%- endfor %}
             </div>
         {%- endif %}
 
-        {# List of other tags on this comic, with a link to a web page that lists all comics with that tag #}
         {%- if _tags %}
             <div id="tags">
-            Tags:
-            {%- for tag in _tags %}
-                {# "if not loop.last" puts commas after every link except at the very end #}
+                Tags:
+                {%- for tag in _tags %}
                 <a class="tag-link" href="{{ comic_base_dir }}/tagged/{{ tag }}/">{{ tag }}</a>{% if not loop.last %}, {% endif %}
-            {%- endfor %}
+                {%- endfor %}
             </div>
         {%- endif %}
 

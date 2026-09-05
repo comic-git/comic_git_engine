@@ -35,7 +35,7 @@ markdown_extras = ["tables", "fenced-code-blocks"]
 
 [archive]
 use_thumbnails = true
-entry_mode = "images"
+list_images_separately = true
 image_title_fallback = "filename"
 show_text_only_posts = false
 
@@ -61,7 +61,7 @@ channel_description = "Feed Description"
         self.assertEqual("extras/story, bonus", comic_info.get("Comic Settings", "Extra comics"))
         self.assertEqual("tables, fenced-code-blocks", comic_info.get("Comic Settings", "Markdown extras"))
         self.assertTrue(comic_info.getboolean("Archive", "Use thumbnails"))
-        self.assertEqual("images", comic_info.get("Archive", "Entry mode"))
+        self.assertTrue(comic_info.getboolean("Archive", "List images separately"))
         self.assertEqual("filename", comic_info.get("Archive", "Image title fallback"))
         self.assertFalse(comic_info.getboolean("Archive", "Show text-only posts"))
         self.assertTrue(comic_info.getboolean("Image Reprocessing", "Create thumbnails"))

@@ -101,6 +101,26 @@ class TestComicData(TestCase):
         self.assertEqual("002", page.next_id)
         self.assertIs(page, _mock_hook.call_args.args[2][-1])
 
+    @patch(MUT + "run_hook", return_value=None)
+    def test_enrich_comic_page_formats_offset_timestamp_in_comic_timezone(self, _mock_hook):
+        comic_info = self.make_comic_info()
+        comic_info.set("Comic Settings", "Timezone", "America/Los_Angeles")
+        comic_info.set("Archive", "Date format", "%Y-%m-%d %H:%M")
+        page = self.make_page(post_md="")
+        page.post_date = "2024-01-02T01:00:00+00:00"
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cwd = os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                comic_data.enrich_comic_page(
+                    "", comic_info, page, "001", "001", "001", "001", "001"
+                )
+            finally:
+                os.chdir(cwd)
+
+        self.assertEqual("2024-01-01 17:00", page.archive_post_date)
+
     @patch(MUT + "run_hook", side_effect=lambda _theme, _name, args: args[-1])
     def test_build_comic_pages_preserves_order_and_navigation(self, _mock_hook):
         pages = [self.make_page("001"), self.make_page("002")]

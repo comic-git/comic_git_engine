@@ -171,7 +171,7 @@ class TestArchiveStorylines(TestCase):
     def make_config(self, mode=ArchiveEntryMode.PAGES, show_text_only_posts=None):
         config = RawConfigParser()
         config.add_section("Archive")
-        config.set("Archive", "Entry mode", mode.value)
+        config.set("Archive", "List images separately", str(mode == ArchiveEntryMode.IMAGES))
         config.set("Archive", "Show Uncategorized comics", "True")
         if show_text_only_posts is not None:
             config.set("Archive", "Show text-only posts", str(show_text_only_posts))
@@ -311,7 +311,7 @@ class TestInfiniteScrollChapters(TestCase):
     def make_config(self, show_uncategorized=True):
         config = RawConfigParser()
         config.add_section("Archive")
-        config.set("Archive", "Entry mode", "Images")
+        config.set("Archive", "List images separately", "True")
         config.set("Archive", "Show text-only posts", "False")
         config.set("Archive", "Show Uncategorized comics", str(show_uncategorized))
         return config

@@ -102,6 +102,11 @@ class TestPageMetadata(TestCase):
 
         self.assertEqual("https://json-schema.org/draft/2020-12/schema", schema["$schema"])
         self.assertEqual(
+            "https://raw.githubusercontent.com/comic-git/comic_git_engine/"
+            "latest/schemas/page_info_list.schema.json",
+            schema["$id"],
+        )
+        self.assertEqual(
             {
                 "schema_version",
                 "comic_git_engine_version",
@@ -112,6 +117,10 @@ class TestPageMetadata(TestCase):
             set(schema["required"]),
         )
         self.assertEqual(1, schema["properties"]["schema_version"]["const"])
+        post_date_schema = schema["$defs"]["page"]["properties"]["post_date"]
+        self.assertEqual("string", post_date_schema["type"])
+        self.assertEqual({"format": "date"}, post_date_schema["anyOf"][0])
+        self.assertRegex("2026-01-02T03:04:05-08:00", post_date_schema["anyOf"][1]["pattern"])
         image_schema = schema["$defs"]["image"]
         self.assertEqual(
             {"filename", "url", "title", "alt_text", "thumbnail_url"},

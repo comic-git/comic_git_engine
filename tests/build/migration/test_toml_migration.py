@@ -9,7 +9,12 @@ from build.migration import toml_migration
 
 
 class TestTomlMigration(TestCase):
-    def write_main_comic_info(self, root: str, extra_comics: str = "") -> None:
+    def write_main_comic_info(
+            self,
+            root: str,
+            extra_comics: str = "",
+            date_format: str = "%B %d, %Y",
+    ) -> None:
         content_dir = os.path.join(root, "your_content")
         os.makedirs(content_dir, exist_ok=True)
         with open(os.path.join(content_dir, "comic_info.ini"), "w", encoding="utf-8") as f:
@@ -19,10 +24,10 @@ class TestTomlMigration(TestCase):
             f.write("Description = Test Description\n")
             f.write("\n[Comic Settings]\n")
             f.write("Engine version = master\n")
-            f.write("Date format = %B %d, %Y\n")
+            f.write(f"Date format = {date_format}\n")
             f.write(f"Extra comics = {extra_comics}\n")
             f.write("\n[Archive]\n")
-            f.write("Entry mode = Images\n")
+            f.write("List images separately = True\n")
             f.write("Image title fallback = Filename\n")
             f.write("\n[Image Reprocessing]\n")
             f.write("Create thumbnails = True\n")
@@ -42,11 +47,17 @@ class TestTomlMigration(TestCase):
             f.write("\n[Links Bar]\n")
             f.write("Cast = /cast\n")
 
-    def write_page(self, root: str, comic_folder: str, page_name: str) -> str:
+    def write_page(
+            self,
+            root: str,
+            comic_folder: str,
+            page_name: str,
+            post_date: str = "January 02, 2024",
+    ) -> str:
         page_dir = os.path.join(root, "your_content", comic_folder, "comics", page_name)
         os.makedirs(page_dir, exist_ok=True)
         with open(os.path.join(page_dir, "info.ini"), "w", encoding="utf-8") as f:
-            f.write("Post date = January 02, 2024\n")
+            f.write(f"Post date = {post_date}\n")
             f.write("Title = Chapter One\n")
             f.write("Alt text = Alt words\n")
             f.write("Storyline = Arc 1\n")
@@ -116,6 +127,21 @@ class TestTomlMigration(TestCase):
             self.assertEqual({"og:title": "Override"}, loaded.social_media)
             self.assertEqual(OrderedDict({"Mood": "tense"}), loaded.extra)
             self.assertNotIn("Private", toml_text)
+
+    def test_write_preserves_time_from_configured_legacy_date_format(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_main_comic_info(temp_dir, date_format="%Y-%m-%d %H:%M:%S")
+            page_dir = self.write_page(
+                temp_dir,
+                "",
+                "001",
+                post_date="2024-01-02 13:45:30",
+            )
+
+            self.run_in_host(temp_dir, lambda: toml_migration.run_page_migration(write=True))
+            loaded = page_sources.load_page_source_from_toml(os.path.join(page_dir, "info.toml"))
+
+        self.assertEqual("2024-01-02T13:45:30", loaded.post_date)
 
     def test_existing_toml_is_skipped_without_overwrite(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -223,11 +249,12 @@ class TestTomlMigration(TestCase):
             self.assertTrue(loaded.getboolean("Transcripts", "Enable transcripts"))
             self.assertTrue(loaded.getboolean("Transcripts", "Load transcripts from comic folder"))
             self.assertEqual("English", loaded.get("Transcripts", "Default language"))
-            self.assertEqual("Images", loaded.get("Archive", "Entry mode"))
+            self.assertTrue(loaded.getboolean("Archive", "List images separately"))
             self.assertEqual("Filename", loaded.get("Archive", "Image title fallback"))
             self.assertTrue(loaded.getboolean("Image Reprocessing", "Overwrite existing images"))
             self.assertIn("[engine]", toml_text)
             self.assertIn("[archive]", toml_text)
+            self.assertIn("list_images_separately = true", toml_text)
             self.assertIn("[image_processing]", toml_text)
             self.assertIn("overwrite_existing_images = true", toml_text)
             self.assertIn('version = "master"', toml_text)

@@ -2,12 +2,13 @@ import logging
 import os
 import re
 from configparser import RawConfigParser
-from datetime import date
 from time import strftime
 
 from markdown2 import Markdown
+from pytz import timezone
 
 from build.content.page_models import ComicPage
+from build.content.page_sources import iso_date_to_legacy
 from integrations.hooks import run_hook
 
 logger = logging.getLogger(__name__)
@@ -70,7 +71,8 @@ def enrich_comic_page(
 
     archive_date_format = comic_info.get("Archive", "Date format", fallback="")
     if archive_date_format:
-        page.archive_post_date = date.fromisoformat(page.post_date).strftime(archive_date_format)
+        tz_info = timezone(comic_info.get("Comic Settings", "Timezone", fallback="UTC"))
+        page.archive_post_date = iso_date_to_legacy(page.post_date, archive_date_format, tz_info)
     else:
         page.archive_post_date = page.display_post_date
 

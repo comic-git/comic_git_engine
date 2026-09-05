@@ -64,6 +64,7 @@ KNOWN_TOML_PAGE_FIELDS = {
 }
 KNOWN_TOML_IMAGE_FIELDS = {"filename", "title", "alt_text", "thumbnail"}
 SECTION_LINE = re.compile(r"^\s*\[(?P<section>[^\r\n]+)]\s*(?:[#;].*)?$", re.MULTILINE)
+TIME_FORMAT_DIRECTIVE = re.compile(r"%(?:[-_0^#]*)(?:H|I|M|S|f|p|X|c|z|Z)")
 
 
 def load_legacy_page_source(page_path: str, comic_folder: str, comic_info) -> PageSource:
@@ -159,7 +160,7 @@ def load_page_source_from_toml(path: str) -> PageSource:
     if unknown:
         raise ValueError(f"Unsupported key {sorted(unknown)[0]} in info.toml")
     return PageSource(
-        post_date=require_toml_date_string(data, "post_date"),
+        post_date=require_toml_post_date(data, "post_date"),
         title=get_optional_toml_string(data, "title"),
         images=require_toml_image_list(data, "images"),
         post_text=get_optional_toml_string(data, "post_text") or "",
@@ -255,11 +256,50 @@ def load_legacy_page_social_media(path: str) -> dict[str, Any]:
 
 
 def legacy_date_to_iso(value: str, date_format: str) -> str:
-    return datetime.strptime(value, date_format).date().isoformat()
+    try:
+        parsed = datetime.strptime(value, date_format)
+    except ValueError as configured_format_error:
+        try:
+            return normalize_iso_post_date(value)
+        except ValueError:
+            raise ValueError(
+                f"Expected post date to match configured format {date_format!r} "
+                "or use an ISO date/datetime"
+            ) from configured_format_error
+    if TIME_FORMAT_DIRECTIVE.search(date_format) or parsed.time() != datetime.min.time():
+        return parsed.isoformat()
+    return parsed.date().isoformat()
 
 
-def iso_date_to_legacy(value: str, date_format: str) -> str:
-    return date.fromisoformat(value).strftime(date_format)
+def iso_date_to_legacy(value: str, date_format: str, tz_info=None) -> str:
+    parsed = parse_iso_post_date(value)
+    if isinstance(parsed, datetime) and tz_info is not None:
+        parsed = post_date_to_datetime(value, tz_info)
+    return parsed.strftime(date_format)
+
+
+def normalize_iso_post_date(value: str) -> str:
+    parsed = parse_iso_post_date(value.strip())
+    return parsed.isoformat()
+
+
+def parse_iso_post_date(value: str) -> date | datetime:
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError as e:
+            raise ValueError("Expected an ISO date or datetime") from e
+
+
+def post_date_to_datetime(value: str, tz_info) -> datetime:
+    parsed = parse_iso_post_date(value)
+    if not isinstance(parsed, datetime):
+        parsed = datetime.combine(parsed, datetime.min.time())
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return tz_info.localize(parsed, is_dst=None)
+    return parsed.astimezone(tz_info)
 
 
 def require_toml_string(data: dict[str, Any], key: str) -> str:
@@ -269,13 +309,22 @@ def require_toml_string(data: dict[str, Any], key: str) -> str:
     return value
 
 
-def require_toml_date_string(data: dict[str, Any], key: str) -> str:
-    value = require_toml_string(data, key)
-    try:
-        date.fromisoformat(value)
-    except ValueError as e:
-        raise ValueError(f"Expected '{key}' in info.toml to use YYYY-MM-DD format") from e
-    return value
+def require_toml_post_date(data: dict[str, Any], key: str) -> str:
+    value = data[key]
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, str):
+        try:
+            return normalize_iso_post_date(value)
+        except ValueError as e:
+            raise ValueError(
+                f"Expected '{key}' in info.toml to use an ISO date or datetime"
+            ) from e
+    raise ValueError(
+        f"Expected '{key}' in info.toml to be an ISO date or datetime"
+    )
 
 
 def get_optional_toml_string(data: dict[str, Any], key: str) -> str | None:

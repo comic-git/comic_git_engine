@@ -87,7 +87,7 @@ Legacy page folder inputs currently considered part of the page migration contra
 
 Current conversion rules:
 
-1. `Post date` becomes `post_date` in ISO `YYYY-MM-DD` format.
+1. `Post date` becomes `post_date` in normalized ISO date or datetime format.
 2. `Filename` or `Filenames` becomes ordered `[[images]]` tables.
 3. Ordered `[Image <label>]` sections become ordered `[[images]]` tables,
    preserving per-image title, alt-text, and thumbnail presence.
@@ -111,6 +111,11 @@ When `info.toml` exists for a page:
 4. inline TOML `[social_media]` replaces page-local `social_media.json`
 5. site-level `before post text.*` and `after post text.*` files still apply because they are not page-local source files
 
+`post_date` accepts quoted ISO dates and datetimes as well as TOML's native date
+and datetime values. A datetime without an offset uses the comic's configured
+timezone. A datetime with an offset represents that exact instant and is
+converted to the comic's timezone for display and scheduling.
+
 ## Notes
 
 - This schema intentionally preserves explicit image ordering.
@@ -119,4 +124,4 @@ When `info.toml` exists for a page:
   the owning comic path is added during normalization to prevent Extra Comic
   collisions.
 - The `[extra]` table exists to preserve compatibility with custom template fields and hook logic during migration.
-- Migration preserves the `post_date` value, not the exact legacy display spelling. The TOML read path formats the ISO date with the configured site date format, so a legacy value such as `August 1, 2025` may render as `August 01, 2025` when the format uses `%d`.
+- Migration preserves the `post_date` date and, when present, time, but not the exact legacy display spelling. The TOML read path formats the normalized ISO value with the configured site date format, so a legacy value such as `August 1, 2025` may render as `August 01, 2025` when the format uses `%d`.

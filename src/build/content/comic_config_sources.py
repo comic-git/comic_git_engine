@@ -20,7 +20,6 @@ STRING_OPTIONS = {
     ("site", "comic_subdirectory"): ("Comic Settings", "Comic subdirectory"),
     ("site", "on_comic_click"): ("Comic Settings", "On comic click"),
     ("archive", "date_format"): ("Archive", "Date format"),
-    ("archive", "entry_mode"): ("Archive", "Entry mode"),
     ("archive", "image_title_fallback"): ("Archive", "Image title fallback"),
     ("transcripts", "folder"): ("Transcripts", "Transcripts folder"),
     ("transcripts", "default_language"): ("Transcripts", "Default language"),
@@ -38,6 +37,7 @@ STRING_OPTIONS = {
 
 BOOL_OPTIONS = {
     ("archive", "use_thumbnails"): ("Archive", "Use thumbnails"),
+    ("archive", "list_images_separately"): ("Archive", "List images separately"),
     ("archive", "show_uncategorized_comics"): ("Archive", "Show Uncategorized comics"),
     ("archive", "show_text_only_posts"): ("Archive", "Show text-only posts"),
     ("navigation", "use_images"): ("Navigation Bar", "Use images"),

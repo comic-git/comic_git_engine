@@ -146,6 +146,27 @@ class TestPageDiscovery(TestCase):
         self.assertEqual(["Alice", "Bob"], pages[0].characters)
 
     @patch(MUT + "run_hook", return_value=None)
+    def test_discovery_orders_offset_timestamps_by_instant_and_formats_local_time(self, _mock_hook):
+        comic_info = self.make_comic_info()
+        comic_info.set("Comic Settings", "Date format", "%Y-%m-%d %H:%M")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for page_name, post_date in (
+                    ("earlier", "2020-01-01T10:00:00+02:00"),
+                    ("later", "2020-01-01T08:30:00+00:00"),
+            ):
+                page_dir = os.path.join(temp_dir, "your_content", "comics", page_name)
+                os.makedirs(page_dir, exist_ok=True)
+                with open(os.path.join(page_dir, "info.toml"), "w", encoding="utf-8") as f:
+                    f.write(f'post_date = "{post_date}"\n')
+
+            pages, scheduled_count = self.run_discovery(temp_dir, comic_info)
+
+        self.assertEqual(0, scheduled_count)
+        self.assertEqual(["earlier", "later"], [page.page_name for page in pages])
+        self.assertEqual("2020-01-01 08:00", pages[0].display_post_date)
+        self.assertEqual("2020-01-01T10:00:00+02:00", pages[0].post_date)
+
+    @patch(MUT + "run_hook", return_value=None)
     def test_discovery_rejects_duplicate_normalized_and_escaping_paths(self, _mock_hook):
         comic_info = self.make_comic_info()
         with tempfile.TemporaryDirectory() as temp_dir:

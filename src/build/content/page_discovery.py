@@ -5,7 +5,7 @@ from datetime import datetime
 from glob import iglob
 
 from configparser import RawConfigParser
-from pytz import timezone
+from pytz import InvalidTimeError, timezone
 
 from build.content.loaders import load_page_source
 from build.content.page_models import (
@@ -21,7 +21,7 @@ from build.content.page_models import (
     validate_page_asset_path,
     validate_unique_filenames,
 )
-from build.content.page_sources import PageSource, iso_date_to_legacy
+from build.content.page_sources import PageSource, iso_date_to_legacy, post_date_to_datetime
 from build.content.site_config import get_image_title_fallback
 from build.content.transcripts import render_transcript_sources, sort_transcript_languages
 from core import utils
@@ -57,11 +57,11 @@ def discover_pages(
             logger.warning("%s is missing its info.ini/info.toml file. Skipping", page_path)
             continue
         try:
-            post_date = tz_info.localize(datetime.fromisoformat(page_source.post_date))
-        except ValueError as e:
+            post_date = post_date_to_datetime(page_source.post_date, tz_info)
+        except (ValueError, InvalidTimeError) as e:
             raise ValueError(
                 f"Invalid post_date in {filepath}: {page_source.post_date}\n"
-                "Expected an ISO YYYY-MM-DD date after source loading."
+                "Expected an ISO date or datetime after source loading."
             ) from e
         if post_date > local_time and not publish_all_comics:
             scheduled_post_count += 1
@@ -70,7 +70,7 @@ def discover_pages(
                 shutil.rmtree(page_path)
             continue
 
-        page = build_discovered_page(comic_folder, comic_info, page_path, page_source)
+        page = build_discovered_page(comic_folder, comic_info, page_path, page_source, tz_info)
         hook_result = run_hook(
             theme,
             "extra_page_info_processing",
@@ -81,7 +81,7 @@ def discover_pages(
         logger.debug("Page: %s", page)
         pages.append(page)
 
-    pages.sort(key=lambda page: (page.post_date, page.page_name))
+    pages.sort(key=lambda page: (post_date_to_datetime(page.post_date, tz_info), page.page_name))
     return pages, scheduled_post_count
 
 
@@ -90,6 +90,7 @@ def build_discovered_page(
         comic_info: RawConfigParser,
         page_path: str,
         source: PageSource,
+        tz_info,
 ) -> ComicPage:
     page_name = os.path.basename(os.path.normpath(page_path))
     validate_unique_filenames([image.filename for image in source.images])
@@ -142,6 +143,7 @@ def build_discovered_page(
     display_post_date = iso_date_to_legacy(
         source.post_date,
         comic_info.get("Comic Settings", "Date format"),
+        tz_info,
     )
     base_dir = utils.BASE_DIRECTORY.rstrip("/")
     page_url = f"{base_dir}/{comic_folder}comic/{page_name}/"

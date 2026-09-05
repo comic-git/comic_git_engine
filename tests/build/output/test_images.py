@@ -76,7 +76,7 @@ class TestImageUtils(TestCase):
         comic_info.set("Image Reprocessing", "Overwrite existing images", str(overwrite))
         comic_info.set("Image Reprocessing", "Thumbnail size", "50%")
         comic_info.add_section("Archive")
-        comic_info.set("Archive", "Entry mode", "Pages")
+        comic_info.set("Archive", "List images separately", "False")
         comic_info.set("Archive", "Use thumbnails", "True")
         return comic_info
 
@@ -155,7 +155,7 @@ class TestImageUtils(TestCase):
     @patch(MUT + "create_comic_thumbnail")
     def test_image_mode_generates_additional_identity_thumbnail(self, mock_create_thumbnail):
         comic_info = self.make_comic_info()
-        comic_info.set("Archive", "Entry mode", "Images")
+        comic_info.set("Archive", "List images separately", "True")
         with tempfile.TemporaryDirectory() as temp_dir:
             page = self.make_page(temp_dir)
 

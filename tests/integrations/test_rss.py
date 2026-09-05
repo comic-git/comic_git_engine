@@ -127,6 +127,50 @@ class TestRssFeed(TestCase):
         self.assertNotIn("alt_text=", description)
         self.assertIn("<p>Post text</p>", description)
 
+    def test_build_rss_feed_preserves_timestamp_instant(self):
+        comic_info = deepcopy(self.comic_info)
+        comic_info.set("Comic Settings", "Timezone", "America/Los_Angeles")
+        page = make_page(
+            post_date="2024-01-02T06:30:00+00:00",
+            display_post_date="January 1, 2024",
+        )
+
+        self.assertEqual(
+            "Tue, 02 Jan 2024 06:30:00 +0000",
+            rss.parse_item_pub_date(page, comic_info),
+        )
+
+    def test_build_rss_feed_applies_comic_timezone_to_naive_timestamp(self):
+        comic_info = deepcopy(self.comic_info)
+        comic_info.set("Comic Settings", "Timezone", "America/Los_Angeles")
+        page = make_page(post_date="2024-01-01T22:30:00")
+
+        self.assertEqual(
+            "Tue, 02 Jan 2024 06:30:00 +0000",
+            rss.parse_item_pub_date(page, comic_info),
+        )
+
+    def test_combined_feed_uses_post_owners_timezone(self):
+        main_info = deepcopy(self.comic_info)
+        main_info.set("Comic Settings", "Timezone", "UTC")
+        owner_info = deepcopy(self.comic_info)
+        owner_info.set("Comic Settings", "Timezone", "America/Los_Angeles")
+        feed_page = rss.FeedPage(
+            page=make_page(post_date="2024-01-01T22:30:00"),
+            title="Extra post",
+            comic_info=owner_info,
+        )
+
+        item = rss.normalize_feed_item(
+            feed_page,
+            main_info,
+            "https://www.example.com/",
+            "comic",
+            0,
+        )
+
+        self.assertEqual("Tue, 02 Jan 2024 06:30:00 +0000", item["pub_date"])
+
     def test_build_rss_feed_uses_configured_channel_description(self):
         _, output, _ = self.build_feed_output()
 
@@ -332,6 +376,7 @@ class TestRssFeedJobs(TestCase):
         self.assertIsNone(pages[0].comic_page_relative_path)
         self.assertEqual("Extra: Extra Title", pages[1].title)
         self.assertEqual("extras/story/comic", pages[1].comic_page_relative_path)
+        self.assertIs(extra.comic_info, pages[1].comic_info)
 
     def test_title_format_rejects_unknown_variables(self):
         result = self.result(

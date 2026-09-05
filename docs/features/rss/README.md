@@ -29,6 +29,9 @@ Important current behavior:
 - RSS remains one item per page even when that page has multiple images
 - each image in an item uses its own resolved alt text
 - no-image pages remain in the feed with their post content
+- timestamped posts preserve their exact publication instant in `pubDate`; a
+  timestamp without an offset uses the owning comic's configured timezone,
+  including when an Extra Comic is combined into the main feed
 - feed metadata has built-in defaults for language and channel image, with `Description` falling back to the comic's normal description
 - feed output paths are part of the published site contract
 

@@ -6,6 +6,8 @@ from configparser import RawConfigParser
 from datetime import datetime
 from unittest import TestCase
 
+from pytz import NonExistentTimeError, timezone
+
 from build.content import page_sources
 
 
@@ -195,6 +197,75 @@ class TestPageSources(TestCase):
 
             with self.assertRaisesRegex(ValueError, r"images\[0\]\.alt_txt"):
                 page_sources.load_page_source_from_toml(path)
+
+    def test_toml_accepts_iso_date_and_datetime_strings(self):
+        cases = [
+            ('"2024-01-02"', "2024-01-02"),
+            ('"2024-01-02T03:04:05"', "2024-01-02T03:04:05"),
+            ('"2024-01-02T03:04:05Z"', "2024-01-02T03:04:05+00:00"),
+            ('"2024-01-02T03:04:05-05:00"', "2024-01-02T03:04:05-05:00"),
+        ]
+        for toml_value, expected in cases:
+            with self.subTest(toml_value=toml_value), tempfile.TemporaryDirectory() as temp_dir:
+                path = os.path.join(temp_dir, "info.toml")
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(f"post_date = {toml_value}\n")
+
+                loaded = page_sources.load_page_source_from_toml(path)
+
+            self.assertEqual(expected, loaded.post_date)
+
+    def test_toml_accepts_native_date_and_datetime_values(self):
+        cases = [
+            ("2024-01-02", "2024-01-02"),
+            ("2024-01-02T03:04:05", "2024-01-02T03:04:05"),
+            ("2024-01-02T03:04:05Z", "2024-01-02T03:04:05+00:00"),
+        ]
+        for toml_value, expected in cases:
+            with self.subTest(toml_value=toml_value), tempfile.TemporaryDirectory() as temp_dir:
+                path = os.path.join(temp_dir, "info.toml")
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(f"post_date = {toml_value}\n")
+
+                loaded = page_sources.load_page_source_from_toml(path)
+
+            self.assertEqual(expected, loaded.post_date)
+
+    def test_toml_rejects_non_date_post_date(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = os.path.join(temp_dir, "info.toml")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write('post_date = "next Tuesday"\n')
+
+            with self.assertRaisesRegex(ValueError, "ISO date or datetime"):
+                page_sources.load_page_source_from_toml(path)
+
+    def test_legacy_dates_accept_iso_fallback_and_preserve_configured_times(self):
+        self.assertEqual(
+            "2024-01-02T13:45:00",
+            page_sources.legacy_date_to_iso("January 02, 2024 13:45", "%B %d, %Y %H:%M"),
+        )
+        self.assertEqual(
+            "2024-01-02T13:45:00-05:00",
+            page_sources.legacy_date_to_iso("2024-01-02T13:45:00-05:00", "%B %d, %Y"),
+        )
+
+    def test_timestamp_formatting_uses_the_comic_timezone(self):
+        self.assertEqual(
+            "January 01, 2024 22:30",
+            page_sources.iso_date_to_legacy(
+                "2024-01-02T06:30:00+00:00",
+                "%B %d, %Y %H:%M",
+                timezone("America/Los_Angeles"),
+            ),
+        )
+
+    def test_naive_timestamp_rejects_nonexistent_local_time(self):
+        with self.assertRaises(NonExistentTimeError):
+            page_sources.post_date_to_datetime(
+                "2024-03-10T02:30:00",
+                timezone("America/Los_Angeles"),
+            )
 
     def test_migrated_display_date_formats_remain_equivalent(self):
         cases = [

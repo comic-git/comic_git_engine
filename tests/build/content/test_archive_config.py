@@ -17,9 +17,9 @@ class TestArchiveConfig(TestCase):
         self.assertEqual(ArchiveEntryMode.PAGES, site_config.get_archive_entry_mode(config))
         self.assertEqual(ImageTitleFallback.PAGE_TITLE, site_config.get_image_title_fallback(config))
 
-    def test_values_accept_ini_and_toml_adapter_spellings(self):
+    def test_list_images_separately_enables_image_archive_mode(self):
         config = self.make_config()
-        config.set("Archive", "Entry mode", "images")
+        config.set("Archive", "List images separately", "true")
         config.set("Archive", "Image title fallback", "page_title")
 
         self.assertEqual(ArchiveEntryMode.IMAGES, site_config.get_archive_entry_mode(config))
@@ -27,11 +27,11 @@ class TestArchiveConfig(TestCase):
 
     def test_invalid_values_fail_near_config_boundary(self):
         config = self.make_config()
-        config.set("Archive", "Entry mode", "panels")
-        with self.assertRaisesRegex(ValueError, "Entry mode"):
+        config.set("Archive", "List images separately", "sometimes")
+        with self.assertRaisesRegex(ValueError, "List images separately"):
             site_config.get_archive_entry_mode(config)
 
-        config.set("Archive", "Entry mode", "pages")
+        config.set("Archive", "List images separately", "False")
         config.set("Archive", "Image title fallback", "random")
         with self.assertRaisesRegex(ValueError, "Image title fallback"):
             site_config.get_image_title_fallback(config)

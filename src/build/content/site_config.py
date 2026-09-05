@@ -53,12 +53,19 @@ def get_extra_comic_info(folder_name: str, comic_info: RawConfigParser):
 
 
 def get_archive_entry_mode(comic_info: RawConfigParser) -> ArchiveEntryMode:
-    value = comic_info.get("Archive", "Entry mode", fallback="Pages").strip().lower().replace("_", " ")
-    if value == "pages":
-        return ArchiveEntryMode.PAGES
-    if value == "images":
+    try:
+        list_images_separately = comic_info.getboolean(
+            "Archive",
+            "List images separately",
+            fallback=False,
+        )
+    except ValueError as e:
+        raise ValueError(
+            "Invalid [Archive] List images separately. Expected True or False."
+        ) from e
+    if list_images_separately:
         return ArchiveEntryMode.IMAGES
-    raise ValueError("Invalid [Archive] Entry mode. Expected 'Pages' or 'Images'.")
+    return ArchiveEntryMode.PAGES
 
 
 def get_show_text_only_posts(comic_info: RawConfigParser) -> bool:

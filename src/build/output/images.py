@@ -10,6 +10,8 @@ from build.content.site_config import get_archive_entry_mode
 
 logger = logging.getLogger(__name__)
 
+NON_RASTER_THUMBNAIL_EXTENSIONS = {".eps", ".svg"}
+
 
 def resize(im: Image.Image, size: str) -> Image.Image:
     image_width, image_height = im.size
@@ -53,14 +55,25 @@ def create_comic_thumbnail(
         comic_info: RawConfigParser,
         comic_image_path: str,
         thumbnail_path: str,
-) -> None:
+) -> bool:
     overwrite = comic_info.getboolean(
         "Image Reprocessing",
         "Overwrite existing images",
         fallback=False,
     )
-    if os.path.isfile(thumbnail_path) and not overwrite:
-        return
+    thumbnail_exists = os.path.isfile(thumbnail_path)
+    source_extension = os.path.splitext(comic_image_path)[1].lower()
+    if source_extension in NON_RASTER_THUMBNAIL_EXTENSIONS:
+        if not thumbnail_exists:
+            logger.warning(
+                "Skipping automatic thumbnail for %s because %s sources cannot be rasterized. "
+                "Provide a JPEG or PNG thumbnail if one is needed.",
+                os.path.basename(comic_image_path),
+                source_extension.upper().removeprefix("."),
+            )
+        return thumbnail_exists
+    if thumbnail_exists and not overwrite:
+        return True
     logger.info("Creating thumbnail for %s", os.path.basename(comic_image_path))
     with open(comic_image_path, "rb") as f:
         im = Image.open(f)
@@ -69,6 +82,7 @@ def create_comic_thumbnail(
             comic_info.get("Image Reprocessing", "Thumbnail size", fallback="100w"),
         )
         save_image(thumbnail, thumbnail_path)
+    return True
 
 
 def process_comic_images(comic_info: RawConfigParser, pages: list[ComicPage]) -> None:
@@ -103,8 +117,8 @@ def resolve_page_thumbnail(
         return
     target = normalize_web_path(page.page_dir + "_thumbnail.jpg")
     if page.images and create_thumbnails:
-        create_comic_thumbnail(comic_info, page.images[0].source_path, target)
-        page.thumbnail_path = target
+        if create_comic_thumbnail(comic_info, page.images[0].source_path, target):
+            page.thumbnail_path = target
     else:
         page.thumbnail_path = target if os.path.isfile(target) else None
 
@@ -125,7 +139,7 @@ def resolve_image_thumbnail(
         page.page_dir + f"_thumbnail_{hashlib.sha256(image.id.encode('utf-8')).hexdigest()[:8]}.jpg"
     )
     if generate_image_thumbnails:
-        create_comic_thumbnail(comic_info, image.source_path, target)
-        image.thumbnail_path = target
+        if create_comic_thumbnail(comic_info, image.source_path, target):
+            image.thumbnail_path = target
     else:
         image.thumbnail_path = target if os.path.isfile(target) else None

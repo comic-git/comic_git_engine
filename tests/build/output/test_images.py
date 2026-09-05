@@ -127,6 +127,38 @@ class TestImageUtils(TestCase):
         mock_resize.assert_called_once_with(mock_open_image.return_value, "100w")
         mock_save_image.assert_called_once_with(mock_resize.return_value, thumbnail_path)
 
+    @patch(MUT + "Image.open")
+    def test_create_comic_thumbnail_skips_svg_without_existing_thumbnail(self, mock_open_image):
+        comic_info = self.make_comic_info()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            comic_page_path = os.path.join(temp_dir, "page.svg")
+            thumbnail_path = os.path.join(temp_dir, "_thumbnail.jpg")
+            with open(comic_page_path, "w", encoding="utf-8") as f:
+                f.write("<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>")
+
+            with self.assertLogs(MUT.removesuffix("."), level="WARNING") as logs:
+                created = images.create_comic_thumbnail(comic_info, comic_page_path, thumbnail_path)
+
+        self.assertFalse(created)
+        self.assertIn("SVG sources cannot be rasterized", "\n".join(logs.output))
+        mock_open_image.assert_not_called()
+
+    @patch(MUT + "Image.open")
+    def test_create_comic_thumbnail_keeps_existing_svg_thumbnail(self, mock_open_image):
+        comic_info = self.make_comic_info(overwrite=True)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            comic_page_path = os.path.join(temp_dir, "page.svg")
+            thumbnail_path = os.path.join(temp_dir, "_thumbnail.jpg")
+            with open(comic_page_path, "w", encoding="utf-8") as f:
+                f.write("<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>")
+            with open(thumbnail_path, "wb") as f:
+                f.write(b"existing")
+
+            created = images.create_comic_thumbnail(comic_info, comic_page_path, thumbnail_path)
+
+        self.assertTrue(created)
+        mock_open_image.assert_not_called()
+
     def make_page(self, root, image_count=2):
         page_dir = os.path.join(root, "your_content", "comics", "001")
         os.makedirs(page_dir, exist_ok=True)
@@ -215,3 +247,15 @@ class TestImageUtils(TestCase):
 
         mock_create_thumbnail.assert_not_called()
         self.assertTrue(page.thumbnail_path.endswith("_thumbnail.jpg"))
+
+    @patch(MUT + "create_comic_thumbnail", return_value=False)
+    def test_unrenderable_source_does_not_claim_generated_thumbnail(self, mock_create_thumbnail):
+        comic_info = self.make_comic_info()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            page = self.make_page(temp_dir, image_count=1)
+
+            images.process_comic_images(comic_info, [page])
+
+        mock_create_thumbnail.assert_called_once()
+        self.assertIsNone(page.thumbnail_path)
+        self.assertIsNone(page.images[0].thumbnail_path)

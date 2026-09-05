@@ -32,6 +32,11 @@ with proportional height. Users who want higher-resolution shared thumbnails can
 set a larger width. The default Archive CSS continues to display those files at
 no more than 100 pixels wide.
 
+Do not add a vector-image rasterizer solely for thumbnail generation. SVG and
+EPS comic images use an existing conventional or explicitly configured raster
+thumbnail when available; otherwise automatic generation is skipped with a
+warning and the page remains buildable without a thumbnail.
+
 ## Consequences
 
 Thumbnail generation remains fast, storage stays small, and creators have one

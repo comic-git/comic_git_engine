@@ -65,7 +65,7 @@ def create_comic_thumbnail(
         im = Image.open(f)
         thumbnail = resize(
             im,
-            comic_info.get("Image Reprocessing", "Thumbnail size", fallback="10%"),
+            comic_info.get("Image Reprocessing", "Thumbnail size", fallback="100w"),
         )
         save_image(thumbnail, thumbnail_path)
 

@@ -108,7 +108,12 @@ class TestImageUtils(TestCase):
     @patch(MUT + "save_image")
     @patch(MUT + "resize")
     @patch(MUT + "Image.open")
-    def test_create_comic_thumbnail_defaults_to_ten_percent(self, mock_open_image, mock_resize, mock_save_image):
+    def test_create_comic_thumbnail_defaults_to_one_hundred_pixels_wide(
+            self,
+            mock_open_image,
+            mock_resize,
+            mock_save_image,
+    ):
         comic_info = self.make_comic_info()
         comic_info.remove_option("Image Reprocessing", "Thumbnail size")
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -119,7 +124,7 @@ class TestImageUtils(TestCase):
 
             images.create_comic_thumbnail(comic_info, comic_page_path, thumbnail_path)
 
-        mock_resize.assert_called_once_with(mock_open_image.return_value, "10%")
+        mock_resize.assert_called_once_with(mock_open_image.return_value, "100w")
         mock_save_image.assert_called_once_with(mock_resize.return_value, thumbnail_path)
 
     def make_page(self, root, image_count=2):

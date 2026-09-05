@@ -122,7 +122,7 @@ def resolve_image_thumbnail(
         image.thumbnail_path = page.thumbnail_path
         return
     target = normalize_web_path(
-        page.page_dir + f"_thumbnail_{hashlib.sha256(image.id.encode('utf-8')).hexdigest()}.jpg"
+        page.page_dir + f"_thumbnail_{hashlib.sha256(image.id.encode('utf-8')).hexdigest()[:8]}.jpg"
     )
     if generate_image_thumbnails:
         create_comic_thumbnail(comic_info, image.source_path, target)

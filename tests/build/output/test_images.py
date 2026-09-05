@@ -185,7 +185,7 @@ class TestImageUtils(TestCase):
 
         self.assertEqual(2, mock_create_thumbnail.call_count)
         additional_target = mock_create_thumbnail.call_args_list[1].args[2]
-        self.assertRegex(additional_target, r"_thumbnail_[0-9a-f]{64}\.jpg$")
+        self.assertRegex(additional_target, r"_thumbnail_[0-9a-f]{8}\.jpg$")
 
     @patch(MUT + "create_comic_thumbnail")
     def test_explicit_and_blank_thumbnails_are_not_generated(self, mock_create_thumbnail):

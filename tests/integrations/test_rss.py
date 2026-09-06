@@ -14,6 +14,7 @@ def make_image(
         filename: str = "page.png",
         alt_text: str = "Image alt",
         web_path: str | None = None,
+        screen_reader_text: str | None = None,
 ) -> ComicImage:
     return ComicImage(
         id=f"main/Page 1/{filename}",
@@ -22,6 +23,7 @@ def make_image(
         web_path=web_path or f"your_content/comics/Page 1/{filename}",
         title=filename,
         alt_text=alt_text,
+        screen_reader_text=screen_reader_text if screen_reader_text is not None else alt_text,
     )
 
 
@@ -110,8 +112,8 @@ class TestRssFeed(TestCase):
 
     def test_build_rss_feed_uses_structured_images_and_resolved_alt_text(self):
         page = make_page(images=[
-            make_image("one.png", 'First "alt"'),
-            make_image("two.png", "Second alt"),
+            make_image("one.png", 'First "alt"', screen_reader_text="First description"),
+            make_image("two.png", "Second alt", screen_reader_text="Second description"),
         ])
 
         _, output, _ = self.build_feed_output([page])
@@ -122,8 +124,8 @@ class TestRssFeed(TestCase):
         self.assertEqual("Thu, 01 Jan 1903 00:00:00 +0000", item.find("pubDate").text)
         description = item.find("description").text
         self.assertIn('src="https://www.example.com/your_content/comics/Page 1/one.png"', description)
-        self.assertIn('alt="First &quot;alt&quot;"', description)
-        self.assertIn('alt="Second alt"', description)
+        self.assertIn('title="First &quot;alt&quot;" alt="First description"', description)
+        self.assertIn('title="Second alt" alt="Second description"', description)
         self.assertNotIn("alt_text=", description)
         self.assertIn("<p>Post text</p>", description)
 

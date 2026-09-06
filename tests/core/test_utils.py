@@ -266,6 +266,19 @@ class TestGetSocialMediaData(TestCase):
         )
         self.assertEqual("", actual["og:image:alt"])
 
+    def test_comic_social_metadata_uses_screen_reader_text(self):
+        comic_data_dict = deepcopy(self.comic_data_dict)
+        comic_data_dict["page"].images[0].screen_reader_text = "Accessible description"
+
+        actual = utils.get_social_media_data(
+            self.comic_info,
+            comic_data_dict,
+            "comic",
+            "comic/001/index.html",
+        )
+
+        self.assertEqual("Accessible description", actual["og:image:alt"])
+
     def test_comic_url_with_slash(self):
         """Test that a comic_url with a slash at the end is handled properly."""
         comic_data_dict = deepcopy(self.comic_data_dict)

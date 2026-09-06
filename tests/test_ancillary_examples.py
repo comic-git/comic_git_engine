@@ -62,7 +62,11 @@ class TestMinimalComicTemplate(TestCase):
             comic_title="Test Comic",
             _title="Page title",
             links=[],
-            images=[SimpleNamespace(web_path="comic/page.png", alt_text="Page alt text")],
+            images=[SimpleNamespace(
+                web_path="comic/page.png",
+                alt_text="Page hover text",
+                screen_reader_text="Page screen reader text",
+            )],
             first_id="001",
             previous_id="001",
             current_id="002",
@@ -87,7 +91,8 @@ class TestMinimalComicTemplate(TestCase):
 
         self.assertIn('id="comic-image-1"', rendered)
         self.assertIn('src="/site/comic/page.png"', rendered)
-        self.assertIn('alt="Page alt text"', rendered)
+        self.assertIn('title="Page hover text"', rendered)
+        self.assertIn('alt="Page screen reader text"', rendered)
         self.assertIn('/comic/003/#comic-image-1', rendered)
         self.assertIn('/archive/#archive-section-First-arc', rendered)
         self.assertIn('/tagged/Alice/', rendered)

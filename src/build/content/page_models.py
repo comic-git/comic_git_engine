@@ -90,6 +90,18 @@ def resolve_image_alt_text(configured_alt_text: str | None, page_alt_text: str |
     return page_alt_text if page_alt_text is not None else ""
 
 
+def resolve_image_screen_reader_text(
+        configured_screen_reader_text: str | None,
+        page_screen_reader_text: str | None,
+        resolved_alt_text: str,
+) -> str:
+    if configured_screen_reader_text is not None:
+        return configured_screen_reader_text
+    if page_screen_reader_text is not None:
+        return page_screen_reader_text
+    return resolved_alt_text
+
+
 @dataclass(slots=True)
 class ComicImage:
     id: str
@@ -101,6 +113,11 @@ class ComicImage:
     thumbnail_path: str | None = None
     thumbnail_explicit: bool = False
     thumbnail_disabled: bool = False
+    screen_reader_text: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.screen_reader_text is None:
+            self.screen_reader_text = self.alt_text
 
 
 @dataclass(slots=True)

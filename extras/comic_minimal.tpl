@@ -28,7 +28,7 @@
     <div class="comic-page">
         {%- for image in images %}
         <div class="comic-image-container" id="comic-image-{{ loop.index }}">
-            <img class="comic-image" src="{{ base_dir }}/{{ image.web_path | e }}" alt="{{ image.alt_text | e }}"/>
+            <img class="comic-image" src="{{ base_dir }}/{{ image.web_path | e }}" title="{{ image.alt_text | e }}" alt="{{ image.screen_reader_text | e }}"/>
         </div>
         {%- endfor %}
     </div>

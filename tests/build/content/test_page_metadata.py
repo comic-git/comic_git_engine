@@ -23,7 +23,8 @@ class TestPageMetadata(TestCase):
             source_path="page.png",
             web_path="your_content/extras/story/comics/001/page.png",
             title="Image title",
-            alt_text="Image alt",
+            alt_text="Image hover",
+            screen_reader_text="Image description",
         )
         return ComicPage(
             id="extras/story/001",
@@ -66,9 +67,11 @@ class TestPageMetadata(TestCase):
             page["images"][0]["url"],
         )
         self.assertEqual(
-            {"filename", "url", "title", "alt_text", "thumbnail_url"},
+            {"filename", "url", "title", "alt_text", "screen_reader_text", "thumbnail_url"},
             set(page["images"][0]),
         )
+        self.assertEqual("Image hover", page["images"][0]["alt_text"])
+        self.assertEqual("Image description", page["images"][0]["screen_reader_text"])
         self.assertNotIn("image_index", page["images"][0])
         self.assertNotIn("configured_title", page["images"][0])
 
@@ -126,6 +129,7 @@ class TestPageMetadata(TestCase):
             {"filename", "url", "title", "alt_text", "thumbnail_url"},
             set(image_schema["required"]),
         )
+        self.assertEqual("string", image_schema["properties"]["screen_reader_text"]["type"])
         self.assertNotIn("id", image_schema["properties"])
         self.assertNotIn("anchor_id", image_schema["properties"])
         self.assertNotIn("image_index", image_schema["properties"])

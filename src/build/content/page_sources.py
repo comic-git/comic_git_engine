@@ -18,6 +18,7 @@ class PageImageSource:
     title: str | None = None
     alt_text: str | None = None
     thumbnail: str | None = None
+    screen_reader_text: str | None = None
 
 
 @dataclass(slots=True)
@@ -34,12 +35,14 @@ class PageSource:
     transcripts: OrderedDict[str, str] = field(default_factory=OrderedDict)
     social_media: dict[str, Any] = field(default_factory=dict)
     extra: OrderedDict[str, str] = field(default_factory=OrderedDict)
+    screen_reader_text: str | None = None
 
 
 KNOWN_LEGACY_PAGE_FIELDS = {
     "Post date",
     "Title",
     "Alt text",
+    "Screen reader text",
     "Thumbnail",
     "Storyline",
     "Characters",
@@ -47,13 +50,20 @@ KNOWN_LEGACY_PAGE_FIELDS = {
     "Filename",
     "Filenames",
 }
-KNOWN_LEGACY_IMAGE_FIELDS = {"Filename", "Title", "Alt text", "Thumbnail"}
+KNOWN_LEGACY_IMAGE_FIELDS = {
+    "Filename",
+    "Title",
+    "Alt text",
+    "Screen reader text",
+    "Thumbnail",
+}
 KNOWN_TOML_PAGE_FIELDS = {
     "post_date",
     "title",
     "images",
     "post_text",
     "alt_text",
+    "screen_reader_text",
     "thumbnail",
     "storyline",
     "characters",
@@ -62,7 +72,13 @@ KNOWN_TOML_PAGE_FIELDS = {
     "social_media",
     "extra",
 }
-KNOWN_TOML_IMAGE_FIELDS = {"filename", "title", "alt_text", "thumbnail"}
+KNOWN_TOML_IMAGE_FIELDS = {
+    "filename",
+    "title",
+    "alt_text",
+    "screen_reader_text",
+    "thumbnail",
+}
 SECTION_LINE = re.compile(r"^\s*\[(?P<section>[^\r\n]+)]\s*(?:[#;].*)?$", re.MULTILINE)
 TIME_FORMAT_DIRECTIVE = re.compile(r"%(?:[-_0^#]*)(?:H|I|M|S|f|p|X|c|z|Z)")
 
@@ -79,6 +95,7 @@ def load_legacy_page_source(page_path: str, comic_folder: str, comic_info) -> Pa
         images=images,
         post_text=load_legacy_page_post_text(page_path),
         alt_text=page_info.get("Alt text"),
+        screen_reader_text=page_info.get("Screen reader text"),
         thumbnail=page_info.get("Thumbnail"),
         storyline=page_info.get("Storyline", ""),
         characters=utils.str_to_list(page_info.get("Characters", "")),
@@ -147,6 +164,7 @@ def load_legacy_page_ini(path: str) -> tuple[dict[str, str], list[PageImageSourc
                 filename=values["Filename"],
                 title=values.get("Title"),
                 alt_text=values.get("Alt text"),
+                screen_reader_text=values.get("Screen reader text"),
                 thumbnail=values.get("Thumbnail"),
             )
         )
@@ -165,6 +183,7 @@ def load_page_source_from_toml(path: str) -> PageSource:
         images=require_toml_image_list(data, "images"),
         post_text=get_optional_toml_string(data, "post_text") or "",
         alt_text=get_optional_toml_string(data, "alt_text"),
+        screen_reader_text=get_optional_toml_string(data, "screen_reader_text"),
         thumbnail=get_optional_toml_string(data, "thumbnail"),
         storyline=get_optional_toml_string(data, "storyline") or "",
         characters=get_optional_toml_string_list(data, "characters"),
@@ -189,6 +208,8 @@ def serialize_page_source_to_toml(page_source: PageSource) -> str:
         data["title"] = page_source.title
     if page_source.alt_text is not None:
         data["alt_text"] = page_source.alt_text
+    if page_source.screen_reader_text is not None:
+        data["screen_reader_text"] = page_source.screen_reader_text
     if page_source.thumbnail is not None:
         data["thumbnail"] = page_source.thumbnail
     if page_source.storyline:
@@ -216,6 +237,8 @@ def page_image_source_to_toml_data(image: PageImageSource) -> OrderedDict[str, s
         data["title"] = image.title
     if image.alt_text is not None:
         data["alt_text"] = image.alt_text
+    if image.screen_reader_text is not None:
+        data["screen_reader_text"] = image.screen_reader_text
     if image.thumbnail is not None:
         data["thumbnail"] = image.thumbnail
     return data
@@ -356,6 +379,7 @@ def require_toml_image_list(data: dict[str, Any], key: str) -> list[PageImageSou
                 filename=filename,
                 title=get_optional_toml_string(item, "title"),
                 alt_text=get_optional_toml_string(item, "alt_text"),
+                screen_reader_text=get_optional_toml_string(item, "screen_reader_text"),
                 thumbnail=get_optional_toml_string(item, "thumbnail"),
             )
         )

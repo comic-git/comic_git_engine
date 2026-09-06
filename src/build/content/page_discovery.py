@@ -16,6 +16,7 @@ from build.content.page_models import (
     normalize_comic_id,
     normalize_web_path,
     resolve_image_alt_text,
+    resolve_image_screen_reader_text,
     resolve_image_title,
     resolve_page_title,
     validate_page_asset_path,
@@ -115,6 +116,7 @@ def build_discovered_page(
             image_source.thumbnail,
             f"thumbnail for image {filename}",
         )
+        resolved_alt_text = resolve_image_alt_text(image_source.alt_text, source.alt_text)
         images.append(
             ComicImage(
                 id=image_id,
@@ -122,7 +124,12 @@ def build_discovered_page(
                 source_path=source_path,
                 web_path=normalize_web_path(page_dir + filename),
                 title=resolve_image_title(image_source.title, source.title, filename, fallback),
-                alt_text=resolve_image_alt_text(image_source.alt_text, source.alt_text),
+                alt_text=resolved_alt_text,
+                screen_reader_text=resolve_image_screen_reader_text(
+                    image_source.screen_reader_text,
+                    source.screen_reader_text,
+                    resolved_alt_text,
+                ),
                 thumbnail_path=thumbnail_path,
                 thumbnail_explicit=thumbnail_explicit,
                 thumbnail_disabled=thumbnail_disabled,

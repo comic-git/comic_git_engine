@@ -174,12 +174,14 @@ post_date = "2026-04-19"
 post_text = """
 Markdown text here.
 """
-alt_text = "Optional alt text"
+alt_text = "Optional hover description"
+screen_reader_text = "Optional page-level screen-reader description"
 
 [[images]]
 filename = "page.png"
 title = "Optional image title"
-alt_text = "Optional image-specific alt text"
+alt_text = "Optional image-specific hover description"
+screen_reader_text = "Optional image-specific screen-reader description"
 
 [transcripts]
 English = "Markdown transcript here."

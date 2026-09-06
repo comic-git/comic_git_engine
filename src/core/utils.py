@@ -320,8 +320,8 @@ def get_social_media_data(
     comic_page = comic_data_dict.get("page")
     preview_image = "your_content/images/preview_image.png"
     page_thumbnail = comic_page.thumbnail_path if comic_page is not None else None
-    page_alt_text = (
-        comic_page.images[0].alt_text
+    page_screen_reader_text = (
+        comic_page.images[0].screen_reader_text
         if comic_page is not None and comic_page.images
         else ""
     )
@@ -341,7 +341,7 @@ def get_social_media_data(
         elif v == "_post_text":
             data[k] = html.escape(comic_data_dict["post_md"])
         elif v == "_alt_text":
-            data[k] = page_alt_text
+            data[k] = page_screen_reader_text
     return data
 
 

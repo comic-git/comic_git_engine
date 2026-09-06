@@ -108,9 +108,10 @@ def parse_item_pub_date(page: ComicPage, comic_info: RawConfigParser) -> str:
 
 def build_rss_post(comic_url: str, images: list[ComicImage], post_html: str) -> str:
     comic_images = [
-        '<p><img src="{}" alt="{}"></p>'.format(
+        '<p><img src="{}" title="{}" alt="{}"></p>'.format(
             urljoin(comic_url, image.web_path),
             html.escape(image.alt_text, quote=True),
+            html.escape(image.screen_reader_text, quote=True),
         )
         for image in images
     ]

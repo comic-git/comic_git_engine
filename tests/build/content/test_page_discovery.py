@@ -61,6 +61,8 @@ class TestPageDiscovery(TestCase):
                 (
                     "Post date = January 02, 2020\n"
                     "Title = Page title\n"
+                    "Alt text = Page hover\n"
+                    "Screen reader text = Page description\n"
                     "Characters = Alice, Bob\n"
                     "Tags = mystery, noir\n"
                     "!Draft note = hidden\n"
@@ -69,6 +71,7 @@ class TestPageDiscovery(TestCase):
                     "Filename = page.png\n"
                     "Title =\n"
                     "Alt text =\n"
+                    "Screen reader text = Image description\n"
                 ),
                 {"page.png": "x", "_hidden.png": "x"},
             )
@@ -88,6 +91,7 @@ class TestPageDiscovery(TestCase):
         self.assertFalse(hasattr(pages[0].images[0], "anchor_id"))
         self.assertEqual("", pages[1].images[0].title)
         self.assertEqual("", pages[1].images[0].alt_text)
+        self.assertEqual("Image description", pages[1].images[0].screen_reader_text)
         self.assertEqual(["Alice", "Bob"], pages[1].characters)
         self.assertEqual(["mystery", "noir"], pages[1].tags)
         self.assertNotIn("!Draft note", pages[1].extra)
@@ -97,6 +101,23 @@ class TestPageDiscovery(TestCase):
                 for hook_call in _mock_hook.call_args_list
             )
         )
+
+    @patch(MUT + "run_hook", return_value=None)
+    def test_screen_reader_text_falls_back_without_changing_legacy_hover_text(self, _mock_hook):
+        comic_info = self.make_comic_info()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_page(
+                temp_dir,
+                "legacy",
+                "Post date = January 02, 2020\nAlt text = Existing description\n",
+                {"page.png": "x"},
+            )
+
+            pages, _scheduled_count = self.run_discovery(temp_dir, comic_info)
+
+        image = pages[0].images[0]
+        self.assertEqual("Existing description", image.alt_text)
+        self.assertEqual("Existing description", image.screen_reader_text)
 
     @patch(MUT + "run_hook", return_value=None)
     def test_discovery_deletes_future_posts_and_respects_flat_filenames(self, _mock_hook):

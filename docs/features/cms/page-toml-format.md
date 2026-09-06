@@ -31,8 +31,9 @@ Current engine-owned schema:
 post_date = "2024-01-02"
 title = "Chapter One"
 alt_text = """
-Page-level alt text fallback
+Page-level hover description fallback
 """
+screen_reader_text = "Page-level image description for screen readers"
 thumbnail = "_thumbnail.jpg"
 storyline = "Arc 1"
 characters = ["Alice", "Bob"]
@@ -53,7 +54,8 @@ Transcript text
 [[images]]
 filename = "page-1.png"
 title = "Opening panel"
-alt_text = "Alice enters the room."
+alt_text = "Hover description"
+screen_reader_text = "Alice enters the room."
 thumbnail = "page-1-thumbnail.jpg"
 
 [[images]]
@@ -64,10 +66,13 @@ filename = "page-2.png"
 ```
 
 `images` is always an ordered array of tables. `filename` is required in each
-table. `title`, `alt_text`, and `thumbnail` are optional:
+table. `title`, `alt_text`, `screen_reader_text`, and `thumbnail` are optional:
 
 - omitted `title` uses the configured image-title fallback
-- omitted `alt_text` inherits the page `alt_text`
+- omitted `alt_text` inherits the page `alt_text`; despite its historical name,
+  this value supplies the HTML `title` hover description
+- omitted `screen_reader_text` inherits the page `screen_reader_text`, then the
+  resolved `alt_text` value for backward compatibility; it supplies HTML `alt`
 - omitted `thumbnail` uses the resolved thumbnail policy
 - an explicitly blank value is preserved as an override instead of inheriting
 
@@ -90,7 +95,8 @@ Current conversion rules:
 1. `Post date` becomes `post_date` in normalized ISO date or datetime format.
 2. `Filename` or `Filenames` becomes ordered `[[images]]` tables.
 3. Ordered `[Image <label>]` sections become ordered `[[images]]` tables,
-   preserving per-image title, alt-text, and thumbnail presence.
+   preserving per-image title, hover text, screen-reader text, and thumbnail
+   presence.
 4. If no explicit filename field or image section exists, migration writes the
    current auto-discovered image list as image tables.
 5. `post.txt` becomes `post_text`.

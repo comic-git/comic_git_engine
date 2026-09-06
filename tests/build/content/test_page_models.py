@@ -84,6 +84,28 @@ class TestPageModels(TestCase):
         self.assertEqual("Page alt", page_models.resolve_image_alt_text(None, "Page alt"))
         self.assertEqual("", page_models.resolve_image_alt_text(None, None))
 
+    def test_screen_reader_text_uses_image_then_page_then_legacy_alt_text(self):
+        self.assertEqual(
+            "Image description",
+            page_models.resolve_image_screen_reader_text(
+                "Image description", "Page description", "Legacy hover text"
+            ),
+        )
+        self.assertEqual(
+            "Page description",
+            page_models.resolve_image_screen_reader_text(
+                None, "Page description", "Legacy hover text"
+            ),
+        )
+        self.assertEqual(
+            "Legacy hover text",
+            page_models.resolve_image_screen_reader_text(None, None, "Legacy hover text"),
+        )
+        self.assertEqual(
+            "",
+            page_models.resolve_image_screen_reader_text("", "Page description", "Legacy hover text"),
+        )
+
     def test_validate_page_asset_normalizes_separators_and_allows_nested_files(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             nested_dir = os.path.join(temp_dir, "panels")

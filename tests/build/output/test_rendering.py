@@ -33,7 +33,8 @@ class TestRendering(TestCase):
             source_path="page.png",
             web_path=f"your_content/comics/{name}/page.png",
             title="Image",
-            alt_text="Alt",
+            alt_text="Hover description",
+            screen_reader_text="Screen reader description",
         )
         return ComicPage(
             id=f"main/{name}",
@@ -52,13 +53,13 @@ class TestRendering(TestCase):
         )
 
     @staticmethod
-    def render_comic_template(tagged_pages_enabled):
+    def render_comic_template(tagged_pages_enabled, images=None):
         environment = Environment(loader=FileSystemLoader("templates"))
         return environment.get_template("comic.tpl").render(
             tagged_pages_enabled=tagged_pages_enabled,
             _characters=["Alice", "Bob"],
             _tags=["mystery", "action"],
-            images=[],
+            images=images or [],
             links=[],
             social_media={},
             transcripts={},
@@ -363,6 +364,14 @@ class TestRendering(TestCase):
         self.assertIn("Characters: Alice, Bob", normalized_plain_html)
         self.assertIn("Tags: mystery, action", normalized_plain_html)
 
+    def test_comic_template_separates_hover_and_screen_reader_text(self):
+        image = self.make_page().images[0]
+
+        rendered = self.render_comic_template(False, [image])
+
+        self.assertIn('title="Hover description"', rendered)
+        self.assertIn('alt="Screen reader description"', rendered)
+
     def test_templates_reference_structured_images_and_archive_entries(self):
         with open("templates/comic.tpl", encoding="utf-8") as f:
             comic_template = f.read()
@@ -379,7 +388,8 @@ class TestRendering(TestCase):
 
         self.assertIn('class="comic-page"', comic_template)
         self.assertIn('id="comic-image-{{ loop.index }}"', comic_template)
-        self.assertIn('alt="{{ image.alt_text | e }}"', comic_template)
+        self.assertIn('title="{{ image.alt_text | e }}"', comic_template)
+        self.assertIn('alt="{{ image.screen_reader_text | e }}"', comic_template)
         self.assertNotIn('id="comic-page"', comic_template)
         self.assertNotIn("image.anchor_id", comic_template)
         self.assertIn("next_anchor", comic_template)
@@ -406,7 +416,11 @@ class TestRendering(TestCase):
         self.assertIn('page_info_json[i].page_name === fragment', infinite_scroll_script)
         self.assertIn('window.history.replaceState', infinite_scroll_script)
         self.assertIn('page["images"]', infinite_scroll_script)
-        self.assertIn('image_node.alt = image["alt_text"]', infinite_scroll_script)
+        self.assertIn(
+            'image_node.alt = image["screen_reader_text"] ?? image["alt_text"]',
+            infinite_scroll_script,
+        )
+        self.assertIn('image_node.title = image["alt_text"]', infinite_scroll_script)
         self.assertNotIn("image_file_names", infinite_scroll_script)
         self.assertNotIn('image["anchor_id"]', infinite_scroll_script)
         self.assertIn("infinite_scroll_chapters", infinite_scroll_template)

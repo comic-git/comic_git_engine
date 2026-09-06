@@ -77,10 +77,17 @@ class TestPageSources(TestCase):
             title="Chapter One",
             images=[
                 page_sources.PageImageSource("page_1.png"),
-                page_sources.PageImageSource("page_2.png", title="", alt_text="", thumbnail="thumb.png"),
+                page_sources.PageImageSource(
+                    "page_2.png",
+                    title="",
+                    alt_text="Hover words",
+                    screen_reader_text="Panel description",
+                    thumbnail="thumb.png",
+                ),
             ],
             post_text="Body text",
             alt_text="Alt words",
+            screen_reader_text="Page description",
             thumbnail="page-thumb.png",
             storyline="Arc 1",
             characters=["Alice", "Bob"],
@@ -133,6 +140,7 @@ class TestPageSources(TestCase):
                 f.write("Filename = reveal.png\n")
                 f.write("Title =\n")
                 f.write("Alt text =\n")
+                f.write("Screen reader text = Reveal panel\n")
 
             page_info, images = page_sources.load_legacy_page_ini(path)
 
@@ -141,7 +149,9 @@ class TestPageSources(TestCase):
         self.assertEqual(
             [
                 page_sources.PageImageSource("opening.png"),
-                page_sources.PageImageSource("reveal.png", title="", alt_text=""),
+                page_sources.PageImageSource(
+                    "reveal.png", title="", alt_text="", screen_reader_text="Reveal panel"
+                ),
             ],
             images,
         )

@@ -34,14 +34,14 @@
         {% else %}
         <a href="{{ comic_base_dir }}/comic/{{ next_id }}/#{{ next_anchor }}">
         {% endif %}
-            <img class="comic-image" src="{{ base_dir }}/{{ image.web_path | e }}" alt="{{ image.alt_text | e }}"/>
+            <img class="comic-image" src="{{ base_dir }}/{{ image.web_path | e }}" title="{{ image.alt_text | e }}" alt="{{ image.screen_reader_text | e }}"/>
         </a>
         </div>
         {%- endfor %}
     </div>
 
     <div id="comic-page-overlay" hidden>
-        <img id="comic-overlay-image" src="{{ base_dir }}/{{ images[0].web_path | e }}" alt="{{ images[0].alt_text | e }}"/>
+        <img id="comic-overlay-image" src="{{ base_dir }}/{{ images[0].web_path | e }}" title="{{ images[0].alt_text | e }}" alt="{{ images[0].screen_reader_text | e }}"/>
     </div>
     {% endif %}
 

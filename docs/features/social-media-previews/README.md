@@ -26,7 +26,7 @@ Important current behavior:
 
 - preview metadata is generated as part of normal page rendering
 - comic pages default to article-like metadata, including page text, the
-  resolved page thumbnail, and the first image's resolved alt text
+  resolved page thumbnail, and the first image's resolved screen-reader text
 - when a page has no usable resolved thumbnail, its preview image falls back to
   `your_content/images/preview_image.png`; no-image pages use a blank image alt
 - fallback metadata still exists when no custom JSON file is provided

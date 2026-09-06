@@ -27,7 +27,8 @@ Important current behavior:
 - `Combine with Main RSS Feed` applies only to Extra Comics, but may be inherited from the main comic as a default
 - `RSS title format` follows the comic that owns the post, not the feed file where that post appears
 - RSS remains one item per page even when that page has multiple images
-- each image in an item uses its own resolved alt text
+- each image in an item uses its resolved hover description and screen-reader
+  text in the corresponding HTML attributes
 - no-image pages remain in the feed with their post content
 - timestamped posts preserve their exact publication instant in `pubDate`; a
   timestamp without an offset uses the owning comic's configured timezone,

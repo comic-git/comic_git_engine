@@ -46,10 +46,11 @@ are now:
 | `build_other_pages` | `list[ComicPage]` |
 | `postprocess` | the main comic's `list[ComicPage]` |
 
-Configured source values are not duplicated on public models. Image titles, alt
-text, and thumbnails exposed here are resolved values. Hooks that need source
-parsing semantics belong at a source-specific boundary rather than reconstructing
-inheritance from the normalized model.
+Configured source values are not duplicated on public models. Image titles,
+legacy hover text (`alt_text`), screen-reader text, and thumbnails exposed here
+are resolved values. Hooks that need source parsing semantics belong at a
+source-specific boundary rather than reconstructing inheritance from the
+normalized model.
 
 `extra_global_values` can add custom template values, but the engine may apply
 authoritative values derived from resolved comic configuration afterward. In

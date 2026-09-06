@@ -52,6 +52,7 @@ def serialize_image(image: ComicImage) -> dict[str, Any]:
         "url": site_url(image.web_path),
         "title": image.title,
         "alt_text": image.alt_text,
+        "screen_reader_text": image.screen_reader_text,
         "thumbnail_url": site_url(image.thumbnail_path),
     }
 

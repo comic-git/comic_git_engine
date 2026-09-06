@@ -25,8 +25,9 @@ Important current behavior:
 
 - a page remains the scheduling, navigation, post-text, tag, and RSS publishing unit
 - each page owns an ordered collection of zero or more structured comic images
-- each image has resolved title, alt text, and thumbnail data; its ordered array
-  position determines its presentation anchors
+- each image has a resolved archive title, hover description, screen-reader text,
+  and thumbnail data; its ordered array position determines its presentation
+  anchors
 - future-dated pages are treated as scheduled posts and are not published by default
 - local development may opt into previewing future posts
 - generated page metadata is versioned and validated by a deployed JSON Schema
@@ -72,6 +73,10 @@ This feature is under active long-term architectural pressure from the roadmap:
 - Image fallback rules are resolved while normalizing source data. Templates,
   feeds, JavaScript, and hooks consume resolved values rather than independently
   repeating fallback logic.
+- The historically named `Alt text` / `alt_text` source value supplies the HTML
+  `title` hover description. `Screen reader text` / `screen_reader_text` supplies
+  the HTML `alt` text alternative. When the newer field is omitted, it inherits
+  the legacy value so existing pages retain their accessible description.
 - Internal image identity is derived from owning comic, page folder, and
   normalized filename for thumbnail processing. It is not a public metadata or
   anchor contract.

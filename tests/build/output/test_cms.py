@@ -118,14 +118,26 @@ class TestAdminConfig(TestCase):
         self.assertIn('format: "toml"', config)
         self.assertIn("delete: false", config)
         self.assertIn('media_folder: ""', config)
+        self.assertIn('summary: "{{post_date}} — {{title}}"', config)
+        self.assertIn(
+            'sortable_fields:\n      - {field: "post_date", default_sort: "desc"}\n      - "title"',
+            config,
+        )
         self.assertIn('name: "post_date", widget: "datetime"', config)
         self.assertIn('time_format: false', config)
         self.assertIn('name: "post_text", widget: "markdown", required: false', config)
         self.assertIn('name: "images"', config)
-        self.assertIn('summary: "{{fields.filename}}"', config)
+        self.assertIn('name: "images"\n        widget: "list"\n        required: false\n        collapsed: false', config)
+        self.assertIn('summary: "{{fields.title | default(\'Image\')}}"', config)
         self.assertIn('name: "filename", widget: "image", allow_multiple: false', config)
-        self.assertEqual(2, config.count('label: "Hover text", name: "alt_text"'))
-        self.assertEqual(2, config.count('label: "Screen reader text", name: "screen_reader_text"'))
+        self.assertIn('label: "Hover text", name: "alt_text", widget: "string"', config)
+        self.assertIn('label: "Screen reader text", name: "screen_reader_text", widget: "string"', config)
+        self.assertIn('label: "Hover text", name: "alt_text", widget: "text"', config)
+        self.assertIn('label: "Screen reader text", name: "screen_reader_text", widget: "text"', config)
+        self.assertIn('label: "Characters"\n        name: "characters"\n        widget: "list"', config)
+        self.assertIn('label: "Tags"\n        name: "tags"\n        widget: "list"', config)
+        self.assertNotIn('field: {label: "Character"', config)
+        self.assertNotIn('field: {label: "Tag"', config)
         self.assertIn("editor:\n  preview: false", config)
         self.assertLess(
             config.index('name: "title", widget: "string"'),
@@ -446,7 +458,7 @@ class TestValidateCmsPageRoots(TestCase):
             "image-page",
             "info.toml",
             """
-post_date = 2026-09-04
+post_date = "2026-09-04"
 title = "Image Page"
 [[images]]
 filename = "page.png"
@@ -466,6 +478,22 @@ post_text = "Hello"
         )
 
         validate_cms_page_roots([self.comics_root])
+
+    def test_rejects_native_toml_date_with_quoted_iso_remediation(self):
+        path = self.write_page_file(
+            "native-date",
+            "info.toml",
+            'post_date = 2026-09-05\ntitle = "Native Date"',
+        )
+
+        with self.assertRaises(CmsReadinessError) as raised:
+            validate_cms_page_roots([self.comics_root])
+
+        self.assertIn(path, str(raised.exception))
+        self.assertIn(
+            'put quotes around post_date, such as "2026-09-05"',
+            str(raised.exception),
+        )
 
     def test_missing_page_root_is_valid_for_an_empty_extra_comic(self):
         validate_cms_page_roots([os.path.join(self.temp_dir.name, "not-created-yet")])
@@ -496,17 +524,17 @@ post_text = "Hello"
         missing_dir = os.path.join(self.comics_root, "missing")
         os.makedirs(missing_dir)
         invalid_path = self.write_page_file("invalid", "info.toml", "post_date = [")
-        title_path = self.write_page_file("no-title", "info.toml", "post_date = 2026-09-05")
+        title_path = self.write_page_file("no-title", "info.toml", 'post_date = "2026-09-05"')
         timestamp_path = self.write_page_file(
             "timestamp",
             "info.toml",
-            'post_date = 2026-09-05T10:30:00\ntitle = "Timestamp"',
+            'post_date = "2026-09-05T10:30:00"\ntitle = "Timestamp"',
         )
         tables_path = self.write_page_file(
             "tables",
             "info.toml",
             """
-post_date = 2026-09-05
+post_date = "2026-09-05"
 title = "Tables"
 [transcripts]
 English = "Words"

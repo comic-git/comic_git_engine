@@ -124,6 +124,8 @@ class TestAdminConfig(TestCase):
         self.assertIn('name: "images"', config)
         self.assertIn('summary: "{{fields.filename}}"', config)
         self.assertIn('name: "filename", widget: "image", allow_multiple: false', config)
+        self.assertEqual(2, config.count('label: "Hover text", name: "alt_text"'))
+        self.assertEqual(2, config.count('label: "Screen reader text", name: "screen_reader_text"'))
         self.assertIn("editor:\n  preview: false", config)
         self.assertLess(
             config.index('name: "title", widget: "string"'),

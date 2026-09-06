@@ -119,7 +119,7 @@ def main():
     # Get build args
     args = build_site.parse_args()
     build_site.apply_cli_environment_overrides(args)
-    build_args = [args.delete_scheduled_posts, args.publish_all_comics]
+    build_args = [args.delete_scheduled_posts, args.publish_all_comics, args.cms_local_backend]
 
     # Set HTTP_ROOT
     comic_info = load_main_comic_info()

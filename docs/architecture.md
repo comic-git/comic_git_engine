@@ -21,6 +21,7 @@
 | Page and image models       | [`src/build/content/page_models.py`](../src/build/content/page_models.py)   | Structured page/image/archive models plus internal identity, navigation, and fallback helpers.                                            |
 | Shared build models         | [`src/core/models.py`](../src/core/models.py)                               | Small shared dataclasses used to pass per-comic build results between top-level steps.                                                     |
 | Public metadata contract    | [`src/build/content/page_metadata.py`](../src/build/content/page_metadata.py), [`schemas/`](../schemas/) | Serializes resolved page/image data and ships its versioned JSON Schema. |
+| Optional CMS output         | [`src/build/output/cms.py`](../src/build/output/cms.py), [`templates/cms/`](../templates/cms/) | Validates that TOML pages can round-trip safely, then generates the static Decap admin entry point and page collections. |
 | Hooks and external data     | [`src/integrations/`](../src/integrations/)                                 | Theme hooks, RSS integration logic, and webring loading.                                                                                  |
 | Built-in presentation layer | [`templates/`](../templates/), [`css/`](../css/), [`js/`](../js/)           | Default templates, CSS, and JavaScript shipped with the engine. These provide the default site behavior and appearance.                   |
 | Host-repo content layer     | `your_content/` in the loading `comic_git` repo                             | User-controlled data source: comic config, page metadata, images, themes, transcripts, home page content, and Extra Comic content.        |
@@ -85,7 +86,8 @@ This structure is intentionally file-based and low-friction:
 9. [`src/build/output/rendering.py`](../src/build/output/rendering.py) projects narrow template contexts and renders built-in or theme templates.
 10. [`src/integrations/rss.py`](../src/integrations/rss.py) builds page-level RSS items from structured pages for the main comic and Extra Comics.
 11. [`src/build/output/site_output.py`](../src/build/output/site_output.py) handles cleanup, staging into the configured output directory, and copying any host-managed root files from `your_content/site_root/` into the built site root.
-12. The host repo then publishes that output, typically to GitHub Pages and optionally to Neocities.
+12. When site-wide CMS support is enabled, [`src/build/output/cms.py`](../src/build/output/cms.py) validates every main and Extra Comic page before generating marked `admin/index.html` and `admin/config.yml`. This happens after `site_root` copying and before the postprocess hook.
+13. The host repo then publishes that output, typically to GitHub Pages and optionally to Neocities.
 
 ## Key Dependencies
 

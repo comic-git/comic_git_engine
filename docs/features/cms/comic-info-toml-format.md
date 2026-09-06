@@ -4,7 +4,9 @@
 
 ## Status
 
-Implemented as the current `comic_info.toml` reader and migration contract. It remains provisional for CMS UX and may be revised if Decap editing exposes avoidable complexity.
+Implemented as the current `comic_info.toml` reader, migration, and CMS
+enablement contract. Site/comic config is not editable in the first CMS UI and
+may still be revised when that UI is designed.
 
 ## Purpose
 
@@ -36,7 +38,8 @@ The schema below is a supported-key contract, not a required full-file template.
 
 The current reader accepts the engine-owned tables documented below through `[webring]`, plus `[[links]]`, `[[pages]]`, and `[legacy]`. Unknown top-level keys, unknown keys in engine-owned tables, and unsupported fields in link or page entries are rejected with the exact TOML path. This prevents misspelled settings from being silently ignored.
 
-`[cms]` and `[social_media]` remain proposed schema areas for later CMS work. They are not accepted by the current reader until their engine behavior is implemented.
+`[cms]` is accepted by the current reader. `[social_media]` remains a proposed
+schema area and is not accepted at comic level yet.
 
 Extra Comics still inherit from the main comic config, but their own config file is an override file:
 
@@ -108,7 +111,10 @@ combine_with_main = false
 [cms]
 enabled = false
 editorial_workflow = false
+repository = "owner/repository"
+branch = "master"
 backend_base_url = ""
+backend_auth_endpoint = "auth"
 
 [[links]]
 name = "About"
@@ -222,6 +228,19 @@ exclude_own_comic_from_members = false
 - `links` uses `name` for text links and `image_url` for image links. This avoids overloading the legacy option name.
 - `pages` uses an array of tables so page order remains explicit.
 - `engine.version` is read by the reusable build workflow before `comic_git_engine` is available in the host repo, so workflow parsing must support both `comic_info.ini` and `comic_info.toml`.
+- CMS enablement is read only from the main comic config and applies site-wide.
+  Extra Comics do not get independent CMS enablement or admin surfaces.
+- `cms.repository` uses `owner/repository` form. When omitted, production
+  builds use `GITHUB_REPOSITORY`.
+- `cms.branch` defaults to `master`.
+- `cms.backend_base_url` is required for production CMS output and must be an
+  absolute HTTPS URL. HTTP is accepted only for localhost addresses.
+- `cms.backend_auth_endpoint` defaults to the relative path `auth`.
+- `cms.editorial_workflow` defaults to `false` and cannot be used with the
+  local proxy backend.
+- The `--cms-local-backend` CLI option is a runtime-only developer override.
+  It does not have a TOML equivalent and deliberately ignores production
+  repository and OAuth values.
 - Empty strings and default-looking values in the example represent supported keys and legacy-compatible values, not required file contents.
 - Optional values may be omitted when the engine can provide the same behavior from code defaults.
 - `archive.list_images_separately` defaults to `false`. Set it to `true` to create one archive entry per image instead of one entry per publishing page.

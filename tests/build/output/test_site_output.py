@@ -99,6 +99,52 @@ class TestSiteOutput(TestCase):
             self.assertFalse(os.path.exists(os.path.join(temp_dir, "about")))
             self.assertFalse(os.path.exists(os.path.join(temp_dir, "extras", "story")))
 
+    def test_remove_generated_cms_files_removes_only_marked_files_and_empty_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            admin_dir = os.path.join(temp_dir, "admin")
+            os.makedirs(admin_dir)
+            for filename in ("index.html", "config.yml"):
+                with open(os.path.join(admin_dir, filename), "w", encoding="utf-8") as f:
+                    f.write(f"# {site_output.GENERATED_FILE_MARKER}\n")
+
+            site_output.remove_generated_cms_files(temp_dir)
+
+            self.assertFalse(os.path.exists(admin_dir))
+
+    def test_remove_generated_cms_files_preserves_user_files_and_admin_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            admin_dir = os.path.join(temp_dir, "admin")
+            os.makedirs(admin_dir)
+            index_path = os.path.join(admin_dir, "index.html")
+            config_path = os.path.join(admin_dir, "config.yml")
+            asset_path = os.path.join(admin_dir, "custom.css")
+            with open(index_path, "w", encoding="utf-8") as f:
+                f.write("user index")
+            with open(config_path, "w", encoding="utf-8") as f:
+                f.write("user config")
+            with open(asset_path, "w", encoding="utf-8") as f:
+                f.write("user asset")
+
+            site_output.remove_generated_cms_files(temp_dir)
+
+            self.assertTrue(os.path.isfile(index_path))
+            self.assertTrue(os.path.isfile(config_path))
+            self.assertTrue(os.path.isfile(asset_path))
+            self.assertTrue(os.path.isdir(admin_dir))
+
+    def test_remove_generated_cms_files_preserves_non_utf8_user_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            admin_dir = os.path.join(temp_dir, "admin")
+            os.makedirs(admin_dir)
+            index_path = os.path.join(admin_dir, "index.html")
+            with open(index_path, "wb") as f:
+                f.write(b"\xff\xfe user content")
+
+            site_output.remove_generated_cms_files(temp_dir)
+
+            self.assertTrue(os.path.isfile(index_path))
+            self.assertTrue(os.path.isdir(admin_dir))
+
     @patch(MUT + "delete_output_file_space")
     def test_setup_output_file_space_delegates_to_delete(self, mock_delete_output_file_space):
         comic_info = self.make_comic_info()

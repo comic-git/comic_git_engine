@@ -104,6 +104,22 @@ python comic_git_engine\src\scripts\dev_server.py
 `http://localhost:8000`. It rebuilds when `.tpl`, `.txt`, `.html`, `.md`,
 `.ini`, and `.toml` files change.
 
+To exercise a CMS-enabled host repo before the hosted OAuth backend exists,
+install Node.js for local development and run these in separate terminals from
+the host repo root:
+
+```powershell
+npx decap-server
+```
+
+```powershell
+python comic_git_engine\src\scripts\dev_server.py --cms-local-backend
+```
+
+Do not add the Decap proxy to the engine's runtime requirements or commit local
+Node tooling only for this workflow. See the
+[CMS feature notes](features/cms/README.md) for the current readiness limits.
+
 Do not use `--delete-scheduled-posts` during normal local development. That flag is appropriate for deployment builds because it removes future-dated page content from the published output, but locally it can delete uncommitted user data files.
 
 ## Running Tests

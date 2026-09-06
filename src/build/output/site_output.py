@@ -5,11 +5,13 @@ from configparser import RawConfigParser
 
 from build.content.loaders import load_main_comic_info
 from build.content.site_config import get_extra_comics_list, get_pages_list
+from build.output.cms import GENERATED_FILE_MARKER
 from core.utils import get_output_dir
 
 logger = logging.getLogger(__name__)
 
 SITE_ROOT_SOURCE = os.path.join("your_content", "site_root")
+CMS_OUTPUT_FILES = (os.path.join("admin", "index.html"), os.path.join("admin", "config.yml"))
 
 
 def delete_output_file_space(comic_info: RawConfigParser = None):
@@ -35,6 +37,29 @@ def delete_output_file_space(comic_info: RawConfigParser = None):
     for comic in get_extra_comics_list(comic_info):
         if os.path.exists(comic):
             shutil.rmtree(comic)
+    remove_generated_cms_files()
+
+
+def remove_generated_cms_files(output_root: str = ".") -> None:
+    for relative_path in CMS_OUTPUT_FILES:
+        path = os.path.join(output_root, relative_path)
+        if _has_generated_cms_marker(path):
+            os.remove(path)
+    admin_dir = os.path.join(output_root, "admin")
+    try:
+        os.rmdir(admin_dir)
+    except OSError:
+        pass
+
+
+def _has_generated_cms_marker(path: str) -> bool:
+    if not os.path.isfile(path):
+        return False
+    try:
+        with open(path, encoding="utf-8") as f:
+            return GENERATED_FILE_MARKER in f.read(4096)
+    except (OSError, UnicodeError):
+        return False
 
 
 def setup_output_file_space(comic_info: RawConfigParser):

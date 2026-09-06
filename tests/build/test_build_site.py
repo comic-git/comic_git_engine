@@ -1,7 +1,7 @@
 import os
 from configparser import RawConfigParser
 from unittest import TestCase
-from unittest.mock import call, patch
+from unittest.mock import MagicMock, call, patch
 
 import core.models as models
 from build import build_site
@@ -21,6 +21,7 @@ def get_mock_dict(mocks):
 @patch(MUT + "checkpoint")
 @patch(MUT + "copy_site_root_files")
 @patch(MUT + "copy_output_assets")
+@patch(MUT + "write_cms_admin")
 @patch(MUT + "build_rss_feed_from_job")
 @patch(MUT + "get_rss_feed_jobs", return_value=[])
 @patch(MUT + "build_and_publish_comic_pages", return_value=([{"page_name": "Page 1"}], {"theme": "default"}))
@@ -59,6 +60,9 @@ class TestMain(TestCase):
         m["build_rss_feed_from_job"].assert_called_once_with(feed_job)
         m["copy_output_assets"].assert_called_once_with("build")
         m["copy_site_root_files"].assert_called_once_with("build")
+        cms_settings = m["write_cms_admin"].call_args.args[0]
+        self.assertFalse(cms_settings.enabled)
+        m["write_cms_admin"].assert_called_once_with(cms_settings, [], "build")
 
     @patch(MUT + "os.makedirs")
     @patch(MUT + "get_extra_comic_info")
@@ -123,6 +127,35 @@ class TestMain(TestCase):
 
         m["copy_site_root_files"].assert_called_once_with("build")
         self.assertIn(call("Copy site_root files"), m["checkpoint"].call_args_list)
+        self.assertIn(call("Build CMS admin"), m["checkpoint"].call_args_list)
+
+    @patch(MUT + "os.path.isfile", return_value=True)
+    def test_main_generates_local_cms_after_site_root_and_before_postprocess(self, *_mocks):
+        m = get_mock_dict(_mocks)
+        comic_info = self.make_comic_info()
+        comic_info.add_section("CMS")
+        comic_info.set("CMS", "Enabled", "True")
+        m["load_main_comic_info"].return_value = comic_info
+        manager = MagicMock()
+        manager.attach_mock(m["copy_site_root_files"], "copy_site_root")
+        manager.attach_mock(m["write_cms_admin"], "write_cms")
+        manager.attach_mock(m["run_hook"], "run_hook")
+
+        build_site.main(cms_local_backend=True)
+
+        write_call = next(item for item in manager.mock_calls if item[0] == "write_cms")
+        settings, collections, output_dir = write_call.args
+        self.assertTrue(settings.local_backend)
+        self.assertEqual(["main_comic_pages"], [collection.name for collection in collections])
+        self.assertEqual("build", output_dir)
+        call_names = [item[0] for item in manager.mock_calls]
+        self.assertLess(call_names.index("copy_site_root"), call_names.index("write_cms"))
+        postprocess_index = next(
+            index
+            for index, item in enumerate(manager.mock_calls)
+            if item[0] == "run_hook" and item.args[1] == "postprocess"
+        )
+        self.assertLess(call_names.index("write_cms"), postprocess_index)
 
     def test_main_surfaces_missing_site_root_folder(self, *_mocks):
         m = get_mock_dict(_mocks)
@@ -149,6 +182,12 @@ class TestCliArgs(TestCase):
         self.assertEqual("preview_site", args.output_dir)
         self.assertFalse(args.delete_scheduled_posts)
         self.assertFalse(args.publish_all_comics)
+        self.assertFalse(args.cms_local_backend)
+
+    def test_parse_args_reads_cms_local_backend(self):
+        args = build_site.parse_args(["--cms-local-backend"])
+
+        self.assertTrue(args.cms_local_backend)
 
     def test_apply_cli_environment_overrides_sets_output_dir(self):
         args = build_site.parse_args(["--output-dir", "preview_site"])

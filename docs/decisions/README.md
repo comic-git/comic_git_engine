@@ -29,6 +29,7 @@ Use [`_template.md`](_template.md) to create a new doc. Name files `YYYY-MM-DD-s
 
 ## Index
 
+- [CMS uses an all-page safety gate and runtime-only local backend](2026-09-05-cms-safety-gate-and-local-backend.md) - Refuse lossy page editing and keep Decap's proxy mode out of deployable configuration, `active`
 - [Shared archive and social thumbnails](2026-09-05-shared-archive-and-social-thumbnails.md) - Generate one reusable thumbnail per page or image, defaulting to 100 pixels wide, `active`
 - [Release reference policy](2026-09-04-release-reference-policy.md) - Keep exact refs immutable, minor refs moving, major tags manual, and workflow and engine selectors independent, `active`
 - [Positional image anchors and minimal public metadata](2026-08-30-positional-image-anchors-and-minimal-metadata.md) - Derive presentation fragments from ordered image position and keep internal identity out of public metadata, `active`

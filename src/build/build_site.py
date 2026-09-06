@@ -6,8 +6,10 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from build.site_builder import build_and_publish_comic_pages
+from build.content import content_paths
 from build.content.loaders import load_main_comic_info
 from build.content.site_config import get_extra_comic_info, get_extra_comics_list
+from build.output.cms import build_cms_collections, resolve_cms_settings, write_cms_admin
 from build.output.site_output import copy_output_assets, copy_site_root_files, setup_output_file_space
 from core import utils
 from core.logging_config import configure_logging
@@ -38,7 +40,11 @@ def add_inputs_to_env_vars(inputs: str):
             os.environ[k] = v
 
 
-def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False):
+def main(
+        delete_scheduled_posts: bool = False,
+        publish_all_comics: bool = False,
+        cms_local_backend: bool = False,
+):
     configure_logging()
     checkpoint("Start", clear=True)
 
@@ -110,6 +116,15 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False)
     copy_site_root_files(output_dir)
     checkpoint("Copy site_root files")
 
+    cms_settings = resolve_cms_settings(
+        comic_info,
+        source_is_toml=os.path.isfile(content_paths.MAIN_COMIC_INFO_TOML),
+        local_backend=cms_local_backend,
+    )
+    cms_collections = build_cms_collections(comic_results) if cms_settings.enabled else []
+    write_cms_admin(cms_settings, cms_collections, output_dir)
+    checkpoint("Build CMS admin")
+
     run_hook(theme, "postprocess", [comic_info, pages, global_values])
 
     checkpoint("Postprocessing hook")
@@ -138,6 +153,11 @@ def parse_args(argv: list[str] | None = None):
         help="Override the output directory for this build. Defaults to the OUTPUT_DIR environment variable, "
              "or 'build' if OUTPUT_DIR is unset."
     )
+    parser.add_argument(
+        "--cms-local-backend",
+        action="store_true",
+        help="Generate CMS configuration for the local Decap proxy instead of hosted GitHub authentication."
+    )
     return parser.parse_args(argv)
 
 
@@ -150,7 +170,7 @@ if __name__ == "__main__":
     args = parse_args()
     apply_cli_environment_overrides(args)
     try:
-        main(args.delete_scheduled_posts, args.publish_all_comics)
+        main(args.delete_scheduled_posts, args.publish_all_comics, args.cms_local_backend)
     except Exception as e:
         # If the repo is not running in GitHub, raise the error normally
         if not os.getenv("GITHUB_REPOSITORY"):

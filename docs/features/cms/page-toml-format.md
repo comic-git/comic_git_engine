@@ -16,12 +16,29 @@ It defines how one legacy page folder becomes one `info.toml` file and how that 
 
 The page ID is not stored in TOML. It is derived from the containing folder name.
 
-It does not yet define the final TOML schema for:
+It does not define the TOML schema for:
 
 - `comic_info.toml`
 - site-level social media defaults
 - webring participation settings
 - Extra Comic config inheritance
+
+## CMS Compatibility
+
+The first CMS editor exposes `title`, ordered `images`, `post_date`,
+`post_text`, `alt_text`, `thumbnail`, `storyline`, `characters`, and
+`tags`. New pages may be image-backed or text-only, and uploaded images stay
+beside the page's `info.toml`.
+
+CMS enablement is deliberately all-or-nothing across the main comic and every
+Extra Comic. Each page folder must have valid `info.toml`, a nonblank
+`title`, and a date-only `post_date`. Timestamp post dates and nonempty
+`[transcripts]`, `[social_media]`, or `[extra]` tables remain valid engine
+inputs, but must be removed or managed manually before this CMS slice can be
+enabled because its form cannot yet round-trip them safely.
+
+The CMS does not delete page entries, does not rename an existing page folder
+when its title changes, and does not provide a content preview in this slice.
 
 ## Page Schema
 

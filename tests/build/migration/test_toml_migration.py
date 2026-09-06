@@ -112,6 +112,7 @@ class TestTomlMigration(TestCase):
                 toml_text = f.read()
             loaded = page_sources.load_page_source_from_toml(toml_path)
             self.assertEqual("2024-01-02", loaded.post_date)
+            self.assertIn('post_date = "2024-01-02"', toml_text)
             self.assertEqual(
                 [
                     page_sources.PageImageSource("first.png"),
@@ -139,9 +140,13 @@ class TestTomlMigration(TestCase):
             )
 
             self.run_in_host(temp_dir, lambda: toml_migration.run_page_migration(write=True))
-            loaded = page_sources.load_page_source_from_toml(os.path.join(page_dir, "info.toml"))
+            toml_path = os.path.join(page_dir, "info.toml")
+            loaded = page_sources.load_page_source_from_toml(toml_path)
+            with open(toml_path, encoding="utf-8") as f:
+                toml_text = f.read()
 
         self.assertEqual("2024-01-02T13:45:30", loaded.post_date)
+        self.assertIn('post_date = "2024-01-02T13:45:30"', toml_text)
 
     def test_existing_toml_is_skipped_without_overwrite(self):
         with tempfile.TemporaryDirectory() as temp_dir:

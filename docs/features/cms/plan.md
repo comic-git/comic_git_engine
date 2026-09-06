@@ -286,10 +286,29 @@ per-collection entry paths and empty relative media/public folders.
 
 ### Advanced Fields
 
-Hands-on testing showed that collapsed list-item labels need further work:
-Characters and Tags do not expose their values clearly, and image entries do
-not reliably show their configured summary. Treat this as UI polish rather than
-changing the TOML shape prematurely.
+Hands-on testing showed that a collapsed image summary using `filename`
+displays the outer entry name (`info`) rather than the nested image filename.
+The MVP opens image entries by default, summarizes them by explicit image Title
+with a generic Image fallback, and uses compact single-line inputs for their
+short text metadata rather than changing the TOML shape prematurely. A richer
+custom image widget remains post-MVP work.
+
+### Reused Metadata Suggestions
+
+Collecting existing Storyline, Character, and Tag values is inexpensive because
+CMS configuration generation already receives every built page. Decap's native
+controls do not provide the intended editing behavior, however: `select` offers
+a fixed option list, while `relation` searches existing collection entries but
+does not accept a new arbitrary value. Relations are also awkward when values
+must be gathered across the main comic and multiple Extra Comic collections.
+
+Keep the MVP's flexible string and scalar-list inputs. A later custom creatable
+combobox should use deduplicated site-wide values as suggestions while allowing
+new Storylines inline; its multi-value form should act as a tag picker for
+Characters and Tags. Engine-generated suggestions would refresh after the next
+site build. The custom-widget investigation should decide whether that cadence
+is sufficient or whether suggestions need to update from the live CMS entries
+during an editing session.
 
 ## GitHub App / Hosted Backend Integration
 
@@ -391,7 +410,13 @@ If implementation options are otherwise equal, prefer the clearer failure mode.
 - investigate useful page thumbnails, potentially through an optional grid view
 - make Character and Tag list items expose their values without opening an
   opaque collapsed object
-- make image items reliably summarize their title, falling back to filename
+- add a custom image-list widget after the MVP so entries can present useful
+  filenames, titles, and image context without relying on Decap's collapsed
+  summary behavior
+- prototype creatable suggestion controls for Storyline, Characters, and Tags
+  after the MVP; they should suggest values already used throughout the site,
+  accept new values inline, deduplicate suggestions case-insensitively while
+  preserving display casing, and keep Characters and Tags multi-valued
 - keep Images directly after Title in the edit form
 - make the owning collection/path clearer for Extra Comic pages
 - decide whether a polished preview is worth implementing; the first slice
@@ -431,8 +456,11 @@ If implementation options are otherwise equal, prefer the clearer failure mode.
   and Extra Comic edits all worked quickly and correctly.
 - Changing an existing title did not move its page folder, preserving
   path-derived identity.
-- Native and quoted TOML dates round-tripped successfully when they represented
-  date-only values.
+- Quoted TOML date strings round-tripped cleanly. Native TOML dates loaded, but
+  Decap exposed them as timezone-sensitive JavaScript dates, producing unwieldy
+  prior-day labels in negative UTC offsets and inconsistent mixed-type sorting.
+  The current CMS therefore requires quoted date-only values; future time-of-day
+  work will reevaluate native date and datetime round trips explicitly.
 - The page-list and collapsed-list presentation needs polish before it is
   suitable for nontechnical users.
 - Decap's generic content preview was not representative of the generated comic

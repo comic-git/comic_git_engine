@@ -32,10 +32,12 @@ beside the page's `info.toml`.
 
 CMS enablement is deliberately all-or-nothing across the main comic and every
 Extra Comic. Each page folder must have valid `info.toml`, a nonblank
-`title`, and a date-only `post_date`. Timestamp post dates and nonempty
-`[transcripts]`, `[social_media]`, or `[extra]` tables remain valid engine
-inputs, but must be removed or managed manually before this CMS slice can be
-enabled because its form cannot yet round-trip them safely.
+`title`, and a quoted, date-only ISO `post_date`. Native TOML dates remain
+valid engine input, but CMS-managed pages use strings so Decap does not turn a
+calendar date into a timezone-sensitive browser timestamp. Timestamp post dates
+and nonempty `[transcripts]`, `[social_media]`, or `[extra]` tables remain valid
+engine inputs, but must be removed or managed manually before this CMS slice can
+be enabled because its form cannot yet round-trip them safely.
 
 The CMS does not delete page entries, does not rename an existing page folder
 when its title changes, and does not provide a content preview in this slice.
@@ -109,7 +111,8 @@ Legacy page folder inputs currently considered part of the page migration contra
 
 Current conversion rules:
 
-1. `Post date` becomes `post_date` in normalized ISO date or datetime format.
+1. `Post date` becomes a quoted `post_date` string in normalized ISO date or
+   datetime format.
 2. `Filename` or `Filenames` becomes ordered `[[images]]` tables.
 3. Ordered `[Image <label>]` sections become ordered `[[images]]` tables,
    preserving per-image title, hover text, screen-reader text, and thumbnail
@@ -138,6 +141,11 @@ When `info.toml` exists for a page:
 and datetime values. A datetime without an offset uses the comic's configured
 timezone. A datetime with an offset represents that exact instant and is
 converted to the comic's timezone for display and scheduling.
+
+CMS-managed pages currently narrow that general engine contract to quoted
+`YYYY-MM-DD` strings. Future time-of-day CMS work will explicitly compare native
+TOML and quoted ISO datetime round trips before choosing its write format; the
+current date-only restriction does not decide that future representation.
 
 ## Notes
 

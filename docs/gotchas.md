@@ -24,11 +24,13 @@ The CMS is site-wide. Enabling it from the main `comic_info.toml` also manages
 Extra Comic page roots, and the engine writes no admin files unless every page
 folder is safe for the current form to round-trip.
 
-A legacy `info.ini`, missing or invalid `info.toml`, blank title, timestamp
-`post_date`, or nonempty `[transcripts]`, `[social_media]`, or `[extra]`
-table blocks CMS generation with an aggregate error. These remain valid in
-ordinary non-CMS builds; the restriction protects content from a lossy CMS
-save.
+A legacy `info.ini`, missing or invalid `info.toml`, blank title, native TOML
+date, timestamp `post_date`, or nonempty `[transcripts]`, `[social_media]`, or
+`[extra]` table blocks CMS generation with an aggregate error. CMS-managed dates
+currently use quoted `YYYY-MM-DD` strings so Decap does not mix strings with
+timezone-sensitive JavaScript dates. Native TOML dates and timestamps remain
+valid in ordinary non-CMS builds; the restriction protects content from a lossy
+or inconsistent CMS save.
 
 The `--cms-local-backend` option changes only backend rendering for the current
 process. It does not bypass readiness and should never be represented as a

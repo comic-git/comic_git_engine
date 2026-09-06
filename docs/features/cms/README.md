@@ -28,6 +28,12 @@ Current behavior:
 - migrated TOML files become the source of truth for the logical items they replace
 - enabling CMS generates marked `admin/index.html` and `admin/config.yml`
 - the initial editor manages comic pages, not site/comic configuration
+- page lists show each post date beside its title and default to newest first
+- Characters and Tags use compact comma-separated inputs that save TOML string arrays
+- image items open expanded by default, with compact single-line inputs for
+  their Hover text and Screen reader text
+- collapsed image items use their explicit Title as a best-effort label and
+  otherwise display Image
 - all page folders must be safely editable before any admin files are written
 - page deletion and the built-in content preview are disabled in the first slice
 - `--cms-local-backend` switches only the current process to Decap's local
@@ -36,8 +42,23 @@ Current behavior:
 
 The safety gate currently requires every main and Extra Comic page folder to
 contain valid `info.toml` with a nonblank title and date-only `post_date`.
-Nonempty `[transcripts]`, `[social_media]`, and `[extra]` tables must be
+The date must be a quoted ISO string; native TOML dates remain valid for normal
+engine builds but are rejected by CMS readiness to prevent browser-timezone
+conversion and mixed-type sorting. Nonempty `[transcripts]`, `[social_media]`, and `[extra]` tables must be
 managed manually until the CMS can preserve them.
+
+## Future Date and Time Editing
+
+Time-of-day publishing remains a separate CMS feature. Before enabling it, test
+Decap's parsing, display, sorting, and save behavior for TOML native local dates,
+local datetimes, and offset datetimes as well as quoted ISO values. Choose the
+CMS representation only after that round-trip evidence is available; do not
+assume that today's quoted date-only boundary determines the timestamp format.
+
+The engine must continue accepting both native TOML date/datetime values and
+quoted ISO date/datetime strings in the meantime. That broader read contract
+lets the future CMS work improve native TOML support without migrating existing
+non-CMS content or changing scheduling semantics first.
 
 ## Local Proof Workflow
 

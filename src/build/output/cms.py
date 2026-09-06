@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import tomllib
 from collections.abc import Iterable, Mapping
 from configparser import RawConfigParser
 from dataclasses import dataclass
@@ -266,6 +267,8 @@ def _get_page_readiness_problems(page_path: str) -> list[str]:
         return [f"{page_path}: add an info.toml file before managing this folder with the CMS."]
 
     try:
+        with open(toml_path, "rb") as f:
+            raw_page_data = tomllib.load(f)
         source = load_page_source_from_toml(toml_path)
     except (OSError, ValueError, KeyError) as e:
         return [f"{toml_path}: fix the invalid page configuration ({e})."]
@@ -274,15 +277,22 @@ def _get_page_readiness_problems(page_path: str) -> list[str]:
     if source.title is None or not source.title.strip():
         problems.append(f"{toml_path}: add a nonblank title for CMS editing.")
 
-    try:
-        parsed_post_date = parse_iso_post_date(source.post_date)
-    except ValueError:
-        parsed_post_date = None
-    if parsed_post_date is None or hasattr(parsed_post_date, "hour"):
+    raw_post_date = raw_page_data.get("post_date")
+    if not isinstance(raw_post_date, str):
         problems.append(
-            f"{toml_path}: use a date-only post_date such as 2026-09-05; "
-            "timestamp editing is not supported yet."
+            f'{toml_path}: put quotes around post_date, such as "2026-09-05"; '
+            "CMS-managed dates must be ISO strings."
         )
+    else:
+        try:
+            parsed_post_date = parse_iso_post_date(source.post_date)
+        except ValueError:
+            parsed_post_date = None
+        if parsed_post_date is None or hasattr(parsed_post_date, "hour"):
+            problems.append(
+                f"{toml_path}: use a date-only post_date such as \"2026-09-05\"; "
+                "timestamp editing is not supported yet."
+            )
 
     unsupported_values = {
         "transcripts": source.transcripts,

@@ -90,6 +90,44 @@ date_format = "%B %d, %Y"
         self.assertFalse(comic_info.has_option("Comic Settings", "Theme"))
         self.assertFalse(comic_info.has_option("RSS Feed", "Build RSS feed"))
 
+    def test_load_comic_config_from_toml_maps_cms_settings(self):
+        path = self.write_toml(
+            """
+[cms]
+enabled = true
+repository = "owner/comic"
+branch = "cms"
+backend_base_url = "https://auth.example.com"
+backend_auth_endpoint = "oauth/auth"
+editorial_workflow = true
+"""
+        )
+
+        comic_info = comic_config_sources.load_comic_config_from_toml(path)
+
+        self.assertTrue(comic_info.getboolean("CMS", "Enabled"))
+        self.assertEqual("owner/comic", comic_info.get("CMS", "Repository"))
+        self.assertEqual("cms", comic_info.get("CMS", "Branch"))
+        self.assertEqual("https://auth.example.com", comic_info.get("CMS", "Backend base URL"))
+        self.assertEqual("oauth/auth", comic_info.get("CMS", "Backend auth endpoint"))
+        self.assertTrue(comic_info.getboolean("CMS", "Editorial workflow"))
+
+    def test_load_comic_config_from_toml_keeps_sparse_cms_settings_omitted(self):
+        path = self.write_toml(
+            """
+[cms]
+enabled = true
+"""
+        )
+
+        comic_info = comic_config_sources.load_comic_config_from_toml(path)
+
+        self.assertTrue(comic_info.getboolean("CMS", "Enabled"))
+        self.assertFalse(comic_info.has_option("CMS", "Repository"))
+        self.assertFalse(comic_info.has_option("CMS", "Branch"))
+        self.assertFalse(comic_info.has_option("CMS", "Backend base URL"))
+        self.assertFalse(comic_info.has_option("CMS", "Backend auth endpoint"))
+
     def test_load_comic_config_from_toml_maps_links_pages_and_webring(self):
         path = self.write_toml(
             """
@@ -189,6 +227,39 @@ allow_missing_variables_in_templates = true
                 ValueError,
                 "Unsupported key site.allow_missing_variables_in_templates in comic_info.toml",
         ):
+            comic_config_sources.load_comic_config_from_toml(path)
+
+    def test_load_comic_config_from_toml_rejects_unknown_cms_key(self):
+        path = self.write_toml(
+            """
+[cms]
+enable = true
+"""
+        )
+
+        with self.assertRaisesRegex(ValueError, "Unsupported key cms.enable in comic_info.toml"):
+            comic_config_sources.load_comic_config_from_toml(path)
+
+    def test_load_comic_config_from_toml_rejects_bad_cms_string_type(self):
+        path = self.write_toml(
+            """
+[cms]
+repository = 42
+"""
+        )
+
+        with self.assertRaisesRegex(ValueError, "Expected cms.repository.*string"):
+            comic_config_sources.load_comic_config_from_toml(path)
+
+    def test_load_comic_config_from_toml_rejects_bad_cms_bool_type(self):
+        path = self.write_toml(
+            """
+[cms]
+enabled = "yes"
+"""
+        )
+
+        with self.assertRaisesRegex(ValueError, "Expected cms.enabled.*boolean"):
             comic_config_sources.load_comic_config_from_toml(path)
 
     def test_load_comic_config_from_toml_rejects_unknown_link_key(self):
@@ -313,3 +384,25 @@ about = "Legacy About"
 
         self.assertIn('[legacy."Comic Settings"]', toml_text)
         self.assertIn('"Allow missing variables in templates" = "True"', toml_text)
+
+    def test_cms_settings_serialize_to_first_class_toml_and_round_trip(self):
+        comic_info = RawConfigParser()
+        comic_info.optionxform = str
+        comic_info.add_section("CMS")
+        comic_info.set("CMS", "Enabled", "True")
+        comic_info.set("CMS", "Repository", "owner/comic")
+        comic_info.set("CMS", "Branch", "cms")
+        comic_info.set("CMS", "Backend base URL", "https://auth.example.com")
+        comic_info.set("CMS", "Backend auth endpoint", "oauth/auth")
+        comic_info.set("CMS", "Editorial workflow", "False")
+
+        toml_text = comic_config_sources.serialize_comic_config_to_toml(comic_info)
+        loaded = comic_config_sources.load_comic_config_from_toml(self.write_toml(toml_text))
+
+        self.assertIn("[cms]", toml_text)
+        self.assertIn("enabled = true", toml_text)
+        self.assertIn('repository = "owner/comic"', toml_text)
+        self.assertNotIn('[legacy.CMS]', toml_text)
+        self.assertTrue(loaded.getboolean("CMS", "Enabled"))
+        self.assertEqual("owner/comic", loaded.get("CMS", "Repository"))
+        self.assertFalse(loaded.getboolean("CMS", "Editorial workflow"))

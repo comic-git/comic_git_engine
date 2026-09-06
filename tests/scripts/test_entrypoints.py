@@ -46,6 +46,7 @@ class TestEntrypoints(TestCase):
 
         self.assertEqual(0, result.returncode, msg=result.stderr)
         self.assertIn("--output-dir", result.stdout)
+        self.assertIn("--cms-local-backend", result.stdout)
 
     def test_build_failure_exits_nonzero_in_github_actions(self):
         with patch.dict(os.environ, {"GITHUB_REPOSITORY": "example/comic"}):
@@ -162,6 +163,7 @@ class TestEntrypoints(TestCase):
             publish_all_comics=False,
             output_dir=None,
             listen="127.0.0.1",
+            cms_local_backend=True,
         )
         comic_info = object()
 
@@ -203,8 +205,8 @@ class TestEntrypoints(TestCase):
         self.assertEqual("/comic", module.PREVIEW_SUBDIRECTORY)
         mock_load_config.assert_called_once_with()
         mock_apply_overrides.assert_called_once_with(args)
-        mock_build.assert_called_once_with(False, False)
-        mock_watch.assert_called_once_with([False, False])
+        mock_build.assert_called_once_with(False, False, True)
+        mock_watch.assert_called_once_with([False, False, True])
         thread.start.assert_called_once_with()
         mock_delete_output.assert_called_once_with(comic_info)
         self.assertEqual(

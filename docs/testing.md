@@ -57,6 +57,7 @@ tests/
     migration/
       test_toml_migration.py   - deterministic legacy-to-TOML conversion
     output/
+      test_cms.py              - CMS settings, readiness, generated admin config, and safe output behavior
       test_images.py           - page/image thumbnail resolution and generation behavior
       test_rendering.py        - template/page-writing orchestration
       test_site_output.py      - output cleanup and site_root/output copying

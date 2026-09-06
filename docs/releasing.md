@@ -16,13 +16,13 @@ release being prepared.
 
 ## Repository Roles
 
-| Repository | Release role |
-|------------|--------------|
-| `comic_git_engine` | Engine, reusable workflow, schemas, and release automation |
-| `e2e_tests` | Cross-repository behavior and generated-site contracts |
-| `comic_git_dev` | Mutable sandbox for candidate and released-ref validation |
-| `comic_git` | Canonical user-facing starter/template repository |
-| `comic_git_docs` | Published end-user documentation and migration guidance |
+| Repository              | Release role                                                      |
+|-------------------------|-------------------------------------------------------------------|
+| `comic_git_engine`      | Engine, reusable workflow, schemas, and release automation        |
+| `e2e_tests`             | Cross-repository behavior and generated-site contracts            |
+| `comic_git_dev`         | Mutable sandbox for candidate and released-ref validation         |
+| `comic_git`             | Canonical user-facing starter/template repository                 |
+| `comic_git_docs`        | Published end-user documentation and migration guidance           |
 | `comic_git_deploy_test` | Optional host for deployment cases not covered by `comic_git_dev` |
 
 Prepare dependent-repository changes before the engine release when useful, but

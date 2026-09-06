@@ -35,6 +35,10 @@ STRING_OPTIONS = {
     ("webring", "id"): ("Webring", "Webring ID"),
     ("webring", "text_mode"): ("Webring", "Text mode"),
     ("webring", "on_error"): ("Webring", "On error"),
+    ("cms", "repository"): ("CMS", "Repository"),
+    ("cms", "branch"): ("CMS", "Branch"),
+    ("cms", "backend_base_url"): ("CMS", "Backend base URL"),
+    ("cms", "backend_auth_endpoint"): ("CMS", "Backend auth endpoint"),
 }
 
 BOOL_OPTIONS = {
@@ -56,6 +60,8 @@ BOOL_OPTIONS = {
     ("webring", "enabled"): ("Webring", "Enable webring"),
     ("webring", "show_all_members"): ("Webring", "Show all members"),
     ("webring", "exclude_own_comic_from_members"): ("Webring", "Exclude own comic from members"),
+    ("cms", "enabled"): ("CMS", "Enabled"),
+    ("cms", "editorial_workflow"): ("CMS", "Editorial workflow"),
 }
 
 LIST_OPTIONS = {

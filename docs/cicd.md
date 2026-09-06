@@ -36,7 +36,7 @@
 
 ## Version Source Of Truth
 
-For `1.1`, the engine version source of truth is:
+The engine version source of truth is:
 
 - [`src/build/site_builder.py`](../src/build/site_builder.py)
   - the `VERSION = "..."` constant
@@ -83,6 +83,7 @@ Recovery depends on the last completed mutation:
 The early overlap check makes the newer run fail instead of silently waiting behind an older manual release. The serialized mutation job and stale-`master` check are still the authoritative race protection.
 
 See [Release reference policy](decisions/2026-09-04-release-reference-policy.md) for the stability guarantees behind these rules.
+See the [release guide](releasing.md) for the complete cross-repository validation and publication order.
 
 ## Jobs Requiring Care
 

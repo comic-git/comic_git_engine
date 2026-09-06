@@ -34,7 +34,8 @@ The following actions require explicit human confirmation before proceeding, reg
 | [`docs/debugging.md`](docs/debugging.md)                 | Common failures, log reading, useful commands                 |
 | [`docs/gotchas.md`](docs/gotchas.md)                     | Known sharp edges and things that silently break              |
 | [`docs/coding-principles.md`](docs/coding-principles.md) | How to write code that fits this repo                         |
-| [`docs/contributing.md`](docs/contributing.md)           | Branching, review expectations, release workflow, AI usage    |
+| [`docs/contributing.md`](docs/contributing.md)           | Branching, review expectations, and AI usage                  |
+| [`docs/releasing.md`](docs/releasing.md)                 | Cross-repository release process and validation gates         |
 | [`docs/integration/`](docs/integration/)                 | External APIs and services: auth, gotchas, inaccessible specs |
 | [`docs/decisions/`](docs/decisions/README.md)            | Significant decisions and the files they affect               |
 | [`docs/features/`](docs/features/README.md)              | Feature-scoped documentation                                  |

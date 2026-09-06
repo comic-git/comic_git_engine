@@ -45,4 +45,5 @@ The overlap check is an early guard, not the only race protection. Serialized mu
 - `.github/workflows/build_site.yaml`
 - `docs/cicd.md`
 - `docs/contributing.md`
+- `docs/releasing.md`
 - `docs/infrastructure.md`

@@ -34,7 +34,8 @@ See [`docs/dev_setup.md`](docs/dev_setup.md) for the full local-development work
 | [`docs/debugging.md`](docs/debugging.md)                 | Common failures and diagnostic commands                       |
 | [`docs/gotchas.md`](docs/gotchas.md)                     | Sharp edges and things that silently break                    |
 | [`docs/coding-principles.md`](docs/coding-principles.md) | Coding conventions for this repo                              |
-| [`docs/contributing.md`](docs/contributing.md)           | Branching, review expectations, release workflow, AI usage    |
+| [`docs/contributing.md`](docs/contributing.md)           | Branching, review expectations, and AI usage                  |
+| [`docs/releasing.md`](docs/releasing.md)                 | Cross-repository release process and validation gates         |
 | [`docs/integration/`](docs/integration/)                 | External APIs and services: auth, gotchas, inaccessible specs |
 | [`docs/features/`](docs/features/README.md)              | Feature-scoped documentation                                  |
 | [`docs/decisions/`](docs/decisions/README.md)            | Significant past decisions                                    |

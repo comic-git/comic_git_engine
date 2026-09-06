@@ -216,4 +216,4 @@ The goal should be to clarify and stabilize the existing surface, not silently r
 
 `later`
 
-This is an incremental hardening track for a future pass, not immediate `1.1` work and not a major-version architectural migration.
+This is an incremental hardening track for a future pass, separate from the initial CMS implementation and not a major-version architectural migration.

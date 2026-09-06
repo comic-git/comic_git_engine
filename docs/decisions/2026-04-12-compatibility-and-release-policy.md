@@ -45,5 +45,6 @@ It also means:
 - `.github/workflows/build_site.yaml`
 - `docs/testing.md`
 - `docs/contributing.md`
+- `docs/releasing.md`
 - `docs/coding-principles.md`
 - `docs/cicd.md`

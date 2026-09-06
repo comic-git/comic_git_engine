@@ -26,7 +26,7 @@ Important current behavior:
 - code hooks are part of the supported expert feature surface
 - hooks are intentionally more powerful and more flexible than declarative customization options
 - hooks are not the preferred first-line customization path for ordinary site changes
-- the 1.1 hook contract passes structured `ComicPage` and `ComicImage` models;
+- the current hook contract passes structured `ComicPage` and `ComicImage` models;
   legacy comic dictionaries and page-wide image fields are not maintained in
   parallel
 - compatibility in this area matters within a release line, because advanced
@@ -37,8 +37,8 @@ Important current behavior:
 Existing hook names and lifecycle points are retained. Their page-bearing inputs
 are now:
 
-| Hook | Relevant 1.1 input |
-|------|--------------------|
+| Hook | Relevant input |
+|------|----------------|
 | `extra_page_info_processing` | one normalized `ComicPage` after source parsing and fallback resolution |
 | `extra_comic_dict_processing` | one enriched `ComicPage`; the historical hook name remains unchanged |
 | `extra_get_storylines_processing` | `list[ComicPage]` plus grouped `ArchiveEntry` projections |

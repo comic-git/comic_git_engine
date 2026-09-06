@@ -70,7 +70,7 @@ This structure is intentionally file-based and low-friction:
 - creators edit `.ini`, `.toml`, `.txt`, and image files directly
 - most configuration is designed to be understandable in a text editor on Windows
 - adding or changing content is usually done by creating, renaming, moving, or deleting files and folders
-- `your_content/site_root/` is part of the expected 1.1 host-repo layout, and should contain at minimum a `favicon.ico` and `.nojekyll` file.
+- `your_content/site_root/` is part of the expected host-repo layout, and should contain at minimum a `favicon.ico` and `.nojekyll` file.
 
 ## Data Flow
 

@@ -78,20 +78,10 @@ This matters because host `comic_git` repos automatically follow patch updates b
 
 Releases are a separate step from merging to `master`.
 
-Before a real release:
-
-- run a full manual test pass, preferably through `comic_git_dev`
-- update `comic_git_docs` completely for the released behavior
-- verify `.github/workflows/main.yaml` still bumps the version in `src/build/site_builder.py`, updates the `build_site.yaml` default engine version to the release major/minor value, and that the requested version will match the resulting branches and tags
-- dispatch the release workflow from the reviewed `master` commit with a complete `X.Y.Z` version
-- verify the moving minor refs and immutable exact refs point to the resulting version commit; do not move or create a major tag as part of routine release automation
-- review and publish the draft GitHub Release created by the workflow
-- update the canonical `comic_git` template only after the new workflow and engine selectors have been validated through `comic_git_dev`
-- finally announce the release in Discord
-
-The workflow selector and engine selector are separate compatibility choices. For example, a host can use reusable workflow `@v1.1` while selecting engine version `1.1`; pinning one exactly does not pin the other. Release and upgrade documentation must state both values.
-
-If a release run fails after it has pushed any refs, stop and inspect the remote state before retrying. Exact version branches and tags are immutable, so partially completed releases after exact-ref creation are finished manually rather than rerun. Detailed phase-specific recovery is in [CI/CD](cicd.md#release-workflow-safety-and-recovery).
+Follow the full [release guide](releasing.md). It covers cross-repository ordering,
+validation, preflight evidence, public-ref verification, publication, and
+closeout. Release automation and recovery details are documented in
+[CI/CD](cicd.md#release-workflow-safety-and-recovery).
 
 ## Working With AI
 

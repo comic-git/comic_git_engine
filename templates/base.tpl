@@ -84,8 +84,15 @@
     {% include "webring.tpl" %}
     {%- endif %}
 
-    <div id="powered-by">
-        Powered by <a id="powered-by-link" href="https://www.comic-git.com">comic_git</a> v{{ version }}{% if cms_enabled|default(false) %}<div id="admin-link"><a href="{{ base_dir }}/admin/" rel="nofollow">Site Admin</a></div>{% endif %}
+    <div id="footer">
+      <div id="powered-by">
+          Powered by <a id="powered-by-link" href="https://www.comic-git.com">comic_git</a> v{{ version }}
+      </div>
+      {%- if cms_enabled|default(false) %}
+      <div id="admin-link">
+          <a href="{{ base_dir }}/admin/" rel="nofollow">Site Admin</a>
+      </div>
+      {%- endif %}
     </div>
 </div>
 {% endblock %}

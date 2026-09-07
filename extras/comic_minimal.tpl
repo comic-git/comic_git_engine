@@ -74,8 +74,10 @@
         </div>
     </div>
 
-    <div id="powered-by">
-        Powered by <a id="powered-by-link" href="https://www.comic-git.com">comic_git</a> v{{ version }}
+    <div id="footer">
+      <div id="powered-by">
+          Powered by <a id="powered-by-link" href="https://www.comic-git.com">comic_git</a> v{{ version }}
+      </div>
     </div>
 </div>
 </body>

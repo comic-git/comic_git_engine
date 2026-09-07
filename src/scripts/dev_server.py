@@ -33,7 +33,7 @@ Install it by running:
 Then re-run this script.""")
     exit(1)
 
-WATCH_EXTENSIONS = {'.tpl', '.txt', '.html', '.md', '.ini', '.toml'}
+WATCH_EXTENSIONS = {'.css', '.js', '.tpl', '.txt', '.html', '.md', '.ini', '.toml'}
 
 HTTP_ROOT: str | None = None
 PROJECT_ROOT: str | None = None

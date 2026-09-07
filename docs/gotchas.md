@@ -18,11 +18,15 @@ When `comic_git_engine` is symlinked into a host repo and both repos are open in
 
 This can make it look like there are duplicated files or mismatched edits when it is really the same file being reached through different repo views. If this becomes confusing, mark the symlinked copy as `Excluded` in PyCharm so you only work from one visible path.
 
-### CMS enablement validates every comic page
+### CMS enablement validates settings and every comic page
 
 The CMS is site-wide. Enabling it from the main `comic_info.toml` also manages
-Extra Comic page roots, and the engine writes no admin files unless every page
-folder is safe for the current form to round-trip.
+Extra Comic page roots, and the engine writes no admin files unless the main
+config and every page folder are safe for the current forms to round-trip.
+
+An invalid main `comic_info.toml` or a nonempty `[legacy]` section blocks CMS
+generation. The main settings form represents all first-class config values but
+cannot safely preserve arbitrary compatibility values stored under `[legacy]`.
 
 A legacy `info.ini`, missing or invalid `info.toml`, blank title, native TOML
 date, timestamp `post_date`, or nonempty `[transcripts]`, `[social_media]`, or

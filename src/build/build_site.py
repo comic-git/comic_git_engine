@@ -170,7 +170,11 @@ if __name__ == "__main__":
     args = parse_args()
     apply_cli_environment_overrides(args)
     try:
-        main(args.delete_scheduled_posts, args.publish_all_comics, args.cms_local_backend)
+        main(
+            args.delete_scheduled_posts,
+            args.publish_all_comics,
+            args.cms_local_backend,
+        )
     except Exception as e:
         # If the repo is not running in GitHub, raise the error normally
         if not os.getenv("GITHUB_REPOSITORY"):

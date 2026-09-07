@@ -4,9 +4,10 @@
 
 ## Status
 
-Implemented as the current `comic_info.toml` reader, migration, and CMS
-enablement contract. Site/comic config is not editable in the first CMS UI and
-may still be revised when that UI is designed.
+Implemented as the current `comic_info.toml` reader, migration, CMS enablement,
+and main Comic Settings editor contract. The schema remains provisional before
+the CMS release and is governed by creator-facing form UX rather than legacy INI
+layout.
 
 ## Purpose
 
@@ -47,7 +48,7 @@ Extra Comics still inherit from the main comic config, but their own config file
 - extra `comic_info.toml` absent -> fall back to extra `comic_info.ini`
 - main config inheritance remains part of Extra Comic behavior
 
-## Proposed Main Schema
+## Main Schema
 
 ```toml
 [engine]
@@ -92,7 +93,7 @@ default_language = "English"
 [image_processing]
 create_thumbnails = true
 overwrite_existing_images = false
-thumbnail_size = "200x200"
+thumbnail_size = "100w"
 
 [analytics]
 google_analytics_id = ""
@@ -102,8 +103,8 @@ build = false
 newest_first = false
 language = "en-us"
 image = ""
-image_width = "144"
-image_height = "144"
+image_width = "100"
+image_height = "36"
 title_format = ""
 channel_description = ""
 combine_with_main = false
@@ -225,6 +226,16 @@ exclude_own_comic_from_members = false
 
 ## Notes
 
+- The CMS presents this schema as one main Comic Settings page. It keeps Comic
+  Details, Website, Links, and Custom Pages prominent and groups less-common
+  settings into collapsed sections. The form organization deliberately does not
+  mirror TOML table order or the old INI sections.
+- The settings form covers every current first-class main-config value. CMS
+  generation is rejected when the main config is invalid or contains a nonempty
+  `[legacy]` section, preventing a save from silently discarding values the form
+  cannot represent.
+- Extra Comic override configs are valid engine inputs but are not editable in
+  this CMS slice.
 - `links` uses `name` for text links and `image_url` for image links. This avoids overloading the legacy option name.
 - `pages` uses an array of tables so page order remains explicit.
 - `engine.version` is read by the reusable build workflow before `comic_git_engine` is available in the host repo, so workflow parsing must support both `comic_info.ini` and `comic_info.toml`.
@@ -252,4 +263,5 @@ exclude_own_comic_from_members = false
   remain user-owned and are never overwritten.
 - Migration may preserve unmapped legacy config values under a `[legacy]` table of section tables. That is a compatibility escape hatch for existing custom data, not the preferred home for new CMS-owned settings.
 - A `[legacy]` entry may not duplicate a value supplied through a first-class TOML field, link, or page. Collisions are rejected so legacy compatibility data cannot silently overwrite first-class config.
-- The final CMS UI may hide many of these fields even if the TOML schema supports them.
+- Future custom widgets may improve individual controls without changing the
+  readable one-file configuration model.

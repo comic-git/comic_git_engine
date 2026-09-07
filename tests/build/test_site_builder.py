@@ -41,6 +41,8 @@ class TestBuildAndPublishComicPages(TestCase):
         comic_info.set("Comic Settings", "Theme", "default")
         comic_info.add_section("Archive")
         comic_info.set("Archive", "Use thumbnails", "True")
+        comic_info.add_section("CMS")
+        comic_info.set("CMS", "Enabled", "True")
         return comic_info
 
     def test_builds_per_comic_pipeline_and_projection_context(self):
@@ -107,6 +109,7 @@ class TestBuildAndPublishComicPages(TestCase):
         self.assertEqual("/base/your_content/extras/story", global_values["content_base_dir"])
         self.assertEqual("value", global_values["hooked"])
         self.assertEqual("data", global_values["webring"])
+        self.assertTrue(global_values["cms_enabled"])
         mocks["write_html_files"].assert_called_once_with(
             "extras/story/", comic_info, built_pages, global_values
         )

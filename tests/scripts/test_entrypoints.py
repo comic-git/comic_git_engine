@@ -159,7 +159,11 @@ class TestEntrypoints(TestCase):
                     patch.object(module.build_site, "parse_args", return_value=args),
                     patch.object(module.build_site, "apply_cli_environment_overrides") as mock_apply_overrides,
                     patch.object(module, "load_main_comic_info", return_value=comic_info) as mock_load_config,
-                    patch.object(module.utils, "get_comic_url", return_value=("https://example.com/comic", "/comic")),
+                    patch.object(
+                        module.utils,
+                        "get_comic_url",
+                        return_value=("https://example.com/comic", "/comic"),
+                    ) as mock_get_comic_url,
                     patch.object(module.utils, "get_output_dir", return_value="build"),
                     patch.object(module.build_site, "main") as mock_build,
                     patch.object(module, "watch_and_rebuild", return_value=observer) as mock_watch,
@@ -180,7 +184,12 @@ class TestEntrypoints(TestCase):
         self.assertEqual("/comic", module.PREVIEW_SUBDIRECTORY)
         mock_load_config.assert_called_once_with()
         mock_apply_overrides.assert_called_once_with(args)
-        mock_build.assert_called_once_with(False, False, True)
+        mock_get_comic_url.assert_called_once_with(comic_info)
+        mock_build.assert_called_once_with(
+            False,
+            False,
+            True,
+        )
         mock_watch.assert_called_once_with([False, False, True])
         thread.start.assert_called_once_with()
         mock_delete_output.assert_called_once_with(comic_info)

@@ -5,6 +5,11 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
+from build.content.comic_config_sources import (
+    BOOL_OPTIONS,
+    LIST_OPTIONS,
+    STRING_OPTIONS,
+)
 from build.output.cms import (
     DECAP_CMS_URL,
     DECAP_CMS_VERSION,
@@ -16,6 +21,7 @@ from build.output.cms import (
     render_admin_config,
     render_admin_index,
     resolve_cms_settings,
+    validate_cms_main_config,
     validate_cms_page_roots,
     write_cms_admin,
 )
@@ -29,6 +35,8 @@ class TestRenderAdminIndex(TestCase):
         self.assertIn('<meta name="robots" content="noindex, nofollow">', html)
         self.assertIn(f'<script src="{DECAP_CMS_URL}"></script>', html)
         self.assertIn(f"decap-cms@{DECAP_CMS_VERSION}/", html)
+        self.assertIn('p[class*="-ControlHint"] a[href^="https://comic-git.gitbook.io/documentation/"]', html)
+        self.assertIn("font-size: 0.875rem !important", html)
         self.assertNotIn("decap-cms@^", html)
         self.assertNotIn("{{ decap_cms_url }}", html)
 
@@ -148,6 +156,61 @@ class TestAdminConfig(TestCase):
             config.index('name: "post_date", widget: "datetime"'),
         )
 
+    def test_renders_complete_creator_ordered_main_comic_settings_entry(self):
+        config = render_admin_config(
+            CmsSettings(enabled=True, local_backend=True),
+            [CmsCollection("main_comic_pages", "Main Comic Pages", "your_content/comics")],
+        )
+
+        self.assertIn('name: "comic_settings"', config)
+        self.assertIn('name: "main_comic_settings"', config)
+        self.assertIn('file: "your_content/comic_info.toml"', config)
+        self.assertIn(
+            "[full Comic Settings documentation]"
+            "(https://comic-git.gitbook.io/documentation/basic-editing/editing-your-comic-info)",
+            config,
+        )
+        self.assertLess(
+            config.index('name: "comic_settings"'),
+            config.index('name: "main_comic_pages"'),
+        )
+
+        section_labels = (
+            "Comic Details",
+            "Website",
+            "Links",
+            "Custom Pages",
+            "Archive",
+            "Navigation",
+            "Transcripts",
+            "Thumbnails",
+            "RSS Feed",
+            "Webring",
+            "Analytics",
+            "CMS Connection",
+            "Engine",
+        )
+        positions = [config.index(f'label: "{label}"') for label in section_labels]
+        self.assertEqual(sorted(positions), positions)
+
+        for label in section_labels[4:]:
+            section_start = config.index(f'label: "{label}"')
+            self.assertIn("collapsed: true", config[section_start:section_start + 250])
+
+        supported_options = set(STRING_OPTIONS) | set(BOOL_OPTIONS) | set(LIST_OPTIONS)
+        for table_name, key in supported_options:
+            with self.subTest(table_name=table_name, key=key):
+                self.assertIn(f'name: "{key}"', config)
+
+        for key in ("name", "image_url", "url", "open_in_new_tab"):
+            self.assertIn(f'name: "{key}"', config)
+        for key in ("template_name", "title"):
+            self.assertIn(f'name: "{key}"', config)
+        self.assertIn(
+            'summary: "{{fields.template_name}} — {{fields.title}}"', config
+        )
+        self.assertNotIn('name: "local_backend"', config)
+
     def test_renders_local_backend_without_remote_values(self):
         config = render_admin_config(
             CmsSettings(enabled=True, local_backend=True),
@@ -188,6 +251,13 @@ class TestWriteCmsAdmin(TestCase):
         self.output_dir = os.path.join(self.host_root, "build")
         self.page_root = os.path.join(self.host_root, "your_content", "comics")
         os.makedirs(self.page_root)
+        self.main_config_path = os.path.join(
+            self.host_root,
+            "your_content",
+            "comic_info.toml",
+        )
+        with open(self.main_config_path, "w", encoding="utf-8") as f:
+            f.write("[cms]\nenabled = true\n")
         self.collection = CmsCollection("main", "Main Pages", "your_content/comics")
 
     def run_from_host_root(self, function):
@@ -241,6 +311,27 @@ class TestWriteCmsAdmin(TestCase):
             )
 
         self.assertFalse(os.path.exists(os.path.join(self.output_dir, "admin")))
+
+    def test_config_and_page_validation_failures_are_reported_together(self):
+        with open(self.main_config_path, "w", encoding="utf-8") as f:
+            f.write('[cms]\nenabled = true\n[legacy.Custom]\nMystery = "value"\n')
+        page_dir = os.path.join(self.page_root, "legacy")
+        os.makedirs(page_dir)
+        with open(os.path.join(page_dir, "info.ini"), "w", encoding="utf-8") as f:
+            f.write("Post date = 09/05/2026")
+
+        with self.assertRaises(CmsReadinessError) as raised:
+            self.run_from_host_root(
+                lambda: write_cms_admin(
+                    CmsSettings(enabled=True, local_backend=True),
+                    [self.collection],
+                    self.output_dir,
+                )
+            )
+
+        self.assertEqual(2, len(raised.exception.problems))
+        self.assertIn("legacy.Custom", str(raised.exception))
+        self.assertIn("migrate this page", str(raised.exception))
 
     def test_disabled_in_place_generation_removes_only_stale_generated_files(self):
         admin_dir = os.path.join(self.host_root, "admin")
@@ -436,6 +527,58 @@ class TestResolveCmsSettings(TestCase):
 
         with self.assertRaisesRegex(ValueError, "expected true or false"):
             resolve_cms_settings(comic_info, source_is_toml=True, local_backend=True)
+
+
+class TestValidateCmsMainConfig(TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.path = os.path.join(self.temp_dir.name, "comic_info.toml")
+
+    def write_config(self, text: str) -> None:
+        with open(self.path, "w", encoding="utf-8") as f:
+            f.write(text)
+
+    def test_accepts_sparse_config_without_production_backend_values(self):
+        self.write_config("[cms]\nenabled = true\n")
+
+        validate_cms_main_config(self.path)
+
+    def test_reports_each_nonempty_legacy_section(self):
+        self.write_config(
+            """
+[cms]
+enabled = true
+[legacy.Custom]
+Mystery = "value"
+[legacy.Integration]
+Token = "not-secret-test-data"
+"""
+        )
+
+        with self.assertRaises(CmsReadinessError) as raised:
+            validate_cms_main_config(self.path)
+
+        self.assertEqual(2, len(raised.exception.problems))
+        self.assertIn("legacy.Custom", str(raised.exception))
+        self.assertIn("legacy.Integration", str(raised.exception))
+        self.assertIn("cannot preserve", str(raised.exception))
+
+    def test_reports_invalid_or_missing_main_config(self):
+        cases = (
+            ("missing", None),
+            ("invalid", "[cms]\nenabled = ["),
+            ("unsupported", "[cms]\nenabled = true\nunknown = true"),
+        )
+        for label, text in cases:
+            with self.subTest(label=label):
+                if text is not None:
+                    self.write_config(text)
+                with self.assertRaises(CmsReadinessError) as raised:
+                    validate_cms_main_config(self.path)
+                self.assertIn("comic_info.toml", str(raised.exception))
+                if os.path.exists(self.path):
+                    os.remove(self.path)
 
 
 class TestValidateCmsPageRoots(TestCase):

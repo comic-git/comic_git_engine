@@ -5,4 +5,5 @@ public_folder: "/your_content/images"
 editor:
   preview: false
 collections:
+{{ comic_settings_collection }}
 {{ collections }}

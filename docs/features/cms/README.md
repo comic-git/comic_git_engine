@@ -14,11 +14,11 @@ It includes the static admin surface, the TOML-backed content model, migration r
 
 ## Current State
 
-The first engine-side vertical slice is implemented and has completed a local
-browser round trip against `comic_git_dev`. It generates a static `/admin/`
-surface for editing TOML-backed comic pages in the main comic and Extra Comics.
-The hosted GitHub OAuth backend is not implemented, so production sign-in is
-still deferred.
+The engine-side editing slice is implemented. It generates a static `/admin/`
+surface for editing the main comic settings and TOML-backed comic pages in the
+main comic and Extra Comics. Page and settings editing have completed local
+browser round trips against `comic_git_dev`. The hosted GitHub OAuth backend is
+not implemented, so production sign-in is still deferred.
 
 Current behavior:
 
@@ -27,25 +27,30 @@ Current behavior:
 - TOML is the editable source format for future CMS-managed content
 - migrated TOML files become the source of truth for the logical items they replace
 - enabling CMS generates marked `admin/index.html` and `admin/config.yml`
-- the initial editor manages comic pages, not site/comic configuration
+- one creator-oriented Comic Settings page edits `your_content/comic_info.toml`
+- common Comic Details, Website, Links, and Custom Pages settings appear first;
+  less-common settings are grouped into collapsed sections
 - page lists show each post date beside its title and default to newest first
 - Characters and Tags use compact comma-separated inputs that save TOML string arrays
 - image items open expanded by default, with compact single-line inputs for
   their Hover text and Screen reader text
 - collapsed image items use their explicit Title as a best-effort label and
   otherwise display Image
-- all page folders must be safely editable before any admin files are written
+- the main config and all page folders must be safely editable before any admin
+  files are written
 - page deletion and the built-in content preview are disabled in the first slice
 - `--cms-local-backend` switches only the current process to Decap's local
   proxy; it never becomes a deployable config setting
 - TOML-backed repos still build normally when CMS output is disabled
 
-The safety gate currently requires every main and Extra Comic page folder to
-contain valid `info.toml` with a nonblank title and date-only `post_date`.
+The safety gate rejects invalid main config and nonempty `[legacy]` config
+sections because the settings form cannot preserve arbitrary legacy values. It
+also requires every main and Extra Comic page folder to contain valid
+`info.toml` with a nonblank title and date-only `post_date`.
 The date must be a quoted ISO string; native TOML dates remain valid for normal
 engine builds but are rejected by CMS readiness to prevent browser-timezone
-conversion and mixed-type sorting. Nonempty `[transcripts]`, `[social_media]`, and `[extra]` tables must be
-managed manually until the CMS can preserve them.
+conversion and mixed-type sorting. Nonempty `[transcripts]`, `[social_media]`,
+and `[extra]` tables must be managed manually until the CMS can preserve them.
 
 ## Future Date and Time Editing
 

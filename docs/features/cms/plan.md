@@ -6,8 +6,8 @@
 
 ## Status
 
-The engine-side page-editing vertical slice is implemented and locally proven.
-The hosted GitHub integration, site-config editing, and broader CMS UX remain
+The engine-side page and main-settings editing slices are implemented and
+locally proven. The hosted GitHub integration and broader post-MVP CMS UX remain
 planned.
 
 ## Summary
@@ -15,8 +15,9 @@ planned.
 The goal is to add Decap CMS to `comic_git` as an optional site-wide feature
 that exposes a built `/admin/` interface for editing comic content over the
 web. The engine now generates that static admin surface for compatible
-TOML-backed comic pages. Authentication and hosted orchestration remain the
-responsibility of a future GitHub App and OAuth backend.
+TOML-backed comic pages and the main `comic_info.toml`. Authentication and
+hosted orchestration remain the responsibility of a future GitHub App and OAuth
+backend.
 
 Migration is one-way: whenever a TOML file exists, it is the source of truth and legacy files are ignored for that same logical item, regardless of whether CMS output is enabled later. The TOML format remains human-readable so creators can still edit files locally without the CMS.
 
@@ -48,6 +49,7 @@ When CMS is enabled for a site:
 
 - the engine builds an `admin/` folder into the published site
 - users can open `/admin/` and edit main and Extra Comic pages through Decap CMS
+- users can edit main comic/site settings through one Comic Settings page
 - uploaded comic images are stored next to the page config they belong to
 - commits go directly to the repo by default, with editorial workflow available as an option
 
@@ -68,10 +70,11 @@ The local browser round trip proved:
 - changing a page title without moving its stable folder
 - rebuilding the edited repo through the local engine
 
-The first form supports core page metadata and images. It deliberately rejects
-content it cannot preserve, including nonempty transcript, social-media
-override, and custom `extra` tables. It does not yet edit main or Extra Comic
-configuration.
+The page forms support core page metadata and images. They deliberately reject
+content they cannot preserve, including nonempty transcript, social-media
+override, and custom `extra` tables. The Comic Settings form covers every
+first-class main-config value and rejects nonempty `[legacy]` sections that it
+cannot preserve. Extra Comic override configuration is not yet editable.
 
 Still out of scope for this slice:
 
@@ -214,6 +217,12 @@ Likely additional fields:
 
 ### Key UX Decisions
 
+- the initial CMS presents comic-wide settings as one Comic Settings page backed
+  by one `comic_info.toml` file
+- common settings appear first, while less-common settings use collapsed,
+  plainly labeled sections
+- the provisional TOML schema follows the editing experience; it may change
+  before 1.2 when its hierarchy would otherwise force confusing or unsafe UI
 - page folder ID is user-controlled
 - page folder ID should be treated as stable after creation
 - page folder ID should remain path-derived rather than duplicated into `info.toml`
@@ -407,7 +416,8 @@ If implementation options are otherwise equal, prefer the clearer failure mode.
 
 - make post dates visible in page lists and investigate date-descending default
   sorting
-- investigate useful page thumbnails, potentially through an optional grid view
+- improve the comic-page collection grid after the MVP, potentially with page
+  thumbnails and other useful at-a-glance metadata
 - make Character and Tag list items expose their values without opening an
   opaque collapsed object
 - add a custom image-list widget after the MVP so entries can present useful
@@ -424,6 +434,23 @@ If implementation options are otherwise equal, prefer the clearer failure mode.
 - keep page titles plain text unless formatted titles can be supported safely in
   page headings, archives, navigation, feeds, metadata, and identifiers
 
+### Comic Settings Editor
+
+- one main-comic settings page is backed by `your_content/comic_info.toml`
+- fields are ordered and labeled for creators rather than mirroring legacy INI
+  sections
+- Comic Details, Website, Links, and Custom Pages are prominent; Archive,
+  Navigation, Transcripts, Thumbnails, RSS, Webring, Analytics, CMS, and Engine
+  settings are collapsed by default
+- every accepted first-class value is represented, and unsupported legacy data
+  rejects settings editing with an actionable readiness error; never let a
+  partial form silently discard configuration
+- Links and Custom Pages are supported because normal starter configurations
+  already contain them
+- preserve the proven local browser round trip in automated output coverage
+- keep Extra Comic override editing deferred; reconsider it independently of
+  the one-file main settings model
+
 ### Content Model Follow-ups
 
 - separate the current hover-description concept from screen-reader alternative
@@ -432,7 +459,7 @@ If implementation options are otherwise equal, prefer the clearer failure mode.
   be handled on `master`, not hidden inside CMS UI work
 - add safe round-trip support for transcripts, page social-media overrides, and
   custom `extra` data before relaxing the all-page readiness gate
-- prototype singleton editing for main and Extra Comic configuration
+- prototype singleton editing for Extra Comic configuration
 
 ### GitHub App Migration Flow
 
@@ -463,6 +490,13 @@ If implementation options are otherwise equal, prefer the clearer failure mode.
   work will reevaluate native date and datetime round trips explicitly.
 - The page-list and collapsed-list presentation needs polish before it is
   suitable for nontechnical users.
+- The existing first-class `comic_info.toml` tables mapped cleanly to native
+  Decap controls, so the settings slice did not need a schema or migration
+  revision. The CMS form layout remains authoritative if later UX findings do
+  require a pre-release schema change.
+- The settings form preserved omitted options, ordered Links, and ordered Custom
+  Pages through a real Decap TOML save. CMS enablement round-tripped safely from
+  true to false and back, and the resulting config completed a normal rebuild.
 - Decap's generic content preview was not representative of the generated comic
   page, so it is disabled for this slice.
 
@@ -482,7 +516,8 @@ If implementation options are otherwise equal, prefer the clearer failure mode.
 These are still intentionally unresolved:
 
 - Should site-level social media defaults and webring participation config remain merged into `comic_info.toml` permanently, or only as a PoC simplification?
-- Does the provisional `comic_info.toml` schema stay usable once tested in the real Decap CMS UI?
+- Which settings controls, if any, need schema changes after the real Decap CMS
+  browser round trip?
 - Should the local helper script for CMS setup be part of the first release or follow later?
 - Which Decap list and collection-view features can address the proven UX
   problems without complicating the underlying TOML?

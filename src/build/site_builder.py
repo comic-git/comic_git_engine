@@ -166,6 +166,7 @@ def build_and_publish_comic_pages(
         "infinite_scroll_chapters": get_infinite_scroll_chapters(comic_info, pages),
         "home_page_text": home_page_text,
         "google_analytics_id": comic_info.get("Google Analytics", "Tracking ID", fallback=""),
+        "cms_enabled": comic_info.getboolean("CMS", "Enabled", fallback=False),
         "scheduled_post_count": scheduled_post_count,
         "extra_comics": extra_comics_dict if extra_comics_dict is not None else {},
         "use_images_in_navigation_bar": comic_info.getboolean("Navigation Bar", "Use images", fallback=False),

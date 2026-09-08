@@ -1,31 +1,45 @@
 # Repo-specific command approval rules.
 # Keep broad read-only inspection commands in ~\.codex\rules\default.rules.
 
-# Reversible repo-local staging command.
+# Routine local Git work. These rules remove execution prompts; AGENTS.md still
+# controls when the agent is authorized to perform each operation.
 prefix_rule(
     pattern = ["git", "add"],
     decision = "allow",
     justification = "Staging changes is reversible and still leaves commits as a deliberate user-visible step.",
 )
+prefix_rule(pattern=["git", "commit"], decision="allow")
+prefix_rule(pattern=["git", "mv"], decision="allow")
+prefix_rule(pattern=["git", "rm"], decision="allow")
+prefix_rule(pattern=["git", "switch"], decision="allow")
+prefix_rule(pattern=["git", "rebase"], decision="allow")
+prefix_rule(pattern=["git", "fetch", "origin"], decision="allow")
+prefix_rule(pattern=["git", "ls-remote", "origin"], decision="allow")
 
-# comic_git_engine Python verification commands.
-prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "compileall"], decision="allow")
-prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "compileall"], decision="allow")
-prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "coverage"], decision="allow")
-prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "coverage"], decision="allow")
-prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "py_compile"], decision="allow")
-prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "py_compile"], decision="allow")
-prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "pytest"], decision="allow")
-prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "pytest"], decision="allow")
-prefix_rule(pattern=["venv\\Scripts\\python.exe", "-m", "unittest"], decision="allow")
-prefix_rule(pattern=[".\\venv\\Scripts\\python.exe", "-m", "unittest"], decision="allow")
+# Python launched through one of the three repositories' virtual environments.
+# The filesystem sandbox still limits where these processes can write.
+prefix_rule(pattern=["venv\\Scripts\\python.exe"], decision="allow")
+prefix_rule(pattern=[".\\venv\\Scripts\\python.exe"], decision="allow")
+prefix_rule(pattern=["..\\e2e_tests\\venv\\Scripts\\python.exe"], decision="allow")
+prefix_rule(pattern=[".\\..\\e2e_tests\\venv\\Scripts\\python.exe"], decision="allow")
+prefix_rule(pattern=["..\\comic_git_dev\\comic_git_engine\\venv\\Scripts\\python.exe"], decision="allow")
+prefix_rule(pattern=[".\\..\\comic_git_dev\\comic_git_engine\\venv\\Scripts\\python.exe"], decision="allow")
+prefix_rule(pattern=["comic_git_engine\\venv\\Scripts\\python.exe"], decision="allow")
+prefix_rule(pattern=[".\\comic_git_engine\\venv\\Scripts\\python.exe"], decision="allow")
+
+# The e2e harness is sometimes intentionally run through the Python launcher.
+prefix_rule(pattern=["python", "..\\e2e_tests\\scripts\\run_e2e.py"], decision="allow")
+prefix_rule(pattern=["python", ".\\scripts\\run_e2e.py"], decision="allow")
+prefix_rule(pattern=["python", "scripts\\run_e2e.py"], decision="allow")
 
 # Read-only inspection of the sibling e2e_tests repo from this repo.
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "diff"], decision="allow")
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "log"], decision="allow")
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "status"], decision="allow")
 
-# Non-mutating harness checks against the sibling e2e_tests repo from this repo.
-prefix_rule(pattern=["python", "..\\e2e_tests\\scripts\\run_e2e.py", "check-build"], decision="allow")
-prefix_rule(pattern=["python", "..\\e2e_tests\\scripts\\run_e2e.py", "check-migration"], decision="allow")
-prefix_rule(pattern=["python", "..\\e2e_tests\\scripts\\run_e2e.py", "check-migrated-build"], decision="allow")
+# Read-only GitHub inspection. Commands that create or modify remote state stay
+# outside this allow list.
+prefix_rule(pattern=["gh", "pr", ["view", "list", "checks"]], decision="allow")
+prefix_rule(pattern=["gh", "run", ["view", "list", "watch"]], decision="allow")
+prefix_rule(pattern=["gh", "release", ["view", "list"]], decision="allow")
+prefix_rule(pattern=["gh", "auth", "status"], decision="allow")

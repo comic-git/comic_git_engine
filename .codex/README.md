@@ -16,6 +16,11 @@ allows only repository-owned configuration.
 - `skills/install-skill-junctions.ps1` registers those skills in the user's
   external `CODEX_HOME` by creating junctions.
 
+The command rules are shared, but they do not grant filesystem access. A local,
+ignored `.codex/config.toml` may add sibling repositories to
+`sandbox_workspace_write.writable_roots` when a maintainer's workflow spans
+multiple checkouts. Keep machine-specific absolute paths out of version control.
+
 When adding a repository-owned skill or rule file, add its exact path to the
 `.codex` allowlist in the root `.gitignore`. This deliberate step prevents
 generated or installed skills from becoming trackable accidentally.

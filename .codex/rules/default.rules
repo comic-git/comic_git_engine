@@ -4,6 +4,11 @@
 # Routine local Git work. These rules remove execution prompts; AGENTS.md still
 # controls when the agent is authorized to perform each operation.
 prefix_rule(
+    pattern = ["git", "diff"],
+    decision = "allow",
+    justification = "Reading working-tree or branch differences does not modify repository state.",
+)
+prefix_rule(
     pattern = ["git", "add"],
     decision = "allow",
     justification = "Staging changes is reversible and still leaves commits as a deliberate user-visible step.",

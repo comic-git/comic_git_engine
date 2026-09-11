@@ -414,6 +414,10 @@ If implementation options are otherwise equal, prefer the clearer failure mode.
 
 ### Page-Editor UX
 
+- prototype an optional, separately editable page folder name/page number while
+  retaining the title-derived folder as the creation default; the solution must
+  keep existing folders stable and must not allow blank values to place
+  `info.toml` or uploaded images directly in the collection root
 - make post dates visible in page lists and investigate date-descending default
   sorting
 - improve the comic-page collection grid after the MVP, potentially with page
@@ -481,6 +485,9 @@ If implementation options are otherwise equal, prefer the clearer failure mode.
 
 - Existing pages, new pages, image uploads, image reordering, text-only pages,
   and Extra Comic edits all worked quickly and correctly.
+- A blank title could produce `info.toml` and uploaded images directly in the
+  collection root because the entry path uses Decap's title-derived slug. The
+  generated form now explicitly requires a nonblank title before saving.
 - Changing an existing title did not move its page folder, preserving
   path-derived identity.
 - Quoted TOML date strings round-tripped cleanly. Native TOML dates loaded, but

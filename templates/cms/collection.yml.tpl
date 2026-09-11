@@ -15,7 +15,12 @@
       - {field: "post_date", default_sort: "desc"}
       - "title"
     fields:
-      - {label: "Title", name: "title", widget: "string"}
+      - label: "Title"
+        name: "title"
+        widget: "string"
+        required: true
+        pattern: ['.*\S.*', "Enter a title before adding images or saving the page."]
+        hint: "New pages use this title to create their folder name."
       - label: "Images"
         name: "images"
         widget: "list"

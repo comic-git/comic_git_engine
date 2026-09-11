@@ -133,6 +133,15 @@ class TestAdminConfig(TestCase):
         )
         self.assertIn('name: "post_date", widget: "datetime"', config)
         self.assertIn('time_format: false', config)
+        self.assertIn(
+            'name: "title"\n        widget: "string"\n        required: true\n'
+            '        pattern: [\'.*\\S.*\', "Enter a title before adding images or saving the page."]',
+            config,
+        )
+        self.assertIn(
+            'hint: "New pages use this title to create their folder name."',
+            config,
+        )
         self.assertIn('name: "post_text", widget: "markdown", required: false', config)
         self.assertIn('name: "images"', config)
         self.assertIn('name: "images"\n        widget: "list"\n        required: false\n        collapsed: false', config)

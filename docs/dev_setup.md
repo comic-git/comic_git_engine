@@ -34,10 +34,20 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-If you need to run the TOML migration script or the full test suite, also install the migration-only dependencies:
+If you only need to run the TOML migration script, also install the
+migration-only dependencies:
 
 ```powershell
 pip install -r requirements_migration.txt
+```
+
+For the complete developer environment, including coverage and browser-test
+tooling, install the aggregate development requirements and Playwright's
+Chromium browser:
+
+```powershell
+pip install -r requirements_dev.txt
+python -m playwright install chromium
 ```
 
 If you are testing a custom theme that has Python hook dependencies, also run:
@@ -115,6 +125,22 @@ npx decap-server
 ```powershell
 python comic_git_engine\src\scripts\dev_server.py --cms-local-backend
 ```
+
+To test a locally built Decap checkout instead of the engine's pinned CDN
+bundle, pass the checkout root. This option also enables the local backend:
+
+```powershell
+python comic_git_engine\src\scripts\dev_server.py --decap-cms-repo ..\decap-cms
+```
+
+The checkout must already contain a built
+`packages/decap-cms/dist/decap-cms.js`. The development server copies that
+bundle, its lazy-loaded chunks, and its runtime assets into the generated
+`build/admin/` directory after every site rebuild. It does not enable
+fork-specific Decap configuration options; add those explicitly to the engine
+CMS template while developing the corresponding Decap change. This option
+requires a nonempty output directory and cannot be combined with the legacy
+in-place output mode.
 
 Do not add the Decap proxy to the engine's runtime requirements or commit local
 Node tooling only for this workflow. See the

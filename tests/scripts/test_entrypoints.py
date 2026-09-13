@@ -24,6 +24,22 @@ RELEASE_WORKFLOW = os.path.join(ENGINE_ROOT, ".github", "workflows", "main.yaml"
 
 class TestEntrypoints(TestCase):
 
+    def load_dev_server_module(self):
+        watchdog = ModuleType("watchdog")
+        observers = ModuleType("watchdog.observers")
+        events = ModuleType("watchdog.events")
+        observers.Observer = MagicMock
+        events.FileSystemEventHandler = object
+        spec = importlib.util.spec_from_file_location("test_dev_server_module", DEV_SERVER)
+        module = importlib.util.module_from_spec(spec)
+        with patch.dict(sys.modules, {
+            "watchdog": watchdog,
+            "watchdog.observers": observers,
+            "watchdog.events": events,
+        }):
+            spec.loader.exec_module(module)
+        return module
+
     def run_entrypoint(self, script_path: str, *args: str) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env.pop("PYTHONPATH", None)
@@ -124,14 +140,51 @@ class TestEntrypoints(TestCase):
 
         self.assertIn(".toml", watch_extensions)
 
+    def test_dev_server_accepts_local_decap_checkout(self):
+        module = self.load_dev_server_module()
+
+        args = module.parse_args(["--decap-cms-repo", "../decap-cms"])
+
+        self.assertEqual(os.path.normpath("../decap-cms"), os.path.normpath(args.decap_cms_repo))
+
+    def test_dev_server_installs_local_decap_runtime_assets(self):
+        module = self.load_dev_server_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = os.path.join(temp_dir, "site")
+            admin_dir = os.path.join(root, "admin")
+            repo = os.path.join(temp_dir, "decap-cms")
+            dist = os.path.join(repo, "packages", "decap-cms", "dist")
+            os.makedirs(admin_dir)
+            os.makedirs(dist)
+            with open(os.path.join(dist, "decap-cms.js"), "w", encoding="utf-8") as f:
+                f.write("bundle")
+            with open(os.path.join(dist, "123.decap-cms.js"), "w", encoding="utf-8") as f:
+                f.write("chunk")
+            with open(os.path.join(dist, "parser.wasm"), "w", encoding="utf-8") as f:
+                f.write("wasm")
+            with open(os.path.join(dist, "decap-cms.js.map"), "w", encoding="utf-8") as f:
+                f.write("map")
+            with open(os.path.join(admin_dir, "index.html"), "w", encoding="utf-8") as f:
+                f.write(f'<script src="{module.DECAP_CMS_URL}"></script>')
+
+            resolved_dist = module.resolve_decap_cms_dist(module.Path(repo))
+            module.install_local_decap_cms(root, resolved_dist)
+
+            with open(os.path.join(admin_dir, "index.html"), encoding="utf-8") as f:
+                self.assertIn('src="/admin/decap-cms.js"', f.read())
+            self.assertTrue(os.path.isfile(os.path.join(admin_dir, "decap-cms.js")))
+            self.assertTrue(os.path.isfile(os.path.join(admin_dir, "123.decap-cms.js")))
+            self.assertTrue(os.path.isfile(os.path.join(admin_dir, "parser.wasm")))
+            self.assertFalse(os.path.exists(os.path.join(admin_dir, "decap-cms.js.map")))
+
+    def test_dev_server_reports_missing_local_decap_build(self):
+        module = self.load_dev_server_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with self.assertRaisesRegex(FileNotFoundError, "Build the checkout's decap-cms package"):
+                module.resolve_decap_cms_dist(module.Path(temp_dir))
+
     def test_dev_server_uses_discovered_host_root_and_toml_loader(self):
-        watchdog = ModuleType("watchdog")
-        observers = ModuleType("watchdog.observers")
-        events = ModuleType("watchdog.events")
-        observers.Observer = MagicMock
-        events.FileSystemEventHandler = object
-        spec = importlib.util.spec_from_file_location("test_dev_server_module", DEV_SERVER)
-        module = importlib.util.module_from_spec(spec)
+        module = self.load_dev_server_module()
         observer = MagicMock()
         thread = MagicMock()
         args = argparse.Namespace(
@@ -139,24 +192,17 @@ class TestEntrypoints(TestCase):
             publish_all_comics=False,
             output_dir=None,
             cms_local_backend=True,
+            decap_cms_repo=None,
         )
         comic_info = object()
 
-        with (
-            patch.dict(sys.modules, {
-                "watchdog": watchdog,
-                "watchdog.observers": observers,
-                "watchdog.events": events,
-            }),
-            tempfile.TemporaryDirectory() as temp_dir,
-        ):
+        with tempfile.TemporaryDirectory() as temp_dir:
             cwd = os.getcwd()
             try:
                 os.chdir(temp_dir)
-                spec.loader.exec_module(module)
                 with (
                     patch.object(module.utils, "find_project_root"),
-                    patch.object(module.build_site, "parse_args", return_value=args),
+                    patch.object(module, "parse_args", return_value=args),
                     patch.object(module.build_site, "apply_cli_environment_overrides") as mock_apply_overrides,
                     patch.object(module, "load_main_comic_info", return_value=comic_info) as mock_load_config,
                     patch.object(
@@ -190,7 +236,7 @@ class TestEntrypoints(TestCase):
             False,
             True,
         )
-        mock_watch.assert_called_once_with([False, False, True])
+        mock_watch.assert_called_once_with([False, False, True], None)
         thread.start.assert_called_once_with()
         mock_delete_output.assert_called_once_with(comic_info)
         self.assertEqual(

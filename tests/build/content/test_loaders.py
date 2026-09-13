@@ -194,3 +194,24 @@ class TestLoadPageSource(TestCase):
         self.assertIsNone(actual_page_source)
         toml_loader.assert_not_called()
         legacy_loader.assert_not_called()
+
+    def test_rejects_decap_collision_file_without_canonical_metadata(self):
+        with tempfile.TemporaryDirectory() as page_path:
+            collision_path = os.path.join(page_path, "info-1.toml")
+            with open(collision_path, "w", encoding="utf-8") as collision_file:
+                collision_file.write('title = "Colliding page"\n')
+
+            with self.assertRaisesRegex(
+                    ValueError,
+                    r"info-1\.toml.*generated folder name collided.*uniquely named page folder",
+            ):
+                loaders.load_page_source(page_path, "", self.make_comic_info())
+
+    def test_rejects_decap_collision_file_beside_canonical_metadata(self):
+        with tempfile.TemporaryDirectory() as page_path:
+            for filename in ("info.toml", "info_2.TOML"):
+                with open(os.path.join(page_path, filename), "w", encoding="utf-8") as page_file:
+                    page_file.write('title = "Page"\n')
+
+            with self.assertRaisesRegex(ValueError, r"info_2\.TOML.*Do not overwrite"):
+                loaders.load_page_source(page_path, "", self.make_comic_info())

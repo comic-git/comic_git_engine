@@ -414,10 +414,16 @@ If implementation options are otherwise equal, prefer the clearer failure mode.
 
 ### Page-Editor UX
 
-- prototype an optional, separately editable page folder name/page number while
-  retaining the title-derived folder as the creation default; the solution must
-  keep existing folders stable and must not allow blank values to place
-  `info.toml` or uploaded images directly in the collection root
+- keep title-derived page folders as the current baseline while page identity
+  and routing alternatives are evaluated
+- treat a page folder as one nonblank, portable filesystem and URL path segment;
+  validation must reject path separators, `.` and `..`, Windows device names,
+  names ending in a dot or space, control characters, Git-reserved `.git`
+  equivalents, and case-insensitive or Unicode-normalization collisions, while
+  allowing other spaces, Unicode, punctuation, leading dots, and mixed case
+- distinguish arbitrary folders already present in the repository from folders
+  created by Decap; the flat collection can edit the former, while new paths are
+  always passed through Decap's slug sanitizer
 - make post dates visible in page lists and investigate date-descending default
   sorting
 - improve the comic-page collection grid after the MVP, potentially with page
@@ -437,6 +443,32 @@ If implementation options are otherwise equal, prefer the clearer failure mode.
   disables Decap's generic preview rather than presenting a misleading one
 - keep page titles plain text unless formatted titles can be supported safely in
   page headings, archives, navigation, feeds, metadata, and identifiers
+
+#### Page Location Hypotheses (Provisional)
+
+| Model | Benefit | Cost or unresolved issue |
+|-------|---------|--------------------------|
+| Filesystem only | One source of truth and no migration; matches current engine behavior | CMS-created paths depend on title slugs, and the editor does not naturally expose title/path stability |
+| Mirrored `page_folder` | Lets the engine detect that TOML and the discovered directory disagree | Adds a second representation without adding capability; cannot recover a page lost to a creation collision; must be immutable after creation |
+| Independent public route | Could let storage identity remain stable while changing a page's public address and could validate route collisions after loading all pages | Adds another identity and uniqueness domain, requires broad rendering/RSS changes, and has not yet demonstrated enough user value to justify a permanent field |
+| Upstream Decap change or maintained fork | Could add exact path creation, collision validation, and creation-only path controls at the layer that owns those behaviors | Upstream acceptance and timing are uncertain; a long-lived fork creates substantial release, security, and browser-compatibility maintenance |
+
+An isolated model prototype confirms that a folder mirror can only enforce an
+invariant after filesystem discovery. It also confirms that an independent
+route can preserve source-derived IDs while changing and safely URL-encoding a
+public path, but that concept remains a hypothesis rather than the intended
+schema. Do not add either field to `info.toml` until the CMS workflow establishes
+a concrete benefit.
+
+Changing Decap itself remains in the implementation toolbox. Prefer an
+upstreamable contribution developed with the Decap maintainers over a private
+fork. Carry a fork only as a deliberate last resort with a narrow patch, pinned
+upstream base, automated compatibility coverage, and a documented exit path;
+first confirm the project's policy for AI-assisted contributions.
+
+Maximum filesystem-level control remains available by creating or renaming the
+folder outside Decap; the flat collection can discover and edit those pages.
+Exact arbitrary path creation inside Decap would require custom path handling.
 
 ### Comic Settings Editor
 
@@ -506,6 +538,72 @@ If implementation options are otherwise equal, prefer the clearer failure mode.
   true to false and back, and the resulting config completed a normal rebuild.
 - Decap's generic content preview was not representative of the generated comic
   page, so it is disabled for this slice.
+- A Decap 3.16.0 Playwright spike rejected the native editable-path approach.
+  Nested collection metadata exposed a separate Page folder field and kept it
+  out of the saved TOML, and title edits preserved the selected folder. However,
+  ordinary sibling entries such as `001/info.toml` and
+  `bonus-page/info.toml` disappeared from the collection because the nested
+  model expects index entries to anchor its hierarchy.
+- The nested path widget also applies an undocumented naming policy narrower
+  than comic_git's. It accepted lowercase Unicode, hyphens, underscores, and
+  `~`, but rejected uppercase letters, spaces, `.`, `+`, `&`, and `@` in the
+  tested folder names.
+- A second Decap 3.16.0 Playwright spike tested a serialized `page_folder`
+  field in the normal flat collection with `path: "{{page_folder}}/info"`.
+  Existing pages remained visible, including an existing folder named
+  `Chapter 2 & Café`, and title edits left paths stable. Creating a page with
+  `Chapter 3 & Café` stored that exact field value but created
+  `chapter-3-café/info.toml`, confirming that field-based paths use Decap's
+  slug sanitizer. Editing `page_folder` on an existing `001/info.toml` changed
+  the TOML value without moving the file, so the field cannot safely remain
+  editable after creation.
+- A title-slug collision does not overwrite the existing `info.toml`, but stock
+  Decap still reports a successful publish while writing an unusable sibling
+  file. Creating a second `Same Title` produced `same-title/info-1.toml`;
+  creating `A & B` beside an existing `A B` produced `a-b/info-1.toml`. The
+  engine now rejects numbered `info-*.toml` and `info_*.toml` siblings with an
+  actionable error, so this failure cannot silently omit the new page from a
+  build. CMS creation should still prevent the collision before publishing.
+- Decap performs this fallback in `Backend.generateUniqueSlug` after applying
+  the collection path and its native slug formatter. Public event and widget
+  extension APIs run too early or do not expose the computed path and backend
+  existence check, so an engine-side script would have to duplicate Decap's
+  private path rules.
+- A narrow Decap 3.16.2 fork prototype added a per-collection
+  `slug_collision: reject` policy beside the existing suffix behavior. Focused
+  Decap tests passed, and the persistent browser suite confirmed that exact and
+  normalized collisions display an error without writing `info-1.toml`. This
+  proves the CMS prevention UX is viable, but production configuration must not
+  emit the option unless it is accepted upstream or comic_git deliberately
+  adopts and maintains the fork.
+- The generated Title field explains that its initial value determines the
+  permanent page folder and that a duplicate display title can be applied after
+  first saving with a unique title. Keep the Decap collision error itself
+  generic for now; a configurable error hint is deferred unless usability
+  testing shows the field guidance is insufficient.
+
+### Provisional Decap Patch Workflow
+
+- Develop each generally useful Decap fix on an independent branch based on
+  upstream so it can become a focused upstream PR without unrelated patches.
+- Maintain a disposable comic_git integration branch in the fork that combines
+  the current upstream base with the commits from every in-flight fix. Build and
+  test its `packages/decap-cms/dist` output through `dev_server.py
+  --decap-cms-repo` and the e2e browser suite. Do not merge the integration
+  branch back into individual PR branches.
+- Record the exact upstream base and independent patch-branch tip SHAs used by
+  an integration build. Recreate the branch by merging those tips when upstream
+  moves, rather than treating the integration branch as another source of
+  changes. Keep any integration-only conflict resolution on that disposable
+  branch.
+- Prefer blocking production CMS support on upstream releases. If that becomes
+  impractical, the fallback is an explicitly maintained comic_git Decap
+  distribution published under its own package identity and immutable version,
+  with the engine pinned to that exact artifact. Never load a moving fork branch
+  in user sites.
+- Adopting the production fallback requires a separate maintenance decision
+  covering security updates, upstream synchronization, artifact publishing,
+  versioning, and an exit path back to upstream Decap.
 
 ## Working Assumptions
 

@@ -6,7 +6,9 @@ Creates dev_server.py to run build_site.main, start an HTTP server, and watch fo
 import os
 import sys
 import logging
+import shutil
 import threading
+from pathlib import Path
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from functools import partial
 from typing import Any
@@ -15,6 +17,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from build import build_site
 from build.content.loaders import load_main_comic_info
+from build.output.cms import DECAP_CMS_URL
 from build.output.site_output import delete_output_file_space
 from core import utils
 from core.logging_config import configure_logging
@@ -39,6 +42,67 @@ HTTP_ROOT: str | None = None
 PROJECT_ROOT: str | None = None
 PREVIEW_SUBDIRECTORY = ""
 SKIP_REBUILD = False
+DECAP_CMS_DIST = Path("packages") / "decap-cms" / "dist"
+LOCAL_DECAP_CMS_URL = "/admin/decap-cms.js"
+
+
+def parse_args(argv: list[str] | None = None):
+    parser = build_site.create_argument_parser(description="Auto-rebuilding comic_git development server")
+    parser.add_argument(
+        "--decap-cms-repo",
+        type=Path,
+        help=(
+            "Load the built Decap CMS bundle from a local Decap checkout. This also enables "
+            "--cms-local-backend. Build the checkout's decap-cms package before starting the server."
+        ),
+    )
+    return parser.parse_args(argv)
+
+
+def resolve_decap_cms_dist(repo: Path) -> Path:
+    repo = repo.expanduser().resolve()
+    dist = repo / DECAP_CMS_DIST
+    bundle = dist / "decap-cms.js"
+    if not bundle.is_file():
+        raise FileNotFoundError(
+            f"Local Decap CMS bundle not found at {bundle}. "
+            "Build the checkout's decap-cms package before starting the development server."
+        )
+    return dist
+
+
+def install_local_decap_cms(http_root: str, dist: Path) -> None:
+    admin_dir = Path(http_root) / "admin"
+    index_path = admin_dir / "index.html"
+    if not index_path.is_file():
+        raise FileNotFoundError(
+            f"Generated CMS entry point not found at {index_path}. "
+            "Enable CMS output in the host comic before using --decap-cms-repo."
+        )
+
+    html = index_path.read_text(encoding="utf-8")
+    if html.count(DECAP_CMS_URL) != 1:
+        raise RuntimeError(
+            "Generated CMS entry point did not contain exactly one expected pinned Decap CMS URL: "
+            f"{DECAP_CMS_URL}"
+        )
+
+    shutil.copytree(
+        dist,
+        admin_dir,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns("*.map"),
+    )
+    index_path.write_text(html.replace(DECAP_CMS_URL, LOCAL_DECAP_CMS_URL), encoding="utf-8")
+    logger.info("Loaded local Decap CMS bundle from %s", dist)
+
+
+def build_site_and_install_decap(build_args: list[Any], decap_dist: Path | None) -> None:
+    build_site.main(*build_args)
+    if decap_dist is not None:
+        if HTTP_ROOT is None:
+            raise RuntimeError("HTTP root was not initialized before installing local Decap CMS.")
+        install_local_decap_cms(HTTP_ROOT, decap_dist)
 
 
 class PreviewRequestHandler(SimpleHTTPRequestHandler):
@@ -51,10 +115,11 @@ class PreviewRequestHandler(SimpleHTTPRequestHandler):
 
 
 class WatchdogEventHandler(FileSystemEventHandler):
-    def __init__(self, observer: Observer, args: list[Any]):
+    def __init__(self, observer: Observer, args: list[Any], decap_dist: Path | None = None):
         super().__init__()
         self.observer = observer
         self.build_args = args
+        self.decap_dist = decap_dist
 
     def on_any_event(self, event):
         global SKIP_REBUILD
@@ -69,7 +134,7 @@ class WatchdogEventHandler(FileSystemEventHandler):
                 SKIP_REBUILD = True
                 os.chdir(PROJECT_ROOT)
                 try:
-                    build_site.main(*self.build_args)
+                    build_site_and_install_decap(self.build_args, self.decap_dist)
                 except Exception:
                     logger.exception("Build failed after file change")
                 # Drain remaining events
@@ -81,11 +146,11 @@ class WatchdogEventHandler(FileSystemEventHandler):
                 SKIP_REBUILD = False
 
 
-def watch_and_rebuild(build_args: list[Any]) -> Observer:
+def watch_and_rebuild(build_args: list[Any], decap_dist: Path | None = None) -> Observer:
     if PROJECT_ROOT is None:
         raise RuntimeError("Project root was not initialized before starting the file watcher.")
     observer = Observer()
-    event_handler = WatchdogEventHandler(observer, build_args)
+    event_handler = WatchdogEventHandler(observer, build_args, decap_dist)
     observer.schedule(event_handler, PROJECT_ROOT, recursive=True)
     return observer
 
@@ -117,7 +182,9 @@ def main():
     PROJECT_ROOT = os.getcwd()
 
     # Get build args
-    args = build_site.parse_args()
+    args = parse_args()
+    if args.decap_cms_repo is not None:
+        args.cms_local_backend = True
     build_site.apply_cli_environment_overrides(args)
     build_args = [
         args.delete_scheduled_posts,
@@ -130,14 +197,24 @@ def main():
     _comic_url, subdirectory = utils.get_comic_url(comic_info)
     PREVIEW_SUBDIRECTORY = subdirectory
     output_dir = utils.get_output_dir()
+    if args.decap_cms_repo is not None and not output_dir:
+        raise ValueError(
+            "--decap-cms-repo requires a generated output directory so local bundle assets "
+            "cannot be left in the host repository."
+        )
     HTTP_ROOT = os.path.abspath(output_dir) if output_dir else PROJECT_ROOT
+    decap_dist = (
+        resolve_decap_cms_dist(args.decap_cms_repo)
+        if args.decap_cms_repo is not None
+        else None
+    )
 
     # Initial build
-    build_site.main(*build_args)
+    build_site_and_install_decap(build_args, decap_dist)
     logger.info("")
 
     # Start watcher thread
-    observer = watch_and_rebuild(build_args)
+    observer = watch_and_rebuild(build_args, decap_dist)
     watcher_thread = threading.Thread(target=start_observer, args=[observer], daemon=True)
     watcher_thread.start()
 

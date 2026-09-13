@@ -132,8 +132,8 @@ def main(
     print_processing_times()
 
 
-def parse_args(argv: list[str] | None = None):
-    parser = argparse.ArgumentParser(description='Manual build of comic_git')
+def create_argument_parser(description: str = "Manual build of comic_git") -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         "-d",
         "--delete-scheduled-posts",
@@ -158,7 +158,11 @@ def parse_args(argv: list[str] | None = None):
         action="store_true",
         help="Generate CMS configuration for the local Decap proxy instead of hosted GitHub authentication."
     )
-    return parser.parse_args(argv)
+    return parser
+
+
+def parse_args(argv: list[str] | None = None):
+    return create_argument_parser().parse_args(argv)
 
 
 def apply_cli_environment_overrides(args: argparse.Namespace) -> None:

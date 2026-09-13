@@ -78,6 +78,17 @@ python comic_git_engine/src/scripts/dev_server.py --cms-local-backend
 Then open the built site's `/admin/` URL. The local-backend flag does not
 bypass the readiness checks and does not alter `comic_info.toml`.
 
+To load a bundle from a built local Decap checkout, replace the second command
+with:
+
+```text
+python comic_git_engine/src/scripts/dev_server.py --decap-cms-repo ../decap-cms
+```
+
+This implies `--cms-local-backend` and reinstalls the local bundle after each
+site rebuild. Fork-specific configuration remains an explicit engine-template
+change so selecting a checkout cannot silently alter collection behavior.
+
 ## Product Rules
 
 - CMS must remain optional.

@@ -1,4 +1,5 @@
 import os
+import re
 from configparser import RawConfigParser
 from copy import deepcopy
 
@@ -13,6 +14,19 @@ from core import utils
 
 
 NOT_FOUND = object()
+DECAP_PAGE_INFO_COLLISION = re.compile(r"^info[-_]\d+\.toml$", re.IGNORECASE)
+
+
+def find_decap_page_info_collisions(page_path: str) -> list[str]:
+    try:
+        with os.scandir(page_path) as entries:
+            return sorted(
+                entry.name
+                for entry in entries
+                if entry.is_file() and DECAP_PAGE_INFO_COLLISION.fullmatch(entry.name)
+            )
+    except FileNotFoundError:
+        return []
 
 
 def load_main_comic_info() -> RawConfigParser:
@@ -47,6 +61,16 @@ def load_page_source(
         comic_folder: str,
         comic_info: RawConfigParser,
 ) -> tuple[str | None, PageSource | None]:
+    collision_files = find_decap_page_info_collisions(page_path)
+    if collision_files:
+        filenames = ", ".join(collision_files)
+        raise ValueError(
+            f"Found unexpected page metadata file(s) in {page_path}: {filenames}. "
+            "This usually means Decap CMS created a page whose generated folder name "
+            "collided with an existing page. Move the colliding page and its assets into "
+            "a uniquely named page folder, then name its metadata file info.toml. Do not "
+            "overwrite an existing info.toml."
+        )
     toml_path, legacy_path = content_paths.get_page_info_candidates(page_path)
     if os.path.isfile(toml_path):
         return toml_path, load_page_source_from_toml(toml_path)

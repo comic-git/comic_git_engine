@@ -37,6 +37,22 @@ prefix_rule(pattern=["python", "..\\e2e_tests\\scripts\\run_e2e.py"], decision="
 prefix_rule(pattern=["python", ".\\scripts\\run_e2e.py"], decision="allow")
 prefix_rule(pattern=["python", "scripts\\run_e2e.py"], decision="allow")
 
+# The local Decap proxy is part of the repository's CMS development workflow.
+prefix_rule(pattern=["npx", "decap-server"], decision="allow")
+prefix_rule(pattern=["npx", "--yes", "decap-server"], decision="allow")
+
+# Narrow Decap fork development commands used to build and validate a candidate
+# upstream patch. Dependency installation remains an explicit approval.
+prefix_rule(pattern=["corepack", "pnpm", "run", "build:esm"], decision="allow")
+prefix_rule(pattern=["corepack", "pnpm", "--filter", "decap-cms", "build"], decision="allow")
+prefix_rule(pattern=["corepack", "pnpm", "run", "type-check"], decision="allow")
+prefix_rule(pattern=["corepack", "pnpm", "exec", "jest"], decision="allow")
+prefix_rule(pattern=["corepack", "pnpm", "exec", "eslint"], decision="allow")
+prefix_rule(
+    pattern=["corepack", "pnpm", "exec", "prettier", ["--check", "--write"]],
+    decision="allow",
+)
+
 # Read-only inspection of the sibling e2e_tests repo from this repo.
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "diff"], decision="allow")
 prefix_rule(pattern=["git", "-C", "..\\e2e_tests", "log"], decision="allow")

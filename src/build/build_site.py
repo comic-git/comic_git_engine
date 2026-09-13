@@ -154,8 +154,10 @@ def main(
     print_processing_times()
 
 
-def parse_args(argv: list[str] | None = None, *, preview: bool = False):
-    parser = argparse.ArgumentParser(description='Manual build of comic_git')
+def create_argument_parser(
+        description: str = "Manual build of comic_git", *, preview: bool = False,
+) -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         "-d",
         "--delete-scheduled-posts",
@@ -194,7 +196,11 @@ def parse_args(argv: list[str] | None = None, *, preview: bool = False):
     if preview:
         parser.add_argument("--listen", default="127.0.0.1",
                             help="Preview bind address. Use 0.0.0.0 only to intentionally share on your network.")
-    return parser.parse_args(argv)
+    return parser
+
+
+def parse_args(argv: list[str] | None = None, *, preview: bool = False):
+    return create_argument_parser(preview=preview).parse_args(argv)
 
 
 def apply_cli_environment_overrides(args: argparse.Namespace) -> None:

@@ -11,11 +11,16 @@ Run tests from the `comic_git_engine` repo root.
 
 The `tests` package adds `src` to `sys.path`, so normal unittest commands do not need a `PYTHONPATH` prefix.
 
-Install both core and migration-only dependencies before running the full suite:
+Install the aggregate development requirements before running the full suite:
 
 ```powershell
-.\venv\Scripts\python.exe -m pip install -r requirements.txt
-.\venv\Scripts\python.exe -m pip install -r requirements_migration.txt
+.\venv\Scripts\python.exe -m pip install -r requirements_dev.txt
+```
+
+Install Playwright's Chromium browser before running browser tests:
+
+```powershell
+.\venv\Scripts\python.exe -m playwright install chromium
 ```
 
 ```powershell

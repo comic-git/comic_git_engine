@@ -673,6 +673,32 @@ post_text = "Hello"
         self.assertIn("fix the invalid page configuration", str(raised.exception))
         self.assertIn("ISO date or datetime", str(raised.exception))
 
+    def test_rejects_each_nonempty_deferred_page_table(self):
+        cases = (
+            ("transcripts", 'English = "Words"'),
+            ("social_media", '"og:title" = "Override"'),
+            ("extra", 'Mood = "tense"'),
+        )
+        for table_name, contents in cases:
+            with self.subTest(table_name=table_name):
+                page_root = os.path.join(self.temp_dir.name, table_name)
+                page_dir = os.path.join(page_root, "page")
+                os.makedirs(page_dir)
+                path = os.path.join(page_dir, "info.toml")
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(
+                        'post_date = "2026-09-05"\n'
+                        'title = "Deferred Table"\n'
+                        f'[{table_name}]\n{contents}\n'
+                    )
+
+                with self.assertRaises(CmsReadinessError) as raised:
+                    validate_cms_page_roots([page_root])
+
+                self.assertEqual(1, len(raised.exception.problems))
+                self.assertIn(path, str(raised.exception))
+                self.assertIn(f"[{table_name}]", str(raised.exception))
+
     def test_aggregates_every_incompatible_page_and_remediation(self):
         ini_path = self.write_page_file("legacy", "info.ini", "Post date = 09/05/2026")
         missing_dir = os.path.join(self.comics_root, "missing")

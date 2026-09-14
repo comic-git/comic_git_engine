@@ -114,5 +114,6 @@ change so selecting a checkout cannot silently alter collection behavior.
 | Document | Contents |
 |----------|----------|
 | [plan.md](plan.md) | The current Decap CMS implementation plan, scope, risks, and phased rollout direction |
+| [mvp-toml-contract.md](mvp-toml-contract.md) | The implemented CMS-safe TOML subset, readiness gate, deployment preconditions, and deferred source shapes |
 | [comic-info-toml-format.md](comic-info-toml-format.md) | The provisional comic-level TOML schema and legacy config mapping |
 | [page-toml-format.md](page-toml-format.md) | The current page-level TOML contract and legacy migration rules |

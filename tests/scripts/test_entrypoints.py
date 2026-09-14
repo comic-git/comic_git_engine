@@ -215,6 +215,8 @@ class TestEntrypoints(TestCase):
                     patch.object(module, "watch_and_rebuild", return_value=observer) as mock_watch,
                     patch.object(module.threading, "Thread", return_value=thread),
                     patch.object(module, "start_http_server"),
+                    patch.object(module, "start_decap_server", return_value=MagicMock()) as mock_start_decap,
+                    patch.object(module, "stop_decap_server") as mock_stop_decap,
                     patch.object(module, "delete_output_file_space") as mock_delete_output,
                 ):
                     module.main()
@@ -238,11 +240,88 @@ class TestEntrypoints(TestCase):
         )
         mock_watch.assert_called_once_with([False, False, True], None)
         thread.start.assert_called_once_with()
+        mock_start_decap.assert_called_once_with()
+        mock_stop_decap.assert_called_once_with(mock_start_decap.return_value)
         mock_delete_output.assert_called_once_with(comic_info)
         self.assertEqual(
             os.path.normpath(os.path.join(temp_dir, "build", "comic", "001")),
             os.path.normpath(translated_path),
         )
+
+    def test_decap_server_startup_reports_missing_npx(self):
+        module = self.load_dev_server_module()
+        module.PROJECT_ROOT = "host-root"
+
+        with patch.object(module.subprocess, "Popen", side_effect=FileNotFoundError):
+            with self.assertRaisesRegex(RuntimeError, "Install Node.js"):
+                module.start_decap_server()
+
+    def test_decap_server_command_uses_the_platform_npx_executable(self):
+        module = self.load_dev_server_module()
+
+        self.assertEqual(("npx.cmd", "decap-server"), module.get_decap_server_command(True))
+        self.assertEqual(("npx", "decap-server"), module.get_decap_server_command(False))
+
+    def test_dev_server_stops_decap_proxy_after_initial_build_failure(self):
+        module = self.load_dev_server_module()
+        args = argparse.Namespace(
+            delete_scheduled_posts=False,
+            publish_all_comics=False,
+            output_dir=None,
+            cms_local_backend=True,
+            decap_cms_repo=None,
+        )
+        decap_server = MagicMock()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cwd = os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                with (
+                    patch.object(module.utils, "find_project_root"),
+                    patch.object(module, "parse_args", return_value=args),
+                    patch.object(module.build_site, "apply_cli_environment_overrides"),
+                    patch.object(module, "load_main_comic_info", return_value=object()),
+                    patch.object(
+                        module.utils,
+                        "get_comic_url",
+                        return_value=("https://example.com/comic", "/comic"),
+                    ),
+                    patch.object(module.utils, "get_output_dir", return_value="build"),
+                    patch.object(module, "start_decap_server", return_value=decap_server),
+                    patch.object(module, "stop_decap_server") as mock_stop_decap,
+                    patch.object(
+                        module,
+                        "build_site_and_install_decap",
+                        side_effect=RuntimeError("build failed"),
+                    ),
+                ):
+                    with self.assertRaisesRegex(RuntimeError, "build failed"):
+                        module.main()
+            finally:
+                os.chdir(cwd)
+
+        mock_stop_decap.assert_called_once_with(decap_server)
+
+    def test_stops_decap_server_process_tree_on_windows(self):
+        module = self.load_dev_server_module()
+        process = MagicMock()
+        process.pid = 1234
+        process.poll.return_value = None
+
+        with (
+            patch.object(module, "IS_WINDOWS", True),
+            patch.object(module.subprocess, "run") as mock_taskkill,
+        ):
+            module.stop_decap_server(process)
+
+        mock_taskkill.assert_called_once_with(
+            ("taskkill", "/PID", "1234", "/T", "/F"),
+            check=False,
+            stdout=module.subprocess.DEVNULL,
+            stderr=module.subprocess.DEVNULL,
+        )
+        process.wait.assert_called_once_with(timeout=5)
 
 
 class TestWorkflowEntrypoints(TestCase):

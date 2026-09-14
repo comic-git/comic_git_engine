@@ -78,16 +78,15 @@ non-CMS content or changing scheduling semantics first.
 
 ## Local Proof Workflow
 
-From a CMS-enabled host repo, run the Decap proxy and the comic_git development
-server in separate terminals:
+From a CMS-enabled host repo, run the comic_git development server:
 
 ```text
-npx decap-server
 python comic_git_engine/src/scripts/dev_server.py --cms-local-backend
 ```
 
 Then open the built site's `/admin/` URL. The local-backend flag does not
-bypass the readiness checks and does not alter `comic_info.toml`.
+bypass the readiness checks and does not alter `comic_info.toml`. The development
+server starts `npx decap-server` and stops it when the development server exits.
 
 To load a bundle from a built local Decap checkout, replace the second command
 with:

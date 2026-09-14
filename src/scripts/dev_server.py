@@ -7,6 +7,7 @@ import os
 import sys
 import logging
 import shutil
+import subprocess
 import threading
 from pathlib import Path
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -44,6 +45,14 @@ PREVIEW_SUBDIRECTORY = ""
 SKIP_REBUILD = False
 DECAP_CMS_DIST = Path("packages") / "decap-cms" / "dist"
 LOCAL_DECAP_CMS_URL = "/admin/decap-cms.js"
+IS_WINDOWS = os.name == "nt"
+
+
+def get_decap_server_command(is_windows: bool) -> tuple[str, str]:
+    return "npx.cmd" if is_windows else "npx", "decap-server"
+
+
+DECAP_SERVER_COMMAND = get_decap_server_command(IS_WINDOWS)
 
 
 def parse_args(argv: list[str] | None = None):
@@ -103,6 +112,45 @@ def build_site_and_install_decap(build_args: list[Any], decap_dist: Path | None)
         if HTTP_ROOT is None:
             raise RuntimeError("HTTP root was not initialized before installing local Decap CMS.")
         install_local_decap_cms(HTTP_ROOT, decap_dist)
+
+
+def start_decap_server() -> subprocess.Popen:
+    if PROJECT_ROOT is None:
+        raise RuntimeError("Project root was not initialized before starting the Decap local backend.")
+    try:
+        process = subprocess.Popen(DECAP_SERVER_COMMAND, cwd=PROJECT_ROOT)
+    except OSError as e:
+        raise RuntimeError(
+            "Could not start the Decap local backend. Install Node.js and make sure 'npx decap-server' works."
+        ) from e
+    logger.info("Started Decap local backend (PID %s).", process.pid)
+    return process
+
+
+def stop_decap_server(process: subprocess.Popen) -> None:
+    if process.poll() is not None:
+        logger.info("Decap local backend already stopped.")
+        return
+
+    logger.info("Stopping Decap local backend (PID %s).", process.pid)
+    if IS_WINDOWS:
+        # npx can launch a Node child beneath its command wrapper on Windows.
+        # Stop the whole tree so the proxy cannot outlive this development server.
+        subprocess.run(
+            ("taskkill", "/PID", str(process.pid), "/T", "/F"),
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    else:
+        process.terminate()
+
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        logger.warning("Decap local backend did not stop within five seconds; killing it.")
+        process.kill()
+        process.wait()
 
 
 class PreviewRequestHandler(SimpleHTTPRequestHandler):
@@ -208,26 +256,35 @@ def main():
         if args.decap_cms_repo is not None
         else None
     )
+    decap_server = start_decap_server() if args.cms_local_backend else None
+    observer = None
+    clean_output = False
 
-    # Initial build
-    build_site_and_install_decap(build_args, decap_dist)
-    logger.info("")
-
-    # Start watcher thread
-    observer = watch_and_rebuild(build_args, decap_dist)
-    watcher_thread = threading.Thread(target=start_observer, args=[observer], daemon=True)
-    watcher_thread.start()
-
-    # Start HTTP server (blocking)
     try:
-        start_http_server(subdirectory)
-    except KeyboardInterrupt:
-        pass
+        # Initial build
+        build_site_and_install_decap(build_args, decap_dist)
+        logger.info("")
 
-    observer.stop()
-    logger.info("Web server stopped. Deleting auto-generated files...")
-    os.chdir(PROJECT_ROOT)
-    delete_output_file_space(comic_info)
+        # Start watcher thread
+        observer = watch_and_rebuild(build_args, decap_dist)
+        watcher_thread = threading.Thread(target=start_observer, args=[observer], daemon=True)
+        watcher_thread.start()
+
+        # Start HTTP server (blocking)
+        try:
+            start_http_server(subdirectory)
+        except KeyboardInterrupt:
+            pass
+        clean_output = True
+    finally:
+        if observer is not None:
+            observer.stop()
+        if decap_server is not None:
+            stop_decap_server(decap_server)
+        if clean_output:
+            logger.info("Web server stopped. Deleting auto-generated files...")
+            os.chdir(PROJECT_ROOT)
+            delete_output_file_space(comic_info)
 
 
 if __name__ == "__main__":

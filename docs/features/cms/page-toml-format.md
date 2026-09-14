@@ -39,14 +39,21 @@ and nonempty `[transcripts]`, `[social_media]`, or `[extra]` tables remain valid
 engine inputs, but must be removed or managed manually before this CMS slice can
 be enabled because its form cannot yet round-trip them safely.
 
-Numbered siblings such as `info-1.toml` and `info_2.toml` are invalid page
-metadata. They indicate that Decap resolved a new-page path collision by
-suffixing the metadata filename inside an existing page folder. The engine
-rejects them with recovery guidance instead of silently ignoring the attempted
-page.
+New page folders are derived from the initial title. Duplicate titles are valid:
+path-aware collision suffixing creates a sibling bundle such as
+`same-title-1/info.toml`, while later title edits preserve the page folder.
+
+By contrast, numbered metadata siblings such as `info-1.toml` and
+`info_2.toml` are invalid. They indicate that an older or unpatched Decap build
+put the collision suffix on the metadata filename inside the existing page
+folder. The engine rejects them with recovery guidance instead of silently
+ignoring the attempted page.
 
 The CMS does not delete page entries, does not rename an existing page folder
 when its title changes, and does not provide a content preview in this slice.
+Because the folder name is the page's path-derived identity, manually renaming
+it changes the page URL, page and image IDs, and generated image anchor IDs. The
+engine does not create a redirect from the old URL.
 
 ## Page Schema
 

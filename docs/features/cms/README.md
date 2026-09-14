@@ -31,6 +31,9 @@ Current behavior:
 - common Comic Details, Website, Links, and Custom Pages settings appear first;
   less-common settings are grouped into collapsed sections
 - page lists show each post date beside its title and default to newest first
+- new page folders are derived from the initial title and remain stable when the
+  title changes later; duplicate titles do not require a different temporary
+  title
 - Characters and Tags use compact comma-separated inputs that save TOML string arrays
 - image items open expanded by default, with compact single-line inputs for
   their Hover text and Screen reader text
@@ -51,6 +54,14 @@ The date must be a quoted ISO string; native TOML dates remain valid for normal
 engine builds but are rejected by CMS readiness to prevent browser-timezone
 conversion and mixed-type sorting. Nonempty `[transcripts]`, `[social_media]`,
 and `[extra]` tables must be managed manually until the CMS can preserve them.
+
+The page collection uses `path: "{{slug}}/info"`. With Decap's path-aware
+collision handling, duplicate title slugs create sibling bundles such as
+`same-title-1/info.toml` instead of malformed metadata such as
+`same-title/info-1.toml`. This has been validated against the local Decap fix,
+but production CMS support must remain blocked until the engine can pin an
+upstream release containing that fix or deliberately adopt a maintained fork
+artifact.
 
 ## Future Date and Time Editing
 

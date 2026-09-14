@@ -115,16 +115,14 @@ python comic_git_engine\src\scripts\dev_server.py
 `.ini`, and `.toml` files change.
 
 To exercise a CMS-enabled host repo before the hosted OAuth backend exists,
-install Node.js for local development and run these in separate terminals from
-the host repo root:
-
-```powershell
-npx decap-server
-```
+install Node.js for local development and run this from the host repo root:
 
 ```powershell
 python comic_git_engine\src\scripts\dev_server.py --cms-local-backend
 ```
+
+`dev_server.py` starts `npx decap-server` for the local backend and stops its
+process tree when the development server exits.
 
 To test a locally built Decap checkout instead of the engine's pinned CDN
 bundle, pass the checkout root. This option also enables the local backend:

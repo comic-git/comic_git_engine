@@ -223,10 +223,10 @@ Likely additional fields:
   plainly labeled sections
 - the provisional TOML schema follows the editing experience; it may change
   before 1.2 when its hierarchy would otherwise force confusing or unsafe UI
-- page folder ID is user-controlled
+- page folder ID remains path-derived; it may be changed manually outside the CMS
 - page folder ID should be treated as stable after creation
 - page folder ID should remain path-derived rather than duplicated into `info.toml`
-- title may remain optional if the engine can still derive it from image filenames where appropriate
+- CMS-managed pages require a nonblank title; broader engine title fallback behavior remains separate
 - image ordering is explicit through `[[images]]` table order
 - image fields other than `filename` remain optional so the CMS can expose
   simple and advanced editing without two data shapes

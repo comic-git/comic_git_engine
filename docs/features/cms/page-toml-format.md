@@ -30,6 +30,9 @@ The first CMS editor exposes `title`, ordered `images`, `post_date`,
 `tags`. New pages may be image-backed or text-only, and uploaded images stay
 beside the page's `info.toml`.
 
+For the complete boundary between valid engine input and the narrower set that
+the CMS can safely save, see [mvp-toml-contract.md](mvp-toml-contract.md).
+
 CMS enablement is deliberately all-or-nothing across the main comic and every
 Extra Comic. Each page folder must have valid `info.toml`, a nonblank
 `title`, and a quoted, date-only ISO `post_date`. Native TOML dates remain

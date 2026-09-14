@@ -416,6 +416,28 @@ If implementation options are otherwise equal, prefer the clearer failure mode.
 
 - keep title-derived page folders as the current baseline while page identity
   and routing alternatives are evaluated
+- user-facing CMS and legacy-editing guidance must warn that manually renaming a
+  page folder changes its URL, page and image IDs, and generated image anchors;
+  the engine does not create a redirect for the previous URL
+- if Decap gains an explicit slug or page-folder control, keep that value in
+  Decap-owned entry metadata rather than serializing a duplicate into
+  `info.toml`
+- for new entries, show a live sanitized value derived from the identifier
+  field until the editor manually changes it; after a manual override, title
+  edits must not silently replace the chosen slug, and the UI should offer an
+  explicit way to resume automatic derivation
+- treat an availability check while editing as an early warning only; repeat
+  collision detection during persistence because the repository can change
+  between the earlier check and publication
+- include both published entries and saved editorial-workflow drafts in live and
+  persistence-time collision checks. Decap currently persists and publishes one
+  entry at a time; if bulk publication is added later, validate and reserve the
+  complete batch of destination paths before writing any entry
+- do not assume the slug control must be creation-only. First test whether a
+  flat collection can use Decap's existing `meta.path` and subtree-move support
+  to rename a complete comic page directory safely. If that cannot preserve all
+  page files and workflows, keep the existing page location visible but
+  read-only rather than offering a partial rename
 - treat a page folder as one nonblank, portable filesystem and URL path segment;
   validation must reject path separators, `.` and `..`, Windows device names,
   names ending in a dot or space, control characters, Git-reserved `.git`
@@ -563,7 +585,9 @@ Exact arbitrary path creation inside Decap would require custom path handling.
   creating `A & B` beside an existing `A B` produced `a-b/info-1.toml`. The
   engine now rejects numbered `info-*.toml` and `info_*.toml` siblings with an
   actionable error, so this failure cannot silently omit the new page from a
-  build. CMS creation should still prevent the collision before publishing.
+  build. Path-aware suffixing makes the collision itself safe by creating a
+  numbered sibling page folder; the engine rejection remains a fallback for
+  older or unpatched Decap builds.
 - Decap performs this fallback in `Backend.generateUniqueSlug` after applying
   the collection path and its native slug formatter. Public event and widget
   extension APIs run too early or do not expose the computed path and backend
@@ -573,14 +597,39 @@ Exact arbitrary path creation inside Decap would require custom path handling.
   `slug_collision: reject` policy beside the existing suffix behavior. Focused
   Decap tests passed, and the persistent browser suite confirmed that exact and
   normalized collisions display an error without writing `info-1.toml`. This
-  proves the CMS prevention UX is viable, but production configuration must not
-  emit the option unless it is accepted upstream or comic_git deliberately
-  adopts and maintains the fork.
+  proves the CMS prevention UX is viable. The implementation is awaiting review
+  in [decaporg/decap-cms#7992](https://github.com/decaporg/decap-cms/pull/7992),
+  with user-facing documentation in
+  [decaporg/decap-website#173](https://github.com/decaporg/decap-website/pull/173).
+  Production configuration must not emit the option unless it is accepted
+  upstream or comic_git deliberately adopts and maintains the fork.
 - The generated Title field explains that its initial value determines the
-  permanent page folder and that a duplicate display title can be applied after
-  first saving with a unique title. Keep the Decap collision error itself
-  generic for now; a configurable error hint is deferred unless usability
-  testing shows the field guidance is insufficient.
+  permanent page folder. It no longer tells editors to save under a temporary
+  unique title because path-aware suffixing allows duplicate titles to create
+  valid sibling page folders. Keep the Decap collision error itself generic for
+  now; a configurable error hint is deferred unless usability testing shows the
+  field guidance is insufficient.
+- Decap's documented folder-collection example explicitly supports
+  `path: '{{slug}}/index'` with colocated media. Suffixing a collision as
+  `same-title/index-1` therefore breaks a documented entry-bundle shape, not
+  just comic_git's naming convention. Treat path-aware suffix placement as a
+  Decap bug fix that is separate from the configurable reject policy.
+- The path-aware suffix fix applies the numeric suffix to
+  the parsed built-in `slug` variable before the rest of the path, including
+  filtered slug variables, while preserving whole-path suffixing for templates
+  that do not reference `slug`. The full Decap test suite passes, and persistent
+  browser coverage confirms that exact and normalized collisions create valid
+  sibling bundles such as `same-title-1/info.toml` that rebuild successfully.
+  The implementation is committed on its dedicated Decap branch; its upstream
+  PR is intentionally deferred for review timing.
+- Decap's source does not gate `meta.path` on enabling a nested collection. An
+  existing path edit is passed to backends as `newPath`, and subtree moves
+  default to enabled so colocated files can move with the entry. This may make
+  an editable existing-page slug practical for a flat comic_git collection.
+  It remains provisional until browser and backend tests prove that the
+  metadata file, images, thumbnails, arbitrary sibling files, direct publishing,
+  and editorial workflow all behave atomically and collision checks still run
+  against the destination.
 
 ### Provisional Decap Patch Workflow
 
@@ -604,6 +653,25 @@ Exact arbitrary path creation inside Decap would require custom path handling.
 - Adopting the production fallback requires a separate maintenance decision
   covering security updates, upstream synchronization, artifact publishing,
   versioning, and an exit path back to upstream Decap.
+
+### Recommended Decap Work Sequence
+
+1. Await review of the narrow `slug_collision` policy and documentation PRs,
+   which include public documentation and identifier-neutral error wording.
+2. Submit the completed path-aware suffix fix for path templates such as
+   `{{slug}}/index` when its upstream PR is ready for review. Keep production
+   pinned until that fix is available from a supported Decap artifact.
+3. Prototype a flat-collection `meta.path` slug control with `index_file: info`.
+   Test new-entry derivation and manual override separately from existing-entry
+   directory renames, including normalized collisions, two colliding saved
+   drafts, concurrent editor sessions, and colocated files.
+4. If existing-entry renames prove complete and consistent across supported
+   backends and publishing modes, design the confirmation and URL-change UX. If
+   they do not, limit editing to new records before their first save and present
+   persisted paths as read-only information.
+5. Keep each upstreamable change independent, then combine their exact branch
+   tips on the disposable comic_git integration branch for engine and browser
+   testing before enabling any fork-only configuration in generated sites.
 
 ## Working Assumptions
 

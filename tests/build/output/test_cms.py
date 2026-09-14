@@ -140,10 +140,10 @@ class TestAdminConfig(TestCase):
         )
         self.assertIn(
             'hint: "New pages use this title to create their folder name. '
-            'The CMS keeps that folder name if the title changes later. '
-            'To reuse an existing title, first save with a unique title, then change the title."',
+            'The CMS keeps that folder name if the title changes later."',
             config,
         )
+        self.assertNotIn("first save with a unique title", config)
         self.assertIn('name: "post_text", widget: "markdown", required: false', config)
         self.assertIn('name: "images"', config)
         self.assertIn('name: "images"\n        widget: "list"\n        required: false\n        collapsed: false', config)

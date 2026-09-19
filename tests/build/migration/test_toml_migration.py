@@ -1,10 +1,15 @@
+import io
+import json
 import os
 import tempfile
 from collections import OrderedDict
+from pathlib import Path
 from unittest import TestCase
+from unittest.mock import patch
 
 from build.content import comic_config_sources
 from build.content import page_sources
+from build.migration import runner
 from build.migration import toml_migration
 
 
@@ -84,6 +89,99 @@ class TestTomlMigration(TestCase):
             return callback()
         finally:
             os.chdir(cwd)
+
+    def test_explicit_root_plan_is_write_free_and_uses_repository_relative_paths(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_main_comic_info(temp_dir)
+            page_dir = self.write_page(temp_dir, "", "001")
+            original_cwd = os.getcwd()
+
+            plan = toml_migration.plan_page_migration(temp_dir)
+
+            self.assertEqual(original_cwd, os.getcwd())
+            self.assertEqual(
+                [
+                    "your_content/comic_info.toml",
+                    "your_content/comics/001/info.toml",
+                ],
+                [migration_file.path for migration_file in plan.files],
+            )
+            self.assertEqual(1, len(plan.comic_config_targets))
+            self.assertEqual(1, len(plan.page_targets))
+            self.assertIn('version = "master"', plan.files[0].content)
+            self.assertIn('title = "Chapter One"', plan.files[1].content)
+            self.assertFalse(os.path.exists(os.path.join(temp_dir, "your_content", "comic_info.toml")))
+            self.assertFalse(os.path.exists(os.path.join(page_dir, "info.toml")))
+
+    def test_explicit_root_write_does_not_depend_on_current_working_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_main_comic_info(temp_dir)
+            page_dir = self.write_page(temp_dir, "", "001")
+
+            report = toml_migration.run_page_migration(write=True, repository_root=temp_dir)
+
+            self.assertEqual(1, len(report.comic_configs_written))
+            self.assertEqual(1, len(report.written))
+            self.assertTrue(os.path.exists(os.path.join(temp_dir, "your_content", "comic_info.toml")))
+            self.assertTrue(os.path.exists(os.path.join(page_dir, "info.toml")))
+
+    def test_plan_adds_cms_settings_only_to_main_comic_config(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_main_comic_info(temp_dir, "extras/story")
+            self.write_extra_comic_info(temp_dir, "extras/story")
+            cms_enablement = comic_config_sources.CmsEnablementConfig(
+                repository="comic-git/example",
+                branch="master",
+                backend_base_url="https://worker.example.com",
+                backend_auth_endpoint="auth",
+            )
+
+            plan = toml_migration.plan_page_migration(temp_dir, cms_enablement=cms_enablement)
+
+            main_config = plan.files[0].content
+            extra_config = plan.files[1].content
+            self.assertIn("[cms]", main_config)
+            self.assertIn('repository = "comic-git/example"', main_config)
+            self.assertIn('backend_base_url = "https://worker.example.com"', main_config)
+            self.assertNotIn("[cms]", extra_config)
+
+    def test_runner_returns_versioned_json_plan(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_main_comic_info(temp_dir)
+            self.write_page(temp_dir, "", "001")
+            request = {
+                "repository_root": temp_dir,
+                "cms_enablement": {
+                    "repository": "comic-git/example",
+                    "branch": "master",
+                    "backend_base_url": "https://worker.example.com",
+                    "backend_auth_endpoint": "auth",
+                    "editorial_workflow": False,
+                },
+            }
+            output = io.StringIO()
+
+            with patch("sys.stdin", io.StringIO(json.dumps(request))), patch("sys.stdout", output):
+                self.assertEqual(0, runner.main())
+
+            response = json.loads(output.getvalue())
+            self.assertEqual(runner.PROTOCOL_VERSION, response["protocol_version"])
+            self.assertEqual(
+                [
+                    "your_content/comic_info.toml",
+                    "your_content/comics/001/info.toml",
+                ],
+                [migration_file["path"] for migration_file in response["files"]],
+            )
+
+    def test_migration_contract_declares_the_runner_protocol(self):
+        contract_path = Path(__file__).resolve().parents[3] / "cms_migration_contract.json"
+        with open(contract_path, encoding="utf-8") as f:
+            contract = json.load(f)
+
+        self.assertEqual(runner.PROTOCOL_VERSION, contract["protocol_version"])
+        self.assertEqual("build.migration.runner", contract["runner_module"])
+        self.assertEqual(["tomli-w"], contract["required_runtime_packages"])
 
     def test_dry_run_reports_page_without_writing_toml(self):
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -2,6 +2,7 @@ import json
 import tomllib
 from collections import OrderedDict
 from configparser import RawConfigParser
+from dataclasses import dataclass
 from typing import Any
 
 from core import utils
@@ -78,13 +79,27 @@ SUPPORTED_LINK_KEYS = frozenset(("name", "image_url", "url", "open_in_new_tab"))
 SUPPORTED_PAGE_KEYS = frozenset(("template_name", "title"))
 
 
+@dataclass(frozen=True)
+class CmsEnablementConfig:
+    """Worker-owned CMS settings inserted while serializing the main comic TOML file."""
+
+    repository: str
+    branch: str
+    backend_base_url: str
+    backend_auth_endpoint: str
+    editorial_workflow: bool = False
+
+
 def load_comic_config_from_toml(path: str) -> RawConfigParser:
     with open(path, "rb") as f:
         data = tomllib.load(f)
     return comic_config_data_to_legacy_parser(data)
 
 
-def serialize_comic_config_to_toml(comic_info: RawConfigParser) -> str:
+def serialize_comic_config_to_toml(
+        comic_info: RawConfigParser,
+        cms_enablement: CmsEnablementConfig | None = None,
+) -> str:
     try:
         import tomli_w
     except ModuleNotFoundError as e:
@@ -92,7 +107,19 @@ def serialize_comic_config_to_toml(comic_info: RawConfigParser) -> str:
             "Writing TOML requires migration-only dependencies. Install them with "
             "`pip install -r requirements_migration.txt`."
         ) from e
-    return tomli_w.dumps(legacy_parser_to_comic_config_data(comic_info), multiline_strings=True)
+    data = legacy_parser_to_comic_config_data(comic_info)
+    if cms_enablement is not None:
+        data["cms"] = OrderedDict(
+            (
+                ("enabled", True),
+                ("repository", cms_enablement.repository),
+                ("branch", cms_enablement.branch),
+                ("backend_base_url", cms_enablement.backend_base_url),
+                ("backend_auth_endpoint", cms_enablement.backend_auth_endpoint),
+                ("editorial_workflow", cms_enablement.editorial_workflow),
+            )
+        )
+    return tomli_w.dumps(data, multiline_strings=True)
 
 
 def comic_config_data_to_legacy_parser(data: dict[str, Any]) -> RawConfigParser:

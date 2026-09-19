@@ -83,7 +83,12 @@ SECTION_LINE = re.compile(r"^\s*\[(?P<section>[^\r\n]+)]\s*(?:[#;].*)?$", re.MUL
 TIME_FORMAT_DIRECTIVE = re.compile(r"%(?:[-_0^#]*)(?:H|I|M|S|f|p|X|c|z|Z)")
 
 
-def load_legacy_page_source(page_path: str, comic_folder: str, comic_info) -> PageSource:
+def load_legacy_page_source(
+        page_path: str,
+        comic_folder: str,
+        comic_info,
+        content_root: str | None = None,
+) -> PageSource:
     info_path = content_paths.get_page_info_candidates(page_path)[1]
     page_info, declared_images = load_legacy_page_ini(info_path)
     page_id = os.path.basename(os.path.normpath(page_path))
@@ -100,7 +105,12 @@ def load_legacy_page_source(page_path: str, comic_folder: str, comic_info) -> Pa
         storyline=page_info.get("Storyline", ""),
         characters=utils.str_to_list(page_info.get("Characters", "")),
         tags=utils.str_to_list(page_info.get("Tags", "")),
-        transcripts=transcripts.load_transcript_source_texts(comic_folder, comic_info, page_id),
+        transcripts=transcripts.load_transcript_source_texts(
+            comic_folder,
+            comic_info,
+            page_id,
+            content_root=content_root or "your_content",
+        ),
         social_media=load_legacy_page_social_media(social_media_path),
         extra=OrderedDict(
             (key, value)

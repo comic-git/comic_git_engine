@@ -26,10 +26,20 @@ def get_transcripts(
     return render_transcript_sources(transcript_texts)
 
 
-def load_transcript_source_texts(comic_folder: str, comic_info: RawConfigParser, page_name: str) -> OrderedDict[str, str]:
+def load_transcript_source_texts(
+        comic_folder: str,
+        comic_info: RawConfigParser,
+        page_name: str,
+        content_root: str = "your_content",
+) -> OrderedDict[str, str]:
     transcripts = OrderedDict()
     if comic_info.getboolean("Transcripts", "Load transcripts from comic folder", fallback=True):
-        transcripts.update(load_transcript_sources_from_folder(f"your_content/{comic_folder}comics", page_name))
+        transcripts.update(
+            load_transcript_sources_from_folder(
+                os.path.join(content_root, comic_folder, "comics"),
+                page_name,
+            )
+        )
     transcripts_dir = comic_info.get("Transcripts", "Transcripts folder", fallback="")
     if transcripts_dir:
         transcripts.update(load_transcript_sources_from_folder(transcripts_dir, page_name))

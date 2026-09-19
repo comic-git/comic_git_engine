@@ -7,6 +7,7 @@ from configparser import RawConfigParser
 
 from build.content import content_paths
 from build.content.comic_config_sources import (
+    CmsEnablementConfig,
     load_comic_config_from_toml,
     serialize_comic_config_to_toml,
 )
@@ -19,7 +20,7 @@ from build.content.page_sources import (
 from build.content.site_config import get_extra_comics_list
 
 
-@dataclass
+@dataclass(frozen=True)
 class PageMigrationTarget:
     comic_folder: str
     page_path: str
@@ -27,25 +28,44 @@ class PageMigrationTarget:
     toml_info_path: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class SkippedPageMigration:
     comic_folder: str
     page_path: str
     reason: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class ComicConfigMigrationTarget:
     comic_folder: str
     legacy_info_path: str
     toml_info_path: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class SkippedComicConfigMigration:
     comic_folder: str
     legacy_info_path: str
     reason: str
+
+
+@dataclass(frozen=True)
+class MigrationFile:
+    """One UTF-8 file the migration plan creates, addressed from the host repository root."""
+
+    path: str
+    content: str
+
+
+@dataclass(frozen=True)
+class PageMigrationPlan:
+    """A write-free TOML migration result for one explicit comic_git repository root."""
+
+    files: tuple[MigrationFile, ...]
+    page_targets: tuple[PageMigrationTarget, ...]
+    comic_config_targets: tuple[ComicConfigMigrationTarget, ...]
+    skipped_pages: tuple[SkippedPageMigration, ...]
+    skipped_comic_configs: tuple[SkippedComicConfigMigration, ...]
 
 
 @dataclass
@@ -59,45 +79,124 @@ class PageMigrationReport:
     deleted_legacy_files: list[str] = field(default_factory=list)
 
 
+def plan_page_migration(
+        repository_root: str,
+        include_extra_comics: bool = True,
+        cms_enablement: CmsEnablementConfig | None = None,
+) -> PageMigrationPlan:
+    """Build a deterministic legacy-to-TOML plan without changing the host repository."""
+    repository_root = normalize_repository_root(repository_root)
+    content_root = os.path.join(repository_root, "your_content")
+    report = PageMigrationReport()
+    comic_contexts = load_comic_contexts(content_root, include_extra_comics)
+    comic_config_targets = discover_comic_config_migration_targets(
+        content_root,
+        include_extra_comics,
+        comic_contexts[0][1],
+        report,
+    )
+    page_targets: list[PageMigrationTarget] = []
+    for comic_folder, _comic_info in comic_contexts:
+        page_targets.extend(discover_page_migration_targets(content_root, comic_folder, report))
+
+    comic_context_by_folder = dict(comic_contexts)
+    files = [
+        MigrationFile(
+            repository_relative_path(repository_root, target.toml_info_path),
+            serialize_comic_config_target(
+                target,
+                cms_enablement if target.comic_folder == "" else None,
+            ),
+        )
+        for target in comic_config_targets
+    ]
+    for target in page_targets:
+        files.append(
+            MigrationFile(
+                repository_relative_path(repository_root, target.toml_info_path),
+                serialize_target(target, comic_context_by_folder[target.comic_folder], content_root),
+            )
+        )
+    return PageMigrationPlan(
+        files=tuple(files),
+        page_targets=tuple(page_targets),
+        comic_config_targets=tuple(comic_config_targets),
+        skipped_pages=tuple(report.skipped),
+        skipped_comic_configs=tuple(report.skipped_comic_configs),
+    )
+
+
 def run_page_migration(
         write: bool = False,
         include_extra_comics: bool = True,
         delete_legacy: bool = False,
+        repository_root: str | None = None,
 ) -> PageMigrationReport:
-    report = PageMigrationReport()
-    comic_contexts = load_comic_contexts(include_extra_comics)
-    for target in discover_comic_config_migration_targets(include_extra_comics, comic_contexts[0][1], report):
-        serialize_comic_config_target(target)
-        if write:
-            write_comic_config_target(target)
-            report.comic_configs_written.append(target)
-        else:
-            report.comic_configs_planned.append(target)
-    for comic_folder, comic_info in comic_contexts:
-        for target in discover_page_migration_targets(comic_folder, report):
-            serialize_target(target, comic_info)
-            if write:
-                write_target(target, comic_info)
-                report.written.append(target)
-            else:
-                report.planned.append(target)
+    """Plan or apply TOML migration while preserving the legacy CLI-facing report shape."""
+    repository_root = normalize_repository_root(repository_root or os.getcwd())
+    plan = plan_page_migration(repository_root, include_extra_comics)
+    report = PageMigrationReport(
+        skipped=list(plan.skipped_pages),
+        skipped_comic_configs=list(plan.skipped_comic_configs),
+    )
+    if write:
+        write_migration_files(repository_root, plan.files)
+        report.written.extend(plan.page_targets)
+        report.comic_configs_written.extend(plan.comic_config_targets)
+    else:
+        report.planned.extend(plan.page_targets)
+        report.comic_configs_planned.extend(plan.comic_config_targets)
     if delete_legacy:
-        validate_replacement_toml_files(comic_contexts)
+        comic_contexts = load_comic_contexts(
+            os.path.join(repository_root, "your_content"),
+            include_extra_comics,
+        )
+        validate_replacement_toml_files(repository_root, comic_contexts)
         for comic_folder, _comic_info in comic_contexts:
-            delete_legacy_files_for_migrated_comic_configs(comic_folder, report)
-            delete_legacy_files_for_migrated_pages(comic_folder, report)
+            delete_legacy_files_for_migrated_comic_configs(repository_root, comic_folder, report)
+            delete_legacy_files_for_migrated_pages(repository_root, comic_folder, report)
     return report
 
 
-def load_comic_contexts(include_extra_comics: bool = True) -> list[tuple[str, RawConfigParser]]:
-    _, legacy_path = content_paths.get_main_comic_info_candidates()
+def normalize_repository_root(repository_root: str) -> str:
+    """Return an absolute host-repository root that has the required content directory."""
+    normalized_root = os.path.abspath(repository_root)
+    if not os.path.isdir(os.path.join(normalized_root, "your_content")):
+        raise ValueError(
+            "Expected repository_root to contain a your_content directory: "
+            f"{normalize_filesystem_path(normalized_root)}"
+        )
+    return normalized_root
+
+
+def repository_relative_path(repository_root: str, path: str) -> str:
+    """Normalize a planned file path and reject writes outside its host repository."""
+    relative_path = os.path.relpath(path, repository_root)
+    if relative_path == os.pardir or relative_path.startswith(os.pardir + os.sep):
+        raise ValueError(f"Migration path escapes repository root: {normalize_filesystem_path(path)}")
+    return normalize_filesystem_path(relative_path)
+
+
+def write_migration_files(repository_root: str, files: tuple[MigrationFile, ...]) -> None:
+    """Apply a previously generated plan through exclusive UTF-8 file creation."""
+    for migration_file in files:
+        path = os.path.join(repository_root, migration_file.path)
+        with open(path, "x", encoding="utf-8", newline="\n") as f:
+            f.write(migration_file.content)
+
+
+def load_comic_contexts(
+        content_root: str,
+        include_extra_comics: bool = True,
+) -> list[tuple[str, RawConfigParser]]:
+    legacy_path = os.path.join(content_root, "comic_info.ini")
     main_comic_info = load_legacy_comic_info(legacy_path)
     contexts = [("", main_comic_info)]
     if not include_extra_comics:
         return contexts
     for extra_comic in get_extra_comics_list(main_comic_info):
         comic_folder = normalize_comic_folder(extra_comic)
-        _, extra_legacy_path = content_paths.get_extra_comic_info_candidates(comic_folder.strip("/"))
+        extra_legacy_path = os.path.join(content_root, comic_folder, "comic_info.ini")
         contexts.append((comic_folder, load_legacy_extra_comic_info(extra_legacy_path, main_comic_info)))
     return contexts
 
@@ -110,12 +209,14 @@ def normalize_comic_folder(comic_folder: str) -> str:
 
 
 def discover_page_migration_targets(
+        content_root: str,
         comic_folder: str,
         report: PageMigrationReport,
 ) -> list[PageMigrationTarget]:
     targets = []
-    for page_path in sorted(iglob(f"your_content/{comic_folder}comics/*/")):
-        page_path = normalize_filesystem_path(page_path)
+    page_glob = os.path.join(content_root, comic_folder, "comics", "*/")
+    for page_path in sorted(iglob(page_glob)):
+        page_path = normalize_filesystem_path(os.path.normpath(page_path))
         toml_path, legacy_path = content_paths.get_page_info_candidates(page_path)
         toml_path = normalize_filesystem_path(toml_path)
         legacy_path = normalize_filesystem_path(legacy_path)
@@ -130,19 +231,30 @@ def discover_page_migration_targets(
 
 
 def discover_comic_config_migration_targets(
+        content_root: str,
         include_extra_comics: bool,
         main_comic_info: RawConfigParser,
         report: PageMigrationReport,
 ) -> list[ComicConfigMigrationTarget]:
     targets = []
-    toml_path, legacy_path = content_paths.get_main_comic_info_candidates()
-    add_comic_config_migration_target("", legacy_path, toml_path, targets, report)
+    add_comic_config_migration_target(
+        "",
+        os.path.join(content_root, "comic_info.ini"),
+        os.path.join(content_root, "comic_info.toml"),
+        targets,
+        report,
+    )
     if not include_extra_comics:
         return targets
     for extra_comic in get_extra_comics_list(main_comic_info):
         comic_folder = normalize_comic_folder(extra_comic)
-        toml_path, legacy_path = content_paths.get_extra_comic_info_candidates(comic_folder.strip("/"))
-        add_comic_config_migration_target(comic_folder, legacy_path, toml_path, targets, report)
+        add_comic_config_migration_target(
+            comic_folder,
+            os.path.join(content_root, comic_folder, "comic_info.ini"),
+            os.path.join(content_root, comic_folder, "comic_info.toml"),
+            targets,
+            report,
+        )
     return targets
 
 
@@ -168,38 +280,37 @@ def add_comic_config_migration_target(
     targets.append(ComicConfigMigrationTarget(comic_folder, legacy_path, toml_path))
 
 
-def serialize_target(target: PageMigrationTarget, comic_info: RawConfigParser) -> str:
-    page_source = load_legacy_page_source(target.page_path, target.comic_folder, comic_info)
+def serialize_target(
+        target: PageMigrationTarget,
+        comic_info: RawConfigParser,
+        content_root: str | None = None,
+) -> str:
+    page_source = load_legacy_page_source(
+        target.page_path,
+        target.comic_folder,
+        comic_info,
+        content_root=content_root,
+    )
     return serialize_page_source_to_toml(page_source)
 
 
-def write_target(target: PageMigrationTarget, comic_info: RawConfigParser) -> None:
-    toml_text = serialize_target(target, comic_info)
-    with open(target.toml_info_path, "x", encoding="utf-8", newline="\n") as f:
-        f.write(toml_text)
-
-
-def serialize_comic_config_target(target: ComicConfigMigrationTarget) -> str:
+def serialize_comic_config_target(
+        target: ComicConfigMigrationTarget,
+        cms_enablement: CmsEnablementConfig | None = None,
+) -> str:
     comic_info = load_legacy_comic_info(target.legacy_info_path)
-    return serialize_comic_config_to_toml(comic_info)
+    return serialize_comic_config_to_toml(comic_info, cms_enablement)
 
 
-def write_comic_config_target(target: ComicConfigMigrationTarget) -> None:
-    toml_text = serialize_comic_config_target(target)
-    with open(target.toml_info_path, "x", encoding="utf-8", newline="\n") as f:
-        f.write(toml_text)
-
-
-def validate_replacement_toml_files(comic_contexts: list[tuple[str, RawConfigParser]]) -> None:
+def validate_replacement_toml_files(
+        repository_root: str,
+        comic_contexts: list[tuple[str, RawConfigParser]],
+) -> None:
+    content_root = os.path.join(repository_root, "your_content")
     for comic_folder, _comic_info in comic_contexts:
-        comic_toml_path, _legacy_path = (
-            content_paths.get_main_comic_info_candidates()
-            if not comic_folder
-            else content_paths.get_extra_comic_info_candidates(comic_folder.strip("/"))
-        )
+        comic_toml_path = os.path.join(content_root, comic_folder, "comic_info.toml")
         validate_replacement_toml_file(comic_toml_path, load_comic_config_from_toml)
-
-        for page_path in sorted(iglob(f"your_content/{comic_folder}comics/*/")):
+        for page_path in sorted(iglob(os.path.join(content_root, comic_folder, "comics", "*/"))):
             page_toml_path, _legacy_path = content_paths.get_page_info_candidates(page_path)
             validate_replacement_toml_file(page_toml_path, load_page_source_from_toml)
 
@@ -216,25 +327,34 @@ def validate_replacement_toml_file(path: str, loader: Callable[[str], object]) -
         ) from e
 
 
-def delete_legacy_files_for_migrated_comic_configs(comic_folder: str, report: PageMigrationReport) -> None:
-    toml_path, legacy_path = content_paths.get_main_comic_info_candidates() if not comic_folder else (
-        content_paths.get_extra_comic_info_candidates(comic_folder.strip("/"))
-    )
+def delete_legacy_files_for_migrated_comic_configs(
+        repository_root: str,
+        comic_folder: str,
+        report: PageMigrationReport,
+) -> None:
+    content_root = os.path.join(repository_root, "your_content")
+    toml_path = os.path.join(content_root, comic_folder, "comic_info.toml")
+    legacy_path = os.path.join(content_root, comic_folder, "comic_info.ini")
     if os.path.exists(toml_path) and os.path.exists(legacy_path):
         os.remove(legacy_path)
-        report.deleted_legacy_files.append(normalize_filesystem_path(legacy_path))
+        report.deleted_legacy_files.append(repository_relative_path(repository_root, legacy_path))
 
 
-def delete_legacy_files_for_migrated_pages(comic_folder: str, report: PageMigrationReport) -> None:
-    for page_path in sorted(iglob(f"your_content/{comic_folder}comics/*/")):
-        page_path = normalize_filesystem_path(page_path)
+def delete_legacy_files_for_migrated_pages(
+        repository_root: str,
+        comic_folder: str,
+        report: PageMigrationReport,
+) -> None:
+    content_root = os.path.join(repository_root, "your_content")
+    for page_path in sorted(iglob(os.path.join(content_root, comic_folder, "comics", "*/"))):
+        page_path = os.path.normpath(page_path)
         toml_path, _ = content_paths.get_page_info_candidates(page_path)
         if not os.path.exists(toml_path):
             continue
         for legacy_path in get_page_legacy_file_paths(page_path):
             if os.path.exists(legacy_path):
                 os.remove(legacy_path)
-                report.deleted_legacy_files.append(normalize_filesystem_path(legacy_path))
+                report.deleted_legacy_files.append(repository_relative_path(repository_root, legacy_path))
 
 
 def get_page_legacy_file_paths(page_path: str) -> list[str]:
@@ -249,7 +369,7 @@ def get_page_legacy_file_paths(page_path: str) -> list[str]:
             if os.path.basename(transcript_path) == "post.txt":
                 continue
             paths.append(transcript_path)
-    return sorted(set(normalize_filesystem_path(path) for path in paths))
+    return sorted(set(paths))
 
 
 def normalize_filesystem_path(path: str) -> str:

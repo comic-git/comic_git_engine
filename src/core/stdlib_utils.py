@@ -1,3 +1,14 @@
+"""Shared helpers safe to import from the isolated CMS migration runner.
+
+Keep this module's imports limited to the standard library and engine-local
+modules whose complete import graph is compatible with
+``requirements_migration.txt``. The OAuth worker starts the migration runner in
+a minimal environment, so importing rendering or normal-build dependencies here
+would make CMS setup fail before migration logic can run. Put migration-specific
+helpers under ``build.migration``; use this module only for broadly shared,
+migration-safe utilities.
+"""
+
 import html
 import json
 import logging

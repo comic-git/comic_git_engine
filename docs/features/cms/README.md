@@ -59,9 +59,24 @@ The page collection uses `path: "{{slug}}/info"`. With Decap's path-aware
 collision handling, duplicate title slugs create sibling bundles such as
 `same-title-1/info.toml` instead of malformed metadata such as
 `same-title/info-1.toml`. This has been validated against the local Decap fix,
-but production CMS support must remain blocked until the engine can pin an
-upstream release containing that fix or deliberately adopt a maintained fork
-artifact.
+and production output temporarily vendors that reviewed fork runtime. The
+vendored runtime is replaced by an upstream Decap release when it contains the
+required behavior.
+
+## Vendored Decap Runtime
+
+Until an upstream Decap release contains the path-aware collision fix, the
+engine ships the exact browser runtime built from the reviewed
+`comic-git/decap-cms` commit recorded in its manifest. CMS builds copy that
+runtime under `admin/vendor/` and load it locally, so site builds and deployed
+CMS pages do not depend on npm, a CDN, or a running Decap checkout.
+
+The manifest records the source revision, build command, and SHA-256 of every
+runtime asset. It retains JavaScript chunks, WASM files, and the license notice;
+source maps and unused duplicate entry artifacts are intentionally omitted.
+Each replacement gets a new versioned directory so browser caches cannot reuse
+old contents. Tests verify the manifest, copied output, and safe cleanup of
+engine-owned runtime directories while preserving user assets under `admin/`.
 
 ## Future Date and Time Editing
 

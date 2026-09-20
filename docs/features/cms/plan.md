@@ -645,22 +645,18 @@ Exact arbitrary path creation inside Decap would require custom path handling.
   moves, rather than treating the integration branch as another source of
   changes. Keep any integration-only conflict resolution on that disposable
   branch.
-- Prefer blocking production CMS support on upstream releases. If that becomes
-  impractical, the fallback is an explicitly maintained comic_git Decap
-  distribution published under its own package identity and immutable version,
-  with the engine pinned to that exact artifact. Never load a moving fork branch
-  in user sites.
-- Adopting the production fallback requires a separate maintenance decision
-  covering security updates, upstream synchronization, artifact publishing,
-  versioning, and an exit path back to upstream Decap.
+- Prefer upstream Decap releases. While an upstream release lacks a required
+  focused fix, vendor the exact reviewed fork build with the engine as described
+  in [the runtime decision](../../decisions/2026-09-20-vendored-decap-runtime.md).
+  Never load a moving fork branch in user sites.
 
 ### Recommended Decap Work Sequence
 
 1. Await review of the narrow `slug_collision` policy and documentation PRs,
    which include public documentation and identifier-neutral error wording.
 2. Submit the completed path-aware suffix fix for path templates such as
-   `{{slug}}/index` when its upstream PR is ready for review. Keep production
-   pinned until that fix is available from a supported Decap artifact.
+   `{{slug}}/index` when its upstream PR is ready for review. Use the vendored
+   reviewed runtime until an upstream release contains that fix.
 3. Prototype a flat-collection `meta.path` slug control with `index_file: info`.
    Test new-entry derivation and manual override separately from existing-entry
    directory renames, including normalized collisions, two colliding saved

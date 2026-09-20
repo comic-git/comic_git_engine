@@ -31,6 +31,7 @@ Use [`_template.md`](_template.md) to create a new doc. Name files `YYYY-MM-DD-s
 
 - [External data and preview security](2026-10-21-external-data-and-preview-security.md) - Owner-selected webring trust, path containment, local preview, and dependency pins for 1.1.1, `active`
 - [SFTP directory ownership and publication](2026-10-18-sftp-directory-ownership.md) - Password-first setup, default cleanup, and hidden-path policy owned by build output handling, `active`
+- [Vendor the temporary Decap CMS runtime](2026-09-20-vendored-decap-runtime.md) - Ship a reviewed, manifest-verified Decap fork build with the engine until upstream provides the required behavior, `active`
 - [CMS settings UX governs the comic configuration schema](2026-09-06-cms-settings-ux-governs-config-schema.md) - Use one settings file and let the CMS editing experience govern the provisional TOML layout, `active`
 - [CMS uses an all-page safety gate and runtime-only local backend](2026-09-05-cms-safety-gate-and-local-backend.md) - Refuse lossy page editing and keep Decap's proxy mode out of deployable configuration, `active`
 - [Shared archive and social thumbnails](2026-09-05-shared-archive-and-social-thumbnails.md) - Generate one reusable thumbnail per page or image, defaulting to 100 pixels wide, `active`

@@ -124,8 +124,8 @@ python comic_git_engine\src\scripts\dev_server.py --cms-local-backend
 `dev_server.py` starts `npx decap-server` for the local backend and stops its
 process tree when the development server exits.
 
-To test a locally built Decap checkout instead of the engine's pinned CDN
-bundle, pass the checkout root. This option also enables the local backend:
+To test a locally built Decap checkout instead of the engine's vendored
+runtime, pass the checkout root. This option also enables the local backend:
 
 ```powershell
 python comic_git_engine\src\scripts\dev_server.py --decap-cms-repo ..\decap-cms

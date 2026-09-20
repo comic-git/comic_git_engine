@@ -1,3 +1,5 @@
+import hashlib
+import json
 import os
 import tempfile
 from configparser import RawConfigParser
@@ -11,8 +13,10 @@ from build.content.comic_config_sources import (
     STRING_OPTIONS,
 )
 from build.output.cms import (
-    DECAP_CMS_URL,
     DECAP_CMS_VERSION,
+    DECAP_CMS_RUNTIME_PATH,
+    DECAP_CMS_RUNTIME_ROOT,
+    DECAP_CMS_SCRIPT_PATH,
     GENERATED_FILE_MARKER,
     CmsCollection,
     CmsReadinessError,
@@ -28,17 +32,39 @@ from build.output.cms import (
 
 
 class TestRenderAdminIndex(TestCase):
-    def test_renders_minimal_marked_noindex_page_with_exact_decap_pin(self):
+    def test_renders_minimal_marked_noindex_page_with_vendored_decap_runtime(self):
         html = render_admin_index()
 
         self.assertIn(f"<!-- {GENERATED_FILE_MARKER} -->", html)
         self.assertIn('<meta name="robots" content="noindex, nofollow">', html)
-        self.assertIn(f'<script src="{DECAP_CMS_URL}"></script>', html)
-        self.assertIn(f"decap-cms@{DECAP_CMS_VERSION}/", html)
+        self.assertIn(f'<script src="{DECAP_CMS_SCRIPT_PATH}"></script>', html)
+        self.assertIn(f"decap-cms-{DECAP_CMS_VERSION}-comic-git-", DECAP_CMS_RUNTIME_PATH)
         self.assertIn('p[class*="-ControlHint"] a[href^="https://comic-git.gitbook.io/documentation/"]', html)
         self.assertIn("font-size: 0.875rem !important", html)
-        self.assertNotIn("decap-cms@^", html)
+        self.assertNotIn("https://unpkg.com/decap-cms", html)
         self.assertNotIn("{{ decap_cms_url }}", html)
+
+
+class TestVendoredDecapRuntime(TestCase):
+    def test_manifest_covers_every_runtime_asset_with_sha256(self):
+        manifest_path = DECAP_CMS_RUNTIME_ROOT / "comic_git_engine_manifest.json"
+        with manifest_path.open(encoding="ascii") as f:
+            manifest = json.load(f)
+
+        self.assertEqual("comic_git_engine_decap_runtime", manifest["asset_kind"])
+        manifest_files = {entry["name"]: entry["sha256"] for entry in manifest["files"]}
+        runtime_files = {
+            path.name
+            for path in DECAP_CMS_RUNTIME_ROOT.iterdir()
+            if path.name != manifest_path.name
+        }
+        self.assertEqual(runtime_files, set(manifest_files))
+        self.assertFalse(any(name.endswith(".map") for name in runtime_files))
+
+        for name, expected_hash in manifest_files.items():
+            with self.subTest(name=name):
+                actual_hash = hashlib.sha256((DECAP_CMS_RUNTIME_ROOT / name).read_bytes()).hexdigest()
+                self.assertEqual(expected_hash, actual_hash)
 
 
 class TestAdminConfig(TestCase):
@@ -304,6 +330,9 @@ class TestWriteCmsAdmin(TestCase):
             self.assertIn(GENERATED_FILE_MARKER, f.read())
         with open(unrelated_path, encoding="utf-8") as f:
             self.assertEqual("custom", f.read())
+        runtime_dir = os.path.join(admin_dir, DECAP_CMS_RUNTIME_PATH)
+        self.assertTrue(os.path.isfile(os.path.join(runtime_dir, "decap-cms.js")))
+        self.assertTrue(os.path.isfile(os.path.join(runtime_dir, "comic_git_engine_manifest.json")))
         self.assertIn(index_path, "\n".join(logs.output))
 
     def test_validation_failure_writes_nothing(self):
@@ -349,16 +378,25 @@ class TestWriteCmsAdmin(TestCase):
         os.makedirs(admin_dir)
         generated_path = os.path.join(admin_dir, "config.yml")
         user_path = os.path.join(admin_dir, "custom.css")
+        runtime_dir = os.path.join(admin_dir, DECAP_CMS_RUNTIME_PATH)
         with open(generated_path, "w", encoding="utf-8") as f:
             f.write(f"# {GENERATED_FILE_MARKER}\n")
         with open(user_path, "w", encoding="utf-8") as f:
             f.write("custom")
+        os.makedirs(runtime_dir)
+        with open(
+            os.path.join(runtime_dir, "comic_git_engine_manifest.json"),
+            "w",
+            encoding="utf-8",
+        ) as f:
+            f.write('{"asset_kind": "comic_git_engine_decap_runtime"}\n')
 
         self.run_from_host_root(
             lambda: write_cms_admin(CmsSettings(enabled=False), [], "")
         )
 
         self.assertFalse(os.path.exists(generated_path))
+        self.assertFalse(os.path.exists(runtime_dir))
         self.assertTrue(os.path.isfile(user_path))
 
 

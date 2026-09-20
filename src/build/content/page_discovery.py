@@ -24,8 +24,9 @@ from build.content.page_models import (
 )
 from build.content.page_sources import PageSource, iso_date_to_legacy, post_date_to_datetime
 from build.content.site_config import get_image_title_fallback
-from build.content.transcripts import render_transcript_sources, sort_transcript_languages
-from core import utils
+from build.content.transcript_sources import sort_transcript_languages
+from build.content.transcripts import render_transcript_sources
+from core import stdlib_utils
 from integrations.hooks import run_hook
 
 logger = logging.getLogger(__name__)
@@ -152,7 +153,7 @@ def build_discovered_page(
         comic_info.get("Comic Settings", "Date format"),
         tz_info,
     )
-    base_dir = utils.BASE_DIRECTORY.rstrip("/")
+    base_dir = stdlib_utils.BASE_DIRECTORY.rstrip("/")
     page_url = f"{base_dir}/{comic_folder}comic/{page_name}/"
     return ComicPage(
         id=build_page_id(comic_folder, page_name),

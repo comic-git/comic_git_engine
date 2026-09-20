@@ -4,8 +4,8 @@ from typing import Any, List
 
 from build.content.loaders import load_extra_comic_info as load_extra_comic_info_with_precedence
 from build.content.page_models import ArchiveEntryMode, ImageTitleFallback
-from core import utils
-from core.utils import web_path
+from core import stdlib_utils
+from core.stdlib_utils import web_path
 
 
 def get_links_list(comic_info: RawConfigParser) -> list[dict[str, Any]]:
@@ -45,7 +45,7 @@ def is_page_configured(comic_info: RawConfigParser, template_name: str) -> bool:
 
 
 def get_extra_comics_list(comic_info: RawConfigParser) -> List[str]:
-    return utils.str_to_list(comic_info.get("Comic Settings", "Extra comics", fallback=""))
+    return stdlib_utils.str_to_list(comic_info.get("Comic Settings", "Extra comics", fallback=""))
 
 
 def get_extra_comic_info(folder_name: str, comic_info: RawConfigParser):

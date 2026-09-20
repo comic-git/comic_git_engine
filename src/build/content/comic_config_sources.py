@@ -5,7 +5,7 @@ from configparser import RawConfigParser
 from dataclasses import dataclass
 from typing import Any
 
-from core import utils
+from core.stdlib_utils import str_to_list
 
 
 STRING_OPTIONS = {
@@ -339,7 +339,7 @@ def write_legacy_list_options(
     for (table_name, key), (section, option) in LIST_OPTIONS.items():
         if not comic_info.has_option(section, option):
             continue
-        ensure_toml_table(data, table_name)[key] = utils.str_to_list(comic_info.get(section, option))
+        ensure_toml_table(data, table_name)[key] = str_to_list(comic_info.get(section, option))
         handled_options.add((section, option))
 
 

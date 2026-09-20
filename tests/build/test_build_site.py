@@ -28,9 +28,9 @@ def get_mock_dict(mocks):
 @patch(MUT + "get_extra_comics_list", return_value=[])
 @patch(MUT + "setup_output_file_space")
 @patch(MUT + "run_hook", return_value=None)
-@patch(MUT + "utils.get_comic_url", return_value=(COMIC_URL, "/comic_git_dev"))
+@patch(MUT + "stdlib_utils.get_comic_url", return_value=(COMIC_URL, "/comic_git_dev"))
 @patch(MUT + "load_main_comic_info")
-@patch(MUT + "utils.find_project_root")
+@patch(MUT + "stdlib_utils.find_project_root")
 @patch(MUT + "add_inputs_to_env_vars")
 class TestMain(TestCase):
 

@@ -17,7 +17,7 @@ from pytz import InvalidTimeError, timezone
 from build.content.page_models import ComicImage, ComicPage
 from build.content.page_sources import parse_iso_post_date, post_date_to_datetime
 from core.models import ComicBuildResult
-from core.utils import get_comic_url, get_output_dir
+from core.stdlib_utils import get_comic_url, get_output_dir
 
 DEFAULT_RSS_LANGUAGE = "en-us"
 DEFAULT_RSS_IMAGE = "your_content/images/banner.png"

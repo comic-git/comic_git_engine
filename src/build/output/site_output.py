@@ -6,7 +6,7 @@ from configparser import RawConfigParser
 from build.content.loaders import load_main_comic_info
 from build.content.site_config import get_extra_comics_list, get_pages_list
 from build.output.cms import GENERATED_FILE_MARKER
-from core.utils import get_output_dir
+from core.stdlib_utils import get_output_dir
 
 logger = logging.getLogger(__name__)
 

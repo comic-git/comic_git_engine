@@ -174,6 +174,20 @@ class TestTomlMigration(TestCase):
                 [migration_file["path"] for migration_file in response["files"]],
             )
 
+    def test_runner_reports_invalid_input_with_a_safe_structured_failure(self):
+        stderr = io.StringIO()
+
+        with patch("sys.stdin", io.StringIO("{}")), patch("sys.stderr", stderr):
+            self.assertEqual(2, runner.main())
+
+        self.assertEqual(
+            {
+                "protocol_version": runner.PROTOCOL_VERSION,
+                "failure_code": "request_invalid",
+            },
+            json.loads(stderr.getvalue()),
+        )
+
     def test_migration_contract_declares_the_runner_protocol(self):
         contract_path = Path(__file__).resolve().parents[3] / "cms_migration_contract.json"
         with open(contract_path, encoding="utf-8") as f:

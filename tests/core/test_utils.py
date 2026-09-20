@@ -7,7 +7,7 @@ from unittest.mock import patch, mock_open, call
 from jinja2 import StrictUndefined
 
 from build.content.page_models import ComicImage, ComicPage
-from core import utils
+from core import stdlib_utils, utils
 
 
 MUT = "core.utils."
@@ -173,7 +173,7 @@ class TestGetSocialMediaData(TestCase):
         }
 
     def setUp(self):
-        utils.social_media_data_by_comic = {}
+        stdlib_utils.social_media_data_by_comic = {}
 
     def test_default_data(self):
         """Test that a template not defined in the default data uses the 'base' fallback."""

@@ -20,8 +20,10 @@ from build import build_site
 from build.content.loaders import load_main_comic_info
 from build.output.cms import DECAP_CMS_URL
 from build.output.site_output import delete_output_file_space
-from core import utils
+from core import stdlib_utils
 from core.logging_config import configure_logging
+
+utils = stdlib_utils
 
 logger = logging.getLogger(__name__)
 configure_logging()
@@ -226,7 +228,7 @@ def start_http_server(subdirectory: str):
 def main():
     global HTTP_ROOT, PREVIEW_SUBDIRECTORY, PROJECT_ROOT
 
-    utils.find_project_root()
+    stdlib_utils.find_project_root()
     PROJECT_ROOT = os.getcwd()
 
     # Get build args
@@ -242,9 +244,9 @@ def main():
 
     # Set HTTP_ROOT
     comic_info = load_main_comic_info()
-    _comic_url, subdirectory = utils.get_comic_url(comic_info)
+    _comic_url, subdirectory = stdlib_utils.get_comic_url(comic_info)
     PREVIEW_SUBDIRECTORY = subdirectory
-    output_dir = utils.get_output_dir()
+    output_dir = stdlib_utils.get_output_dir()
     if args.decap_cms_repo is not None and not output_dir:
         raise ValueError(
             "--decap-cms-repo requires a generated output directory so local bundle assets "

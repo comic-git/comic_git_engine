@@ -46,7 +46,7 @@ class TestPageMetadata(TestCase):
         )
 
     def test_build_metadata_uses_versioned_resolved_shape(self):
-        with patch("build.content.page_metadata.utils.BASE_DIRECTORY", "/base"):
+        with patch("build.content.page_metadata.stdlib_utils.BASE_DIRECTORY", "/base"):
             data = page_metadata.build_page_metadata(
                 "extras/story/",
                 self.make_config(),

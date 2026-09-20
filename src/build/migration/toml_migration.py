@@ -17,7 +17,7 @@ from build.content.page_sources import (
     load_page_source_from_toml,
     serialize_page_source_to_toml,
 )
-from build.content.site_config import get_extra_comics_list
+from core.stdlib_utils import str_to_list
 
 
 @dataclass(frozen=True)
@@ -194,7 +194,7 @@ def load_comic_contexts(
     contexts = [("", main_comic_info)]
     if not include_extra_comics:
         return contexts
-    for extra_comic in get_extra_comics_list(main_comic_info):
+    for extra_comic in get_extra_comic_folders(main_comic_info):
         comic_folder = normalize_comic_folder(extra_comic)
         extra_legacy_path = os.path.join(content_root, comic_folder, "comic_info.ini")
         contexts.append((comic_folder, load_legacy_extra_comic_info(extra_legacy_path, main_comic_info)))
@@ -206,6 +206,11 @@ def normalize_comic_folder(comic_folder: str) -> str:
     if not stripped:
         return ""
     return stripped + "/"
+
+
+def get_extra_comic_folders(comic_info: RawConfigParser) -> list[str]:
+    """Read extra-comic folders without importing the full site configuration graph."""
+    return str_to_list(comic_info.get("Comic Settings", "Extra comics", fallback=""))
 
 
 def discover_page_migration_targets(
@@ -246,7 +251,7 @@ def discover_comic_config_migration_targets(
     )
     if not include_extra_comics:
         return targets
-    for extra_comic in get_extra_comics_list(main_comic_info):
+    for extra_comic in get_extra_comic_folders(main_comic_info):
         comic_folder = normalize_comic_folder(extra_comic)
         add_comic_config_migration_target(
             comic_folder,

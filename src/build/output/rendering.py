@@ -6,7 +6,7 @@ from configparser import RawConfigParser
 from build.content.comic_data import page_to_template_context
 from build.content.page_models import ComicPage
 from build.content.site_config import get_pages_list, is_page_configured
-from core import utils
+from core import rendering_utils, stdlib_utils
 from integrations.hooks import run_hook
 
 logger = logging.getLogger(__name__)
@@ -38,22 +38,22 @@ def write_html_files(
         if comic_folder:
             template_folders.insert(0, f"your_content/themes/{theme}/templates/{comic_folder}")
     logger.debug("Template folders: %s", template_folders)
-    utils.build_jinja_environment(comic_info, template_folders)
-    utils.build_markdown_parser(comic_info)
+    rendering_utils.build_jinja_environment(comic_info, template_folders)
+    rendering_utils.build_markdown_parser(comic_info)
     logger.info("Writing %s comic pages", len(pages))
     for page in pages:
         html_path = f"{comic_folder}comic/{page.page_name}/index.html"
         context = page_to_template_context(page)
         context.update(global_values)
         context["tagged_pages_enabled"] = tagged_pages_enabled
-        context["social_media"] = utils.get_social_media_data(
+        context["social_media"] = stdlib_utils.get_social_media_data(
             comic_info,
             context,
             "comic",
             html_path,
             custom_social_media_data=page.social_media_source or None,
         )
-        utils.write_to_template("comic", html_path, context)
+        rendering_utils.write_to_template("comic", html_path, context)
     write_other_pages(comic_folder, comic_info, pages, global_values)
     run_hook(global_values["theme"], "build_other_pages", [comic_folder, comic_info, pages])
 
@@ -87,13 +87,13 @@ def write_other_pages(
         context = base_context.copy()
         if page_config["title"]:
             context["_title"] = page_config["title"]
-        context["social_media"] = utils.get_social_media_data(
+        context["social_media"] = stdlib_utils.get_social_media_data(
             comic_info,
             context,
             template_name,
             html_path,
         )
-        utils.write_to_template(template_name, html_path, context)
+        rendering_utils.write_to_template(template_name, html_path, context)
 
 
 def write_tagged_pages(
@@ -117,13 +117,13 @@ def write_tagged_pages(
             "tagged_pages": tagged_pages,
         })
         filename = f"tagged/{tag}/index.html"
-        context["social_media"] = utils.get_social_media_data(
+        context["social_media"] = stdlib_utils.get_social_media_data(
             comic_info,
             context,
             "tagged",
             filename,
         )
         try:
-            utils.write_to_template("tagged", filename, context)
+            rendering_utils.write_to_template("tagged", filename, context)
         except Exception:
             logger.exception("Failed to create '%s' from 'tagged' template", filename)

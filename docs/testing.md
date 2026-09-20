@@ -18,14 +18,21 @@ Install the aggregate development requirements before running the full suite:
 ```
 
 The CMS migration runner has a deliberately smaller dependency contract than a
-normal site build. Set up its dedicated test environment before validating that
-contract:
+normal site build. Its worker-facing process may import only the standard
+library and packages declared by both `requirements_migration.txt` and
+[`cms_migration_contract.json`](../cms_migration_contract.json). Set up its
+dedicated test environment before validating that contract:
 
 ```powershell
 python -m venv venv_migration
 .\venv_migration\Scripts\python.exe -m pip install -r requirements_migration.txt
 .\venv_migration\Scripts\python.exe -m unittest tests.build.migration.test_runner_contract
 ```
+
+Run this isolated test whenever changing the migration runner, any module it
+imports, `requirements_migration.txt`, or the migration contract. Do not install
+the normal build requirements into `venv_migration`; doing so would mask an
+undeclared dependency. The ignored environment can be reused after setup.
 
 Install Playwright's Chromium browser before running browser tests:
 
@@ -137,6 +144,8 @@ Use automated end-to-end tests in `e2e_tests` (usually at `../e2e_tests`) when:
 
 Do not add an end-to-end case by default. First ask whether the behavior can be covered with focused unit tests in this repo. Every new end-to-end test should have a clear reason why unit tests alone are insufficient, and the underlying engine logic should still get unit coverage where practical.
 
+The migration runner contract test is an exception to the usual in-process unit-test pattern: it starts the real runner in a separate Python process with its minimal declared environment. Keep it in this repository because it verifies the engine's public runner contract, not host-repo behavior.
+
 Because `e2e_tests` is a separate repo, usually located next to this repo at `../e2e_tests`, do not modify it unless the current task explicitly asks for cross-repo test updates or the user confirms that e2e harness changes are in scope.
 
 Before finishing a behavioral engine change, explicitly report one of:
@@ -189,7 +198,8 @@ Put tests in [`tests/`](../tests/) and name files `test_<module>.py`.
 
 Mirror the runtime module name rather than adding behavior to a generic catch-all file. Examples from this repo:
 
-- [`src/core/utils.py`](../src/core/utils.py) -> [`tests/core/test_utils.py`](../tests/core/test_utils.py)
+- [`src/core/stdlib_utils.py`](../src/core/stdlib_utils.py) -> [`tests/core/test_utils.py`](../tests/core/test_utils.py)
+- [`src/core/rendering_utils.py`](../src/core/rendering_utils.py) -> [`tests/core/test_utils.py`](../tests/core/test_utils.py)
 - [`src/integrations/rss.py`](../src/integrations/rss.py) -> [`tests/integrations/test_rss.py`](../tests/integrations/test_rss.py)
 - [`src/build/output/site_output.py`](../src/build/output/site_output.py) -> [`tests/build/output/test_site_output.py`](../tests/build/output/test_site_output.py)
 
@@ -251,7 +261,7 @@ Patch where the code looks up the symbol, not where the symbol was originally de
 
 - patch `build.build_site.load_main_comic_info` when testing [`build.build_site`](../src/build/build_site.py)
 - patch `build.output.site_output.shutil.copytree` when testing [`build.output.site_output`](../src/build/output/site_output.py)
-- patch `core.utils.os.environ` or use `patch.dict(os.environ, ...)` when testing environment-sensitive helpers in [`core.utils`](../src/core/utils.py)
+- patch `core.stdlib_utils.os.environ` or use `patch.dict(os.environ, ...)` when testing environment-sensitive helpers in [`core.stdlib_utils`](../src/core/stdlib_utils.py)
 
 If you patch the wrong import path, the real dependency will still run.
 

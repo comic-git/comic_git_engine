@@ -6,7 +6,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from build.migration.toml_migration import PageMigrationReport, run_page_migration
-from core import utils
+from core import stdlib_utils
 from core.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     configure_logging()
     args = parse_args(argv)
-    utils.find_project_root()
+    stdlib_utils.find_project_root()
     report = run_page_migration(
         write=args.write,
         include_extra_comics=not args.main_only,

@@ -70,9 +70,9 @@ class TestBuildAndPublishComicPages(TestCase):
 
         with (
             patch.multiple(site_builder, **mocks_to_create) as mocks,
-            patch.object(site_builder.utils, "BASE_DIRECTORY", "/base"),
-            patch.object(site_builder.utils, "web_path", side_effect=lambda value: value),
-            patch.object(site_builder.utils, "checkpoint"),
+            patch.object(site_builder.stdlib_utils, "BASE_DIRECTORY", "/base"),
+            patch.object(site_builder.stdlib_utils, "web_path", side_effect=lambda value: value),
+            patch.object(site_builder.stdlib_utils, "checkpoint"),
         ):
             mocks["discover_pages"].return_value = (discovered_pages, 2)
             mocks["build_comic_pages"].return_value = built_pages

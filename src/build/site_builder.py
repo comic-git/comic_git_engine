@@ -6,7 +6,7 @@ from typing import Optional
 
 from markdown2 import Markdown
 
-from core import utils
+from core import stdlib_utils
 from build.content.comic_data import build_comic_pages
 from build.content.page_discovery import discover_pages
 from build.content.page_metadata import save_page_metadata
@@ -124,13 +124,13 @@ def build_and_publish_comic_pages(
         comic_folder, comic_info, delete_scheduled_posts, publish_all_comics
     )
     logger.debug("Page build order for '%s': %s", comic_folder, [page.page_name for page in pages])
-    utils.checkpoint(f"Get info for all pages in '{comic_folder}'")
+    stdlib_utils.checkpoint(f"Get info for all pages in '{comic_folder}'")
 
     pages = build_comic_pages(comic_folder, comic_info, pages)
-    utils.checkpoint(f"Enrich comic pages for '{comic_folder}'")
+    stdlib_utils.checkpoint(f"Enrich comic pages for '{comic_folder}'")
 
     process_comic_images(comic_info, pages)
-    utils.checkpoint(f"Process comic images in '{comic_folder}'")
+    stdlib_utils.checkpoint(f"Process comic images in '{comic_folder}'")
 
     save_page_metadata(
         comic_folder,
@@ -139,25 +139,25 @@ def build_and_publish_comic_pages(
         scheduled_post_count,
         VERSION,
     )
-    utils.checkpoint(f"Save page_info_list.json file in '{comic_folder}'")
+    stdlib_utils.checkpoint(f"Save page_info_list.json file in '{comic_folder}'")
 
     home_page_text = load_home_page_text(comic_folder)
 
-    comic_base_dir = f"{utils.BASE_DIRECTORY}/{comic_folder}".rstrip("/")
-    content_base_dir = f"{utils.BASE_DIRECTORY}/your_content/{comic_folder}".rstrip("/")
+    comic_base_dir = f"{stdlib_utils.BASE_DIRECTORY}/{comic_folder}".rstrip("/")
+    content_base_dir = f"{stdlib_utils.BASE_DIRECTORY}/your_content/{comic_folder}".rstrip("/")
     global_values = {
         "autogenerate_warning": AUTOGENERATE_WARNING,
         "version": VERSION,
         "comic_title": comic_info.get("Comic Info", "Comic name"),
         "comic_author": comic_info.get("Comic Info", "Author"),
         "comic_description": comic_info.get("Comic Info", "Description"),
-        "banner_image": utils.web_path(
+        "banner_image": stdlib_utils.web_path(
             comic_info.get("Comic Settings", "Banner image", fallback="/your_content/images/banner.png")
         ),
         "theme": comic_info.get("Comic Settings", "Theme", fallback="default"),
         "comic_url": comic_url,
         "comic_folder": comic_folder,
-        "base_dir": utils.BASE_DIRECTORY,
+        "base_dir": stdlib_utils.BASE_DIRECTORY,
         "comic_base_dir": comic_base_dir,
         "content_base_dir": content_base_dir,
         "links": get_links_list(comic_info),
@@ -184,8 +184,8 @@ def build_and_publish_comic_pages(
     )
     if extra_global_variables:
         global_values.update(extra_global_variables)
-    utils.checkpoint(f"Run hook for extra global values in '{comic_folder}'")
+    stdlib_utils.checkpoint(f"Run hook for extra global values in '{comic_folder}'")
 
     write_html_files(comic_folder, comic_info, pages, global_values)
-    utils.checkpoint(f"Write HTML files for '{comic_folder}'")
+    stdlib_utils.checkpoint(f"Write HTML files for '{comic_folder}'")
     return pages, global_values

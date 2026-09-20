@@ -10,7 +10,7 @@ from build.content.page_sources import (
     load_legacy_page_source,
     load_page_source_from_toml,
 )
-from core import utils
+from core.stdlib_utils import read_info
 
 
 NOT_FOUND = object()
@@ -80,7 +80,7 @@ def load_page_source(
 
 
 def load_legacy_comic_info(path: str) -> RawConfigParser:
-    return utils.read_info(path)
+    return read_info(path)
 
 
 def load_legacy_extra_comic_info(path: str, comic_info: RawConfigParser) -> RawConfigParser:

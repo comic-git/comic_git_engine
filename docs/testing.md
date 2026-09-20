@@ -17,6 +17,16 @@ Install the aggregate development requirements before running the full suite:
 .\venv\Scripts\python.exe -m pip install -r requirements_dev.txt
 ```
 
+The CMS migration runner has a deliberately smaller dependency contract than a
+normal site build. Set up its dedicated test environment before validating that
+contract:
+
+```powershell
+python -m venv venv_migration
+.\venv_migration\Scripts\python.exe -m pip install -r requirements_migration.txt
+.\venv_migration\Scripts\python.exe -m unittest tests.build.migration.test_runner_contract
+```
+
 Install Playwright's Chromium browser before running browser tests:
 
 ```powershell
@@ -60,6 +70,7 @@ tests/
       test_site_config.py      - config parsing and extra-comic config merging
       test_transcripts.py      - transcript loading and ordering
     migration/
+      test_runner_contract.py  - runner dependency-boundary integration test
       test_toml_migration.py   - deterministic legacy-to-TOML conversion
     output/
       test_cms.py              - CMS settings, readiness, generated admin config, and safe output behavior

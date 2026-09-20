@@ -20,10 +20,25 @@ def main() -> int:
         )
         json.dump(plan_to_data(plan), sys.stdout)
         sys.stdout.write("\n")
-    except (TypeError, ValueError, json.JSONDecodeError) as error:
-        print(f"CMS migration runner rejected input: {error}", file=sys.stderr)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        write_failure("request_invalid")
         return 2
+    except Exception:
+        write_failure("internal_error")
+        return 1
     return 0
+
+
+def write_failure(failure_code: str) -> None:
+    """Emit the fixed, non-sensitive error protocol consumed by the OAuth worker."""
+    json.dump(
+        {
+            "protocol_version": PROTOCOL_VERSION,
+            "failure_code": failure_code,
+        },
+        sys.stderr,
+    )
+    sys.stderr.write("\n")
 
 
 def parse_cms_enablement(value: object) -> CmsEnablementConfig:

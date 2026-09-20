@@ -4,7 +4,7 @@ from configparser import RawConfigParser
 from typing import Any
 
 from build.content.page_models import ComicImage, ComicPage, normalize_comic_id, normalize_web_path
-from core import utils
+from core import stdlib_utils
 
 
 SCHEMA_VERSION = 1
@@ -68,7 +68,7 @@ def public_extra(extra: dict[str, Any]) -> dict[str, Any]:
 def site_url(path: str | None) -> str | None:
     if path is None:
         return None
-    base = utils.BASE_DIRECTORY.rstrip("/")
+    base = stdlib_utils.BASE_DIRECTORY.rstrip("/")
     return f"{base}/{normalize_web_path(path)}"
 
 
@@ -86,7 +86,7 @@ def save_page_metadata(
         scheduled_post_count,
         engine_version,
     )
-    output_dir = utils.get_output_dir()
+    output_dir = stdlib_utils.get_output_dir()
     target_dir = os.path.join(output_dir, f"{comic_folder}comic")
     os.makedirs(target_dir, exist_ok=True)
     path = os.path.join(target_dir, "page_info_list.json")

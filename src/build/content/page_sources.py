@@ -8,8 +8,9 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
-from build.content import content_paths, transcripts
-from core import utils
+from build.content import content_paths
+from build.content.transcript_sources import load_transcript_source_texts
+from core.stdlib_utils import str_to_list
 
 
 @dataclass(slots=True)
@@ -103,9 +104,9 @@ def load_legacy_page_source(
         screen_reader_text=page_info.get("Screen reader text"),
         thumbnail=page_info.get("Thumbnail"),
         storyline=page_info.get("Storyline", ""),
-        characters=utils.str_to_list(page_info.get("Characters", "")),
-        tags=utils.str_to_list(page_info.get("Tags", "")),
-        transcripts=transcripts.load_transcript_source_texts(
+        characters=str_to_list(page_info.get("Characters", "")),
+        tags=str_to_list(page_info.get("Tags", "")),
+        transcripts=load_transcript_source_texts(
             comic_folder,
             comic_info,
             page_id,
@@ -257,7 +258,7 @@ def page_image_source_to_toml_data(image: PageImageSource) -> OrderedDict[str, s
 def extract_legacy_page_images(page_path: str, page_info: dict[str, str]) -> list[PageImageSource]:
     filenames = page_info.get("Filenames") or page_info.get("Filename", "")
     if filenames:
-        return [PageImageSource(filename) for filename in utils.str_to_list(filenames)]
+        return [PageImageSource(filename) for filename in str_to_list(filenames)]
     image_files = []
     for filename in os.listdir(page_path):
         if filename.startswith("_"):

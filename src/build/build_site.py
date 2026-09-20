@@ -15,10 +15,10 @@ from build.output.site_output import (
     setup_output_file_space, validate_hidden_path_policy,
 )
 from build.output.sftp import SftpConfig, validate_deployment_directory, write_deployment_files
-from core import utils
+from core import stdlib_utils
 from core.logging_config import configure_logging
 from core.models import ComicBuildResult
-from core.utils import checkpoint, print_processing_times
+from core.stdlib_utils import checkpoint, print_processing_times
 from integrations.hooks import run_hook
 from integrations.rss import build_rss_feed_from_job, get_rss_feed_jobs
 
@@ -33,11 +33,11 @@ def add_inputs_to_env_vars(inputs: str):
     The strings must match the format `KEY:VALUE`, with each pair on a separate line.
     Leading and trailing spaces are stripped from both the KEY and VALUE.
     """
-    for input_pair in utils.str_to_list(os.getenv(inputs, ""), "\n"):
+    for input_pair in stdlib_utils.str_to_list(os.getenv(inputs, ""), "\n"):
         if not input_pair:
             continue
         try:
-            k, v = utils.str_to_list(input_pair, ":", 1)
+            k, v = stdlib_utils.str_to_list(input_pair, ":", 1)
         except ValueError:
             logger.warning("Invalid key-value pair for input: %r", input_pair)
         else:
@@ -59,17 +59,17 @@ def main(
     add_inputs_to_env_vars("SECRETS")
 
     # Get site-wide settings for this comic
-    utils.find_project_root()
+    stdlib_utils.find_project_root()
     sftp_config = None
     if sftp_deploy_dir is not None:
         sftp_config = SftpConfig.from_environment(os.environ)
-        validate_deployment_directory(utils.get_output_dir(), sftp_deploy_dir)
+        validate_deployment_directory(stdlib_utils.get_output_dir(), sftp_deploy_dir)
         if hidden_paths is None:
             hidden_paths = ""
     if hidden_paths is not None:
-        validate_hidden_path_policy(utils.get_output_dir(), hidden_paths)
+        validate_hidden_path_policy(stdlib_utils.get_output_dir(), hidden_paths)
     comic_info = load_main_comic_info()
-    comic_url, utils.BASE_DIRECTORY = utils.get_comic_url(comic_info)
+    comic_url, stdlib_utils.BASE_DIRECTORY = stdlib_utils.get_comic_url(comic_info)
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
 
     checkpoint("Get comic settings")
@@ -88,7 +88,7 @@ def main(
     for extra_comic in get_extra_comics_list(comic_info):
         logger.info("Building Extra Comic: %s", extra_comic)
         extra_comic_info = get_extra_comic_info(extra_comic, comic_info)
-        extra_comic_output_dir = os.path.join(utils.get_output_dir(), extra_comic)
+        extra_comic_output_dir = os.path.join(stdlib_utils.get_output_dir(), extra_comic)
         if extra_comic_output_dir:
             os.makedirs(extra_comic_output_dir, exist_ok=True)
         pages, extra_global_values = build_and_publish_comic_pages(
@@ -123,7 +123,7 @@ def main(
         build_rss_feed_from_job(feed_job)
     checkpoint("Build RSS feed")
 
-    output_dir = utils.get_output_dir()
+    output_dir = stdlib_utils.get_output_dir()
     if output_dir:
         copy_output_assets(output_dir)
         checkpoint("Copy extra files to output directory")

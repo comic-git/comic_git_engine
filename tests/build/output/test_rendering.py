@@ -67,8 +67,8 @@ class TestRendering(TestCase):
             post_html="",
         )
 
-    @patch(MUT + "utils.write_to_template")
-    @patch(MUT + "utils.get_social_media_data", side_effect=lambda *_args, **_kwargs: {"path": _args[3]})
+    @patch(MUT + "rendering_utils.write_to_template")
+    @patch(MUT + "stdlib_utils.get_social_media_data", side_effect=lambda *_args, **_kwargs: {"path": _args[3]})
     @patch(MUT + "get_pages_list", return_value=[
         {"template_name": "index", "title": ""},
         {"template_name": "latest", "title": "Latest Page"},
@@ -98,8 +98,8 @@ class TestRendering(TestCase):
         self.assertEqual("Page 001", index_context["_title"])
         self.assertEqual("Latest Page", mock_write_to_template.call_args_list[1].args[2]["_title"])
 
-    @patch(MUT + "utils.write_to_template")
-    @patch(MUT + "utils.get_social_media_data", return_value={"x": 1})
+    @patch(MUT + "rendering_utils.write_to_template")
+    @patch(MUT + "stdlib_utils.get_social_media_data", return_value={"x": 1})
     @patch(MUT + "get_pages_list", return_value=[
         {"template_name": "latest", "title": ""},
         {"template_name": "index", "title": ""},
@@ -120,7 +120,7 @@ class TestRendering(TestCase):
         self.assertEqual(1, mock_write_to_template.call_count)
         self.assertEqual("Index", mock_write_to_template.call_args.args[2]["_title"])
 
-    @patch(MUT + "utils.write_to_template")
+    @patch(MUT + "rendering_utils.write_to_template")
     @patch(MUT + "get_pages_list", return_value=[
         {"template_name": "TaGgEd", "title": "Tagged Posts"},
     ])
@@ -143,8 +143,8 @@ class TestRendering(TestCase):
         mock_write_tagged_pages.assert_called_once()
         mock_write_to_template.assert_not_called()
 
-    @patch(MUT + "utils.write_to_template")
-    @patch(MUT + "utils.get_social_media_data", return_value={"x": 1})
+    @patch(MUT + "rendering_utils.write_to_template")
+    @patch(MUT + "stdlib_utils.get_social_media_data", return_value={"x": 1})
     def test_write_tagged_pages_groups_structured_page_tags(self, _mock_social, mock_write):
         pages = [
             self.make_page("001", ["Alice"], ["mystery"]),
@@ -165,10 +165,10 @@ class TestRendering(TestCase):
 
     @patch(MUT + "run_hook")
     @patch(MUT + "write_other_pages")
-    @patch(MUT + "utils.write_to_template")
-    @patch(MUT + "utils.get_social_media_data", return_value={"card": "ok"})
-    @patch(MUT + "utils.build_markdown_parser")
-    @patch(MUT + "utils.build_jinja_environment")
+    @patch(MUT + "rendering_utils.write_to_template")
+    @patch(MUT + "stdlib_utils.get_social_media_data", return_value={"card": "ok"})
+    @patch(MUT + "rendering_utils.build_markdown_parser")
+    @patch(MUT + "rendering_utils.build_jinja_environment")
     def test_write_html_files_uses_structured_context_and_theme_precedence(
             self,
             mock_build_jinja_environment,
@@ -210,10 +210,10 @@ class TestRendering(TestCase):
 
     @patch(MUT + "run_hook")
     @patch(MUT + "write_other_pages")
-    @patch(MUT + "utils.write_to_template")
-    @patch(MUT + "utils.get_social_media_data", return_value={})
-    @patch(MUT + "utils.build_markdown_parser")
-    @patch(MUT + "utils.build_jinja_environment")
+    @patch(MUT + "rendering_utils.write_to_template")
+    @patch(MUT + "stdlib_utils.get_social_media_data", return_value={})
+    @patch(MUT + "rendering_utils.build_markdown_parser")
+    @patch(MUT + "rendering_utils.build_jinja_environment")
     def test_write_html_files_disables_tagged_links_and_warns_once_per_comic(
             self,
             _mock_environment,
@@ -247,10 +247,10 @@ class TestRendering(TestCase):
 
     @patch(MUT + "run_hook")
     @patch(MUT + "write_other_pages")
-    @patch(MUT + "utils.write_to_template")
-    @patch(MUT + "utils.get_social_media_data", return_value={})
-    @patch(MUT + "utils.build_markdown_parser")
-    @patch(MUT + "utils.build_jinja_environment")
+    @patch(MUT + "rendering_utils.write_to_template")
+    @patch(MUT + "stdlib_utils.get_social_media_data", return_value={})
+    @patch(MUT + "rendering_utils.build_markdown_parser")
+    @patch(MUT + "rendering_utils.build_jinja_environment")
     def test_write_html_files_labels_main_comic_tagged_warning(
             self,
             _mock_environment,
@@ -273,10 +273,10 @@ class TestRendering(TestCase):
 
     @patch(MUT + "run_hook")
     @patch(MUT + "write_other_pages")
-    @patch(MUT + "utils.write_to_template")
-    @patch(MUT + "utils.get_social_media_data", return_value={})
-    @patch(MUT + "utils.build_markdown_parser")
-    @patch(MUT + "utils.build_jinja_environment")
+    @patch(MUT + "rendering_utils.write_to_template")
+    @patch(MUT + "stdlib_utils.get_social_media_data", return_value={})
+    @patch(MUT + "rendering_utils.build_markdown_parser")
+    @patch(MUT + "rendering_utils.build_jinja_environment")
     def test_write_html_files_enables_tagged_links_without_warning_when_configured(
             self,
             _mock_environment,
@@ -302,10 +302,10 @@ class TestRendering(TestCase):
 
     @patch(MUT + "run_hook")
     @patch(MUT + "write_other_pages")
-    @patch(MUT + "utils.write_to_template")
-    @patch(MUT + "utils.get_social_media_data", return_value={})
-    @patch(MUT + "utils.build_markdown_parser")
-    @patch(MUT + "utils.build_jinja_environment")
+    @patch(MUT + "rendering_utils.write_to_template")
+    @patch(MUT + "stdlib_utils.get_social_media_data", return_value={})
+    @patch(MUT + "rendering_utils.build_markdown_parser")
+    @patch(MUT + "rendering_utils.build_jinja_environment")
     def test_write_html_files_does_not_warn_without_tagged_metadata(
             self,
             _mock_environment,
@@ -325,8 +325,8 @@ class TestRendering(TestCase):
 
         self.assertFalse(any("tagged page" in message.lower() for message in logs.output))
 
-    @patch(MUT + "utils.write_to_template")
-    @patch(MUT + "utils.get_social_media_data", return_value={})
+    @patch(MUT + "rendering_utils.write_to_template")
+    @patch(MUT + "stdlib_utils.get_social_media_data", return_value={})
     def test_write_other_pages_disables_tagged_links_in_inherited_latest_context(
             self,
             _mock_social,

@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from build import build_site
 from build.content.loaders import load_main_comic_info
-from build.output.cms import DECAP_CMS_URL
+from build.output.cms import DECAP_CMS_SCRIPT_PATH
 from build.output.site_output import delete_output_file_space
 from core import stdlib_utils
 from core.logging_config import configure_logging
@@ -46,7 +46,7 @@ PROJECT_ROOT: str | None = None
 PREVIEW_SUBDIRECTORY = ""
 SKIP_REBUILD = False
 DECAP_CMS_DIST = Path("packages") / "decap-cms" / "dist"
-LOCAL_DECAP_CMS_URL = "/admin/decap-cms.js"
+LOCAL_DECAP_CMS_URL = "decap-cms.js"
 IS_WINDOWS = os.name == "nt"
 
 
@@ -92,10 +92,10 @@ def install_local_decap_cms(http_root: str, dist: Path) -> None:
         )
 
     html = index_path.read_text(encoding="utf-8")
-    if html.count(DECAP_CMS_URL) != 1:
+    if html.count(DECAP_CMS_SCRIPT_PATH) != 1:
         raise RuntimeError(
-            "Generated CMS entry point did not contain exactly one expected pinned Decap CMS URL: "
-            f"{DECAP_CMS_URL}"
+            "Generated CMS entry point did not contain exactly one expected engine-owned Decap CMS path: "
+            f"{DECAP_CMS_SCRIPT_PATH}"
         )
 
     shutil.copytree(
@@ -104,7 +104,7 @@ def install_local_decap_cms(http_root: str, dist: Path) -> None:
         dirs_exist_ok=True,
         ignore=shutil.ignore_patterns("*.map"),
     )
-    index_path.write_text(html.replace(DECAP_CMS_URL, LOCAL_DECAP_CMS_URL), encoding="utf-8")
+    index_path.write_text(html.replace(DECAP_CMS_SCRIPT_PATH, LOCAL_DECAP_CMS_URL), encoding="utf-8")
     logger.info("Loaded local Decap CMS bundle from %s", dist)
 
 

@@ -132,6 +132,27 @@ class TestSiteOutput(TestCase):
             self.assertTrue(os.path.isfile(asset_path))
             self.assertTrue(os.path.isdir(admin_dir))
 
+    def test_remove_generated_cms_files_removes_only_marked_runtime_directories(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            vendor_dir = os.path.join(temp_dir, "admin", "vendor")
+            runtime_dir = os.path.join(vendor_dir, "decap-cms-test")
+            user_dir = os.path.join(vendor_dir, "user-assets")
+            os.makedirs(runtime_dir)
+            os.makedirs(user_dir)
+            with open(
+                os.path.join(runtime_dir, site_output.CMS_RUNTIME_MANIFEST_FILENAME),
+                "w",
+                encoding="utf-8",
+            ) as f:
+                f.write('{"asset_kind": "comic_git_engine_decap_runtime"}\n')
+            with open(os.path.join(user_dir, "custom.js"), "w", encoding="utf-8") as f:
+                f.write("user asset")
+
+            site_output.remove_generated_cms_files(temp_dir)
+
+            self.assertFalse(os.path.exists(runtime_dir))
+            self.assertTrue(os.path.isfile(os.path.join(user_dir, "custom.js")))
+
     def test_remove_generated_cms_files_preserves_non_utf8_user_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             admin_dir = os.path.join(temp_dir, "admin")

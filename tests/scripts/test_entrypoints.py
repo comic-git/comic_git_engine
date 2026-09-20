@@ -165,13 +165,13 @@ class TestEntrypoints(TestCase):
             with open(os.path.join(dist, "decap-cms.js.map"), "w", encoding="utf-8") as f:
                 f.write("map")
             with open(os.path.join(admin_dir, "index.html"), "w", encoding="utf-8") as f:
-                f.write(f'<script src="{module.DECAP_CMS_URL}"></script>')
+                f.write(f'<script src="{module.DECAP_CMS_SCRIPT_PATH}"></script>')
 
             resolved_dist = module.resolve_decap_cms_dist(module.Path(repo))
             module.install_local_decap_cms(root, resolved_dist)
 
             with open(os.path.join(admin_dir, "index.html"), encoding="utf-8") as f:
-                self.assertIn('src="/admin/decap-cms.js"', f.read())
+                self.assertIn('src="decap-cms.js"', f.read())
             self.assertTrue(os.path.isfile(os.path.join(admin_dir, "decap-cms.js")))
             self.assertTrue(os.path.isfile(os.path.join(admin_dir, "123.decap-cms.js")))
             self.assertTrue(os.path.isfile(os.path.join(admin_dir, "parser.wasm")))

@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import shutil
@@ -12,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 SITE_ROOT_SOURCE = os.path.join("your_content", "site_root")
 CMS_OUTPUT_FILES = (os.path.join("admin", "index.html"), os.path.join("admin", "config.yml"))
+CMS_RUNTIME_MANIFEST_FILENAME = "comic_git_engine_manifest.json"
+CMS_RUNTIME_MARKER = "comic_git_engine_decap_runtime"
 
 
 def delete_output_file_space(comic_info: RawConfigParser = None):
@@ -46,6 +49,7 @@ def remove_generated_cms_files(output_root: str = ".") -> None:
         if _has_generated_cms_marker(path):
             os.remove(path)
     admin_dir = os.path.join(output_root, "admin")
+    _remove_generated_cms_runtime_directories(admin_dir)
     try:
         os.rmdir(admin_dir)
     except OSError:
@@ -60,6 +64,31 @@ def _has_generated_cms_marker(path: str) -> bool:
             return GENERATED_FILE_MARKER in f.read(4096)
     except (OSError, UnicodeError):
         return False
+
+
+def _remove_generated_cms_runtime_directories(admin_dir: str) -> None:
+    vendor_dir = os.path.join(admin_dir, "vendor")
+    if not os.path.isdir(vendor_dir):
+        return
+    for entry in os.scandir(vendor_dir):
+        if entry.is_dir(follow_symlinks=False) and _has_generated_cms_runtime_marker(entry.path):
+            shutil.rmtree(entry.path)
+    try:
+        os.rmdir(vendor_dir)
+    except OSError:
+        pass
+
+
+def _has_generated_cms_runtime_marker(directory: str) -> bool:
+    manifest_path = os.path.join(directory, CMS_RUNTIME_MANIFEST_FILENAME)
+    if not os.path.isfile(manifest_path):
+        return False
+    try:
+        with open(manifest_path, encoding="utf-8") as f:
+            manifest = json.load(f)
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return False
+    return isinstance(manifest, dict) and manifest.get("asset_kind") == CMS_RUNTIME_MARKER
 
 
 def setup_output_file_space(comic_info: RawConfigParser):

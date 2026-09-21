@@ -77,6 +77,8 @@ source maps and unused duplicate entry artifacts are intentionally omitted.
 Each replacement gets a new versioned directory so browser caches cannot reuse
 old contents. Tests verify the manifest, copied output, and safe cleanup of
 engine-owned runtime directories while preserving user assets under `admin/`.
+See [updating-vendored-decap-runtime.md](updating-vendored-decap-runtime.md)
+for the maintainer procedure to build, verify, and replace that runtime.
 
 ## Future Date and Time Editing
 
@@ -132,3 +134,4 @@ change so selecting a checkout cannot silently alter collection behavior.
 | [mvp-toml-contract.md](mvp-toml-contract.md) | The implemented CMS-safe TOML subset, readiness gate, deployment preconditions, and deferred source shapes |
 | [comic-info-toml-format.md](comic-info-toml-format.md) | The provisional comic-level TOML schema and legacy config mapping |
 | [page-toml-format.md](page-toml-format.md) | The current page-level TOML contract and legacy migration rules |
+| [updating-vendored-decap-runtime.md](updating-vendored-decap-runtime.md) | Maintainer procedure for replacing the versioned Decap runtime |

@@ -37,6 +37,13 @@ Current behavior:
 - Characters and Tags use compact comma-separated inputs that save TOML string arrays
 - image items open expanded by default, with compact single-line inputs for
   their Hover text and Screen reader text
+- page-level social-media overrides use an add/remove metadata map and preserve
+  arbitrary nonblank string keys such as `og:title`
+- page transcripts use one Markdown editor per language, with Rich Text and raw Markdown modes
+- the admin loads the engine-owned map widget from `comic_git_engine/js/cms_widgets.js`
+- the admin loads engine defaults from `comic_git_engine/css/cms.css`, then the
+  selected theme's `your_content/themes/<theme>/css/cms.css` if present; the
+  theme file can override engine-owned CMS controls without replacing them
 - collapsed image items use their explicit Title as a best-effort label and
   otherwise display Image
 - the main config and all page folders must be safely editable before any admin
@@ -46,14 +53,19 @@ Current behavior:
   proxy; it never becomes a deployable config setting
 - TOML-backed repos still build normally when CMS output is disabled
 
+The metadata grid sets only its computed key width as an inline CSS variable;
+other comic_git CMS control styles live in the layered stylesheets. Decap's
+own generated styles are separate and may need more specific theme selectors.
+
 The safety gate rejects invalid main config and nonempty `[legacy]` config
 sections because the settings form cannot preserve arbitrary legacy values. It
 also requires every main and Extra Comic page folder to contain valid
 `info.toml` with a nonblank title and date-only `post_date`.
 The date must be a quoted ISO string; native TOML dates remain valid for normal
 engine builds but are rejected by CMS readiness to prevent browser-timezone
-conversion and mixed-type sorting. Nonempty `[transcripts]`, `[social_media]`,
-and `[extra]` tables must be managed manually until the CMS can preserve them.
+conversion and mixed-type sorting. Page `[transcripts]` and `[social_media]`
+accept nonblank string keys and string values. Nonempty `[extra]` tables must
+still be managed manually until the CMS can preserve them.
 
 The page collection uses `path: "{{slug}}/info"`. With Decap's path-aware
 collision handling, duplicate title slugs create sibling bundles such as

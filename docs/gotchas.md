@@ -29,8 +29,9 @@ generation. The main settings form represents all first-class config values but
 cannot safely preserve arbitrary compatibility values stored under `[legacy]`.
 
 A legacy `info.ini`, missing or invalid `info.toml`, blank title, native TOML
-date, timestamp `post_date`, or nonempty `[transcripts]`, `[social_media]`, or
-`[extra]` table blocks CMS generation with an aggregate error. CMS-managed dates
+date, timestamp `post_date`, or nonempty `[extra]` table blocks CMS generation
+with an aggregate error. Page `[transcripts]` and `[social_media]` are supported
+only as maps of nonblank string keys to string values. CMS-managed dates
 currently use quoted `YYYY-MM-DD` strings so Decap does not mix strings with
 timezone-sensitive JavaScript dates. Native TOML dates and timestamps remain
 valid in ordinary non-CMS builds; the restriction protects content from a lossy

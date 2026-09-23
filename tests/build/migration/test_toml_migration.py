@@ -2,6 +2,7 @@ import io
 import json
 import os
 import tempfile
+import tomllib
 from collections import OrderedDict
 from pathlib import Path
 from unittest import TestCase
@@ -145,10 +146,54 @@ class TestTomlMigration(TestCase):
             self.assertIn('backend_base_url = "https://worker.example.com"', main_config)
             self.assertNotIn("[cms]", extra_config)
 
+    def test_cms_plan_materializes_image_and_folder_title_fallbacks(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_main_comic_info(temp_dir, "extras/story")
+            self.write_extra_comic_info(temp_dir, "extras/story")
+            main_page = Path(temp_dir, "your_content", "comics", "001")
+            main_page.mkdir(parents=True)
+            (main_page / "info.ini").write_text("Post date = January 02, 2024\n", encoding="utf-8")
+            (main_page / "Page 1.png").write_bytes(b"image")
+            extra_page = Path(temp_dir, "your_content", "extras", "story", "comics", "text-only")
+            extra_page.mkdir(parents=True)
+            (extra_page / "info.ini").write_text(
+                "Post date = January 02, 2024\nTitle =  \n", encoding="utf-8"
+            )
+            named_page = Path(temp_dir, "your_content", "comics", "named")
+            named_page.mkdir(parents=True)
+            (named_page / "info.ini").write_text(
+                "Post date = January 02, 2024\nTitle = Custom Name\n", encoding="utf-8"
+            )
+            cms_enablement = comic_config_sources.CmsEnablementConfig(
+                repository="comic-git/example",
+                branch="cms",
+                backend_base_url="https://worker.example.com",
+                backend_auth_endpoint="auth",
+            )
+
+            cms_plan = toml_migration.plan_page_migration(temp_dir, cms_enablement=cms_enablement)
+            cms_files = {file.path: tomllib.loads(file.content) for file in cms_plan.files}
+            self.assertEqual("Page 1", cms_files["your_content/comics/001/info.toml"]["title"])
+            self.assertEqual("Custom Name", cms_files["your_content/comics/named/info.toml"]["title"])
+            self.assertEqual(
+                "text-only",
+                cms_files["your_content/extras/story/comics/text-only/info.toml"]["title"],
+            )
+
+            ordinary_plan = toml_migration.plan_page_migration(temp_dir)
+            ordinary_files = {file.path: tomllib.loads(file.content) for file in ordinary_plan.files}
+            self.assertNotIn("title", ordinary_files["your_content/comics/001/info.toml"])
+            self.assertEqual(
+                "",
+                ordinary_files["your_content/extras/story/comics/text-only/info.toml"]["title"],
+            )
+
     def test_runner_returns_versioned_json_plan(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             self.write_main_comic_info(temp_dir)
-            self.write_page(temp_dir, "", "001")
+            page_dir = self.write_page(temp_dir, "", "001")
+            with open(os.path.join(page_dir, "info.ini"), "w", encoding="utf-8") as f:
+                f.write("Post date = January 02, 2024\n")
             request = {
                 "repository_root": temp_dir,
                 "cms_enablement": {
@@ -173,6 +218,7 @@ class TestTomlMigration(TestCase):
                 ],
                 [migration_file["path"] for migration_file in response["files"]],
             )
+            self.assertEqual("first", tomllib.loads(response["files"][1]["content"])["title"])
 
     def test_runner_reports_invalid_input_with_a_safe_structured_failure(self):
         stderr = io.StringIO()

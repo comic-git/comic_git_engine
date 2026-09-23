@@ -26,8 +26,7 @@ class TestMigrationRunnerContract(TestCase):
                 encoding="utf-8",
             )
             (page_directory / "info.ini").write_text(
-                "Post date = January 02, 2024\n"
-                "Title = First Page\n",
+                "Post date = January 02, 2024\n",
                 encoding="utf-8",
             )
             (page_directory / "comic.png").write_bytes(b"not-an-image")
@@ -68,3 +67,4 @@ class TestMigrationRunnerContract(TestCase):
             ],
             [migration_file["path"] for migration_file in response["files"]],
         )
+        self.assertIn('title = "comic"', response["files"][1]["content"])

@@ -12,7 +12,11 @@ from core.stdlib_utils import get_output_dir
 logger = logging.getLogger(__name__)
 
 SITE_ROOT_SOURCE = os.path.join("your_content", "site_root")
-CMS_OUTPUT_FILES = (os.path.join("admin", "index.html"), os.path.join("admin", "config.yml"))
+CMS_OUTPUT_FILES = (
+    os.path.join("admin", "index.html"),
+    os.path.join("admin", "config.yml"),
+    os.path.join("admin", "comic-git-widgets.js"),
+)
 CMS_RUNTIME_MANIFEST_FILENAME = "comic_git_engine_manifest.json"
 CMS_RUNTIME_MARKER = "comic_git_engine_decap_runtime"
 

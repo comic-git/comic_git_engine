@@ -103,7 +103,7 @@ class TestSiteOutput(TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             admin_dir = os.path.join(temp_dir, "admin")
             os.makedirs(admin_dir)
-            for filename in ("index.html", "config.yml"):
+            for filename in ("index.html", "config.yml", "comic-git-widgets.js"):
                 with open(os.path.join(admin_dir, filename), "w", encoding="utf-8") as f:
                     f.write(f"# {site_output.GENERATED_FILE_MARKER}\n")
 

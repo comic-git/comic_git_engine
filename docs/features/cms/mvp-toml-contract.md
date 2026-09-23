@@ -16,20 +16,22 @@ mode.
 
 ## Compatibility Matrix
 
-| Source shape                                                                                     | Normal engine build |   CMS MVP | Notes                                                                                                                                           |
-|--------------------------------------------------------------------------------------------------|--------------------:|----------:|-------------------------------------------------------------------------------------------------------------------------------------------------|
-| Main `comic_info.toml` first-class fields                                                        |                 Yes |       Yes | The Comic Settings collection represents every currently accepted first-class main-config field, including ordered `[[links]]` and `[[pages]]`. |
-| Main `[legacy]` with no values                                                                   |                 Yes |       Yes | Empty compatibility tables are preserved.                                                                                                       |
-| Main nonempty `[legacy]`                                                                         |                 Yes |        No | The form cannot round-trip arbitrary legacy keys.                                                                                               |
-| Extra Comic `comic_info.toml` overrides                                                          |                 Yes | No editor | Extra Comic pages are editable, but their override config is deferred.                                                                          |
-| Page `title`, quoted date-only `post_date`, `post_text`, page metadata, and ordered `[[images]]` |                 Yes |       Yes | This is the page editor's first-class data shape. Images may be omitted for a text-only post.                                                   |
-| Image `filename`, `title`, `alt_text`, `screen_reader_text`, and `thumbnail`                     |                 Yes |       Yes | Optional image fields preserve omission and explicit blank values.                                                                              |
-| Quoted ISO page timestamps                                                                       |                 Yes |        No | The CMS currently accepts only `YYYY-MM-DD` to avoid timezone conversion and mixed-type sorting.                                                |
-| Native TOML page dates or datetimes                                                              |                 Yes |        No | Valid engine input, deliberately excluded from browser editing.                                                                                 |
-| Page `[transcripts]`, `[social_media]`, or `[extra]` with no values                              |                 Yes |       Yes | Empty tables do not contain data that could be lost.                                                                                            |
-| Nonempty page `[transcripts]`, `[social_media]`, or `[extra]`                                    |                 Yes |        No | Keep them manually managed until the form can preserve each shape.                                                                              |
-| Legacy page `info.ini` and companion legacy files                                                |                 Yes |        No | Migrate the page to `info.toml` before enabling CMS.                                                                                            |
-| A page folder without `info.toml`                                                                |    Legacy-dependent |        No | Every discovered page folder must be a compatible TOML page.                                                                                    |
+| Source shape                                                                                     | Normal engine build |   CMS MVP | Notes                                                                                                                                                  |
+|--------------------------------------------------------------------------------------------------|--------------------:|----------:|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Main `comic_info.toml` first-class fields                                                        |                 Yes |       Yes | The Comic Settings collection represents every currently accepted first-class main-config field, including ordered `[[links]]` and `[[pages]]`.        |
+| Main `[legacy]` with no values                                                                   |                 Yes |       Yes | Empty compatibility tables are preserved.                                                                                                              |
+| Main nonempty `[legacy]`                                                                         |                 Yes |        No | The form cannot round-trip arbitrary legacy keys.                                                                                                      |
+| Extra Comic `comic_info.toml` overrides                                                          |                 Yes | No editor | Extra Comic pages are editable, but their override config is deferred.                                                                                 |
+| Page `title`, quoted date-only `post_date`, `post_text`, page metadata, and ordered `[[images]]` |                 Yes |       Yes | This is the page editor's first-class data shape. Images may be omitted for a text-only post.                                                          |
+| Image `filename`, `title`, `alt_text`, `screen_reader_text`, and `thumbnail`                     |                 Yes |       Yes | Optional image fields preserve omission and explicit blank values.                                                                                     |
+| Quoted ISO page timestamps                                                                       |                 Yes |        No | The CMS currently accepts only `YYYY-MM-DD` to avoid timezone conversion and mixed-type sorting.                                                       |
+| Native TOML page dates or datetimes                                                              |                 Yes |        No | Valid engine input, deliberately excluded from browser editing.                                                                                        |
+| Page `[transcripts]`, `[social_media]`, or `[extra]` with no values                              |                 Yes |       Yes | Empty tables do not contain data that could be lost.                                                                                                   |
+| Page `[transcripts]` or `[social_media]` with nonblank string keys and string values             |                 Yes |       Yes | Transcript values use Decap's Rich Text/Markdown editor; metadata maps support arbitrary external keys, including quoted TOML keys such as `og:title`. |
+| Nonempty page `[extra]`                                                                          |                 Yes |        No | Keep arbitrary custom data manually managed until the form can preserve its shape.                                                                     |
+| Page `[transcripts]` or `[social_media]` with blank keys or non-string values                    |                 Yes |        No | The map widgets deliberately support only simple string-keyed data.                                                                                    |
+| Legacy page `info.ini` and companion legacy files                                                |                 Yes |        No | Migrate the page to `info.toml` before enabling CMS.                                                                                                   |
+| A page folder without `info.toml`                                                                |    Legacy-dependent |        No | Every discovered page folder must be a compatible TOML page.                                                                                           |
 
 The detailed source schemas remain in
 [comic-info-toml-format.md](comic-info-toml-format.md) and
@@ -68,7 +70,7 @@ does not change source files or satisfy the production authentication gate.
 ## Deferred Scope
 
 - time-of-day page publishing and a browser-safe timestamp representation;
-- page transcripts, social-media overrides, and custom `extra` fields;
+- custom `extra` fields;
 - Extra Comic override configuration;
 - page deletion, previews, and folder rename controls;
 - custom image, tag, character, and storyline widgets; and

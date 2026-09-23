@@ -62,7 +62,7 @@ class TestMain(TestCase):
         m["copy_site_root_files"].assert_called_once_with("build")
         cms_settings = m["write_cms_admin"].call_args.args[0]
         self.assertFalse(cms_settings.enabled)
-        m["write_cms_admin"].assert_called_once_with(cms_settings, [], "build")
+        m["write_cms_admin"].assert_called_once_with(cms_settings, [], "build", theme="default")
 
     @patch(MUT + "os.makedirs")
     @patch(MUT + "get_extra_comic_info")

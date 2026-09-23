@@ -37,10 +37,12 @@ CMS enablement is deliberately all-or-nothing across the main comic and every
 Extra Comic. Each page folder must have valid `info.toml`, a nonblank
 `title`, and a quoted, date-only ISO `post_date`. Native TOML dates remain
 valid engine input, but CMS-managed pages use strings so Decap does not turn a
-calendar date into a timezone-sensitive browser timestamp. Timestamp post dates
-and nonempty `[transcripts]`, `[social_media]`, or `[extra]` tables remain valid
-engine inputs, but must be removed or managed manually before this CMS slice can
-be enabled because its form cannot yet round-trip them safely.
+calendar date into a timezone-sensitive browser timestamp. The CMS can edit
+page `[transcripts]` and `[social_media]` tables when every key is nonblank and
+every value is a string. Transcript values use Decap's Rich Text/Markdown editor. Timestamp post
+dates and nonempty `[extra]` tables remain valid engine inputs, but must be
+removed or managed manually before this CMS slice can be enabled because its
+form cannot yet round-trip them safely.
 
 New page folders are derived from the initial title. Duplicate titles are valid:
 path-aware collision suffixing creates a sibling bundle such as

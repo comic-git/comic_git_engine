@@ -122,7 +122,12 @@ def main(
         local_backend=cms_local_backend,
     )
     cms_collections = build_cms_collections(comic_results) if cms_settings.enabled else []
-    write_cms_admin(cms_settings, cms_collections, output_dir)
+    write_cms_admin(
+        cms_settings,
+        cms_collections,
+        output_dir,
+        theme=theme,
+    )
     checkpoint("Build CMS admin")
 
     run_hook(theme, "postprocess", [comic_info, pages, global_values])

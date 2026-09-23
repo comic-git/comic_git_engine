@@ -515,8 +515,8 @@ Exact arbitrary path creation inside Decap would require custom path handling.
   text, render the hover value through an image `title` attribute, and add a
   distinct accessible `alt` field; this is an engine-wide bug fix that should
   be handled on `master`, not hidden inside CMS UI work
-- add safe round-trip support for transcripts, page social-media overrides, and
-  custom `extra` data before relaxing the all-page readiness gate
+- add safe round-trip support for custom `extra` data before relaxing the
+  all-page readiness gate further
 - prototype singleton editing for Extra Comic configuration
 
 ### GitHub App Migration Flow

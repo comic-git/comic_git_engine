@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 from configparser import RawConfigParser
+from pathlib import Path
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
@@ -38,11 +39,34 @@ class TestRenderAdminIndex(TestCase):
         self.assertIn(f"<!-- {GENERATED_FILE_MARKER} -->", html)
         self.assertIn('<meta name="robots" content="noindex, nofollow">', html)
         self.assertIn(f'<script src="{DECAP_CMS_SCRIPT_PATH}"></script>', html)
+        self.assertIn('<link rel="stylesheet" href="../comic_git_engine/css/cms.css">', html)
+        self.assertNotIn('your_content/themes/', html)
+        self.assertNotIn('<style>', html)
+        self.assertIn('window.CMS_MANUAL_INIT = true', html)
+        self.assertIn('<script src="../comic_git_engine/js/cms_widgets.js"></script>', html)
+        self.assertIn('window.initCMS();', html)
+        self.assertLess(
+            html.index('<script src="../comic_git_engine/js/cms_widgets.js"></script>'),
+            html.index('window.initCMS();'),
+        )
         self.assertIn(f"decap-cms-{DECAP_CMS_VERSION}-comic-git-", DECAP_CMS_RUNTIME_PATH)
-        self.assertIn('p[class*="-ControlHint"] a[href^="https://comic-git.gitbook.io/documentation/"]', html)
-        self.assertIn("font-size: 0.875rem !important", html)
+        stylesheet = Path(__file__).resolve().parents[3] / "css" / "cms.css"
+        css = stylesheet.read_text(encoding="utf-8")
+        self.assertIn('p[class*="-ControlHint"] a[href^="https://comic-git.gitbook.io/documentation/"]', css)
+        self.assertIn("font-size: 0.875rem !important", css)
+        self.assertIn('.cg-map-remove-glyph', css)
+        self.assertIn('.cg-map-error', css)
         self.assertNotIn("https://unpkg.com/decap-cms", html)
         self.assertNotIn("{{ decap_cms_url }}", html)
+
+    def test_renders_page_metadata_widget_before_initializing_decap(self):
+        widgets_path = Path(__file__).resolve().parents[3] / "js" / "cms_widgets.js"
+        widgets = widgets_path.read_text(encoding="utf-8")
+
+        self.assertIn("window.CMS.registerWidget", widgets)
+        self.assertIn("name: 'comic-git-map'", widgets)
+        self.assertIn("Metadata names cannot be blank.", widgets)
+        self.assertIn("Each metadata name can appear only once.", widgets)
 
 
 class TestVendoredDecapRuntime(TestCase):
@@ -181,6 +205,24 @@ class TestAdminConfig(TestCase):
         self.assertIn('label: "Screen reader text", name: "screen_reader_text", widget: "text"', config)
         self.assertIn('label: "Characters"\n        name: "characters"\n        widget: "list"', config)
         self.assertIn('label: "Tags"\n        name: "tags"\n        widget: "list"', config)
+        self.assertIn(
+            'label: "Transcripts"\n'
+            '        name: "transcripts"\n'
+            '        widget: "comic-git-map"\n'
+            '        required: false\n'
+            '        key_label: "Transcript language"\n'
+            '        value_label: "Transcript text"\n'
+            '        row_label: "transcript"\n'
+            '        add_label: "Add transcript"\n'
+            '        value_markdown: true',
+            config,
+        )
+        self.assertIn(
+            'label: "Social media metadata"\n'
+            '        name: "social_media"\n'
+            '        widget: "comic-git-map"',
+            config,
+        )
         self.assertNotIn('field: {label: "Character"', config)
         self.assertNotIn('field: {label: "Tag"', config)
         self.assertIn("editor:\n  preview: false", config)
@@ -305,7 +347,7 @@ class TestWriteCmsAdmin(TestCase):
         finally:
             os.chdir(old_cwd)
 
-    def test_writes_both_generated_files_and_overwrites_only_conflicts(self):
+    def test_writes_generated_files_and_overwrites_only_conflicts(self):
         admin_dir = os.path.join(self.output_dir, "admin")
         os.makedirs(admin_dir)
         index_path = os.path.join(admin_dir, "index.html")
@@ -328,12 +370,55 @@ class TestWriteCmsAdmin(TestCase):
             self.assertIn(GENERATED_FILE_MARKER, f.read())
         with open(os.path.join(admin_dir, "config.yml"), encoding="utf-8") as f:
             self.assertIn(GENERATED_FILE_MARKER, f.read())
+        self.assertFalse(os.path.exists(os.path.join(admin_dir, "comic-git-widgets.js")))
         with open(unrelated_path, encoding="utf-8") as f:
             self.assertEqual("custom", f.read())
         runtime_dir = os.path.join(admin_dir, DECAP_CMS_RUNTIME_PATH)
         self.assertTrue(os.path.isfile(os.path.join(runtime_dir, "decap-cms.js")))
         self.assertTrue(os.path.isfile(os.path.join(runtime_dir, "comic_git_engine_manifest.json")))
         self.assertIn(index_path, "\n".join(logs.output))
+
+    def test_layers_existing_theme_stylesheet_after_engine_stylesheet(self):
+        theme = "theme #1 & friends"
+        theme_css = os.path.join(self.host_root, "your_content", "themes", theme, "css", "cms.css")
+        os.makedirs(os.path.dirname(theme_css))
+        with open(theme_css, "w", encoding="utf-8") as f:
+            f.write(".cg-map-remove { color: green; }\n")
+
+        self.run_from_host_root(
+            lambda: write_cms_admin(
+                CmsSettings(enabled=True, local_backend=True),
+                [self.collection],
+                self.output_dir,
+                theme=theme,
+            )
+        )
+
+        index_path = os.path.join(self.output_dir, "admin", "index.html")
+        with open(index_path, encoding="utf-8") as f:
+            html = f.read()
+        theme_url = "../your_content/themes/theme%20%231%20%26%20friends/css/cms.css"
+        self.assertLess(html.index("../comic_git_engine/css/cms.css"), html.index(theme_url))
+
+    def test_theme_stylesheet_must_be_inside_themes_directory(self):
+        outside_css = os.path.join(self.host_root, "outside", "css", "cms.css")
+        os.makedirs(os.path.dirname(outside_css))
+        with open(outside_css, "w", encoding="utf-8") as f:
+            f.write("body { color: red; }\n")
+
+        self.run_from_host_root(
+            lambda: write_cms_admin(
+                CmsSettings(enabled=True, local_backend=True),
+                [self.collection],
+                self.output_dir,
+                theme="../../outside",
+            )
+        )
+
+        index_path = os.path.join(self.output_dir, "admin", "index.html")
+        with open(index_path, encoding="utf-8") as f:
+            html = f.read()
+        self.assertNotIn("outside", html)
 
     def test_validation_failure_writes_nothing(self):
         page_dir = os.path.join(self.page_root, "legacy")
@@ -711,31 +796,69 @@ post_text = "Hello"
         self.assertIn("fix the invalid page configuration", str(raised.exception))
         self.assertIn("ISO date or datetime", str(raised.exception))
 
-    def test_rejects_each_nonempty_deferred_page_table(self):
-        cases = (
-            ("transcripts", 'English = "Words"'),
-            ("social_media", '"og:title" = "Override"'),
-            ("extra", 'Mood = "tense"'),
+    def test_rejects_nonempty_extra_page_table(self):
+        page_root = os.path.join(self.temp_dir.name, "extra")
+        page_dir = os.path.join(page_root, "page")
+        os.makedirs(page_dir)
+        path = os.path.join(page_dir, "info.toml")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(
+                'post_date = "2026-09-05"\n'
+                'title = "Deferred Table"\n'
+                '[extra]\nMood = "tense"\n'
+            )
+
+        with self.assertRaises(CmsReadinessError) as raised:
+            validate_cms_page_roots([page_root])
+
+        self.assertEqual(1, len(raised.exception.problems))
+        self.assertIn(path, str(raised.exception))
+        self.assertIn("[extra]", str(raised.exception))
+
+    def test_accepts_simple_page_string_maps(self):
+        self.write_page_file(
+            "map-page",
+            "info.toml",
+            '''
+post_date = "2026-09-05"
+title = "Map Page"
+[transcripts]
+English = "Transcript"
+[social_media]
+"og:title" = "Override"
+"twitter:card" = "summary"
+''',
         )
-        for table_name, contents in cases:
-            with self.subTest(table_name=table_name):
-                page_root = os.path.join(self.temp_dir.name, table_name)
-                page_dir = os.path.join(page_root, "page")
-                os.makedirs(page_dir)
-                path = os.path.join(page_dir, "info.toml")
-                with open(path, "w", encoding="utf-8") as f:
-                    f.write(
-                        'post_date = "2026-09-05"\n'
-                        'title = "Deferred Table"\n'
-                        f'[{table_name}]\n{contents}\n'
-                    )
+
+        validate_cms_page_roots([self.comics_root])
+
+    def test_rejects_page_string_maps_outside_the_map_widget_contract(self):
+        cases = (
+            ("transcripts", 'English = 42', "non-string value"),
+            ("social_media", '"" = "Override"', "blank key"),
+        )
+        for table_name, contents, label in cases:
+            with self.subTest(table_name=table_name, label=label):
+                path = self.write_page_file(
+                    "map-page",
+                    "info.toml",
+                    f'''
+post_date = "2026-09-05"
+title = "Map Page"
+[{table_name}]
+{contents}
+''',
+                )
 
                 with self.assertRaises(CmsReadinessError) as raised:
-                    validate_cms_page_roots([page_root])
+                    validate_cms_page_roots([self.comics_root])
 
-                self.assertEqual(1, len(raised.exception.problems))
                 self.assertIn(path, str(raised.exception))
-                self.assertIn(f"[{table_name}]", str(raised.exception))
+                self.assertIn(table_name, str(raised.exception))
+                if table_name == "social_media":
+                    self.assertIn("nonblank string keys and string values", str(raised.exception))
+                else:
+                    self.assertIn("string-to-string table", str(raised.exception))
 
     def test_aggregates_every_incompatible_page_and_remediation(self):
         ini_path = self.write_page_file("legacy", "info.ini", "Post date = 09/05/2026")
@@ -767,7 +890,7 @@ Mood = "tense"
             validate_cms_page_roots([self.comics_root])
 
         message = str(raised.exception)
-        self.assertEqual(8, len(raised.exception.problems))
+        self.assertEqual(6, len(raised.exception.problems))
         self.assertIn(ini_path, message)
         self.assertIn("migrate this page", message)
         self.assertIn(missing_dir, message)
@@ -778,7 +901,5 @@ Mood = "tense"
         self.assertIn("add a nonblank title", message)
         self.assertIn(timestamp_path, message)
         self.assertIn("date-only post_date", message)
-        self.assertEqual(3, message.count(tables_path))
-        self.assertIn("[transcripts]", message)
-        self.assertIn("[social_media]", message)
+        self.assertEqual(1, message.count(tables_path))
         self.assertIn("[extra]", message)

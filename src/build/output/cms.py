@@ -8,7 +8,7 @@ from collections.abc import Iterable, Mapping
 from configparser import RawConfigParser
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
@@ -68,9 +68,23 @@ class CmsReadinessError(ValueError):
         )
 
 
-def render_admin_index() -> str:
-    template = CMS_TEMPLATE_ENVIRONMENT.get_template("index.html")
-    return template.render(decap_cms_url=DECAP_CMS_SCRIPT_PATH)
+def render_admin_index(theme_stylesheet_url: str | None = None) -> str:
+    template = CMS_TEMPLATE_ENVIRONMENT.get_template("index.tpl")
+    return template.render(
+        theme_stylesheet_url=theme_stylesheet_url,
+        decap_cms_url=DECAP_CMS_SCRIPT_PATH,
+    )
+
+
+def _theme_stylesheet_url(theme: str) -> str | None:
+    if not theme:
+        return None
+    themes_root = Path("your_content/themes").resolve()
+    stylesheet = (themes_root / theme / "css" / "cms.css").resolve()
+    if not stylesheet.is_relative_to(themes_root) or not stylesheet.is_file():
+        return None
+    relative_path = stylesheet.relative_to(themes_root).as_posix()
+    return "../your_content/themes/" + quote(relative_path, safe="/")
 
 
 def build_cms_collections(comic_results: Iterable[ComicBuildResult]) -> list[CmsCollection]:
@@ -124,6 +138,8 @@ def write_cms_admin(
         settings: CmsSettings,
         collections: list[CmsCollection],
         output_dir: str,
+        *,
+        theme: str = "default",
 ) -> None:
     if not settings.enabled:
         if not output_dir:
@@ -136,7 +152,7 @@ def write_cms_admin(
         [collection.folder for collection in collections],
     )
     rendered_files = {
-        "index.html": render_admin_index(),
+        "index.html": render_admin_index(_theme_stylesheet_url(theme)),
         "config.yml": render_admin_config(settings, collections),
     }
     output_root = output_dir or "."
@@ -363,18 +379,30 @@ def _get_page_readiness_problems(page_path: str) -> list[str]:
                 "timestamp editing is not supported yet."
             )
 
-    unsupported_values = {
-        "transcripts": source.transcripts,
-        "social_media": source.social_media,
-        "extra": source.extra,
-    }
+    unsupported_values = {"extra": source.extra}
     for table_name, value in unsupported_values.items():
         if value:
             problems.append(
                 f"{toml_path}: remove or manually manage the nonempty [{table_name}] table; "
                 "the first CMS editor cannot preserve it yet."
             )
+    for table_name, value in {
+        "transcripts": source.transcripts,
+        "social_media": source.social_media,
+    }.items():
+        if value and not _is_editable_string_map(value):
+            problems.append(
+                f"{toml_path}: use nonblank string keys and string values in [{table_name}]; "
+                "the CMS editor supports only simple key/value maps."
+            )
     return problems
+
+
+def _is_editable_string_map(value: Mapping[str, object]) -> bool:
+    return all(
+        isinstance(key, str) and bool(key.strip()) and isinstance(metadata, str)
+        for key, metadata in value.items()
+    )
 
 
 def _get_boolean(comic_info: RawConfigParser, option: str, *, fallback: bool) -> bool:

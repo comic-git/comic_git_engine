@@ -47,3 +47,18 @@
         name: "tags"
         widget: "list"
         required: false
+      - label: "Transcripts"
+        name: "transcripts"
+        widget: "comic-git-map"
+        required: false
+        key_label: "Transcript language"
+        value_label: "Transcript text"
+        row_label: "transcript"
+        add_label: "Add transcript"
+        value_markdown: true
+        hint: "Optional page transcripts. Use one row for each language."
+      - label: "Social media metadata"
+        name: "social_media"
+        widget: "comic-git-map"
+        required: false
+        hint: "Optional metadata overrides for this page. Add only the metadata values this page needs."

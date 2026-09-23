@@ -12,6 +12,7 @@ from build.content.comic_config_sources import (
     serialize_comic_config_to_toml,
 )
 from build.content.loaders import load_legacy_comic_info, load_legacy_extra_comic_info
+from build.content.page_models import resolve_page_title
 from build.content.page_sources import (
     load_legacy_page_source,
     load_page_source_from_toml,
@@ -114,7 +115,12 @@ def plan_page_migration(
         files.append(
             MigrationFile(
                 repository_relative_path(repository_root, target.toml_info_path),
-                serialize_target(target, comic_context_by_folder[target.comic_folder], content_root),
+                serialize_target(
+                    target,
+                    comic_context_by_folder[target.comic_folder],
+                    content_root,
+                    require_cms_title=cms_enablement is not None,
+                ),
             )
         )
     return PageMigrationPlan(
@@ -289,6 +295,8 @@ def serialize_target(
         target: PageMigrationTarget,
         comic_info: RawConfigParser,
         content_root: str | None = None,
+        *,
+        require_cms_title: bool = False,
 ) -> str:
     page_source = load_legacy_page_source(
         target.page_path,
@@ -296,6 +304,12 @@ def serialize_target(
         comic_info,
         content_root=content_root,
     )
+    if require_cms_title:
+        page_source.title = resolve_page_title(
+            page_source.title,
+            [image.filename for image in page_source.images],
+            os.path.basename(os.path.normpath(target.page_path)),
+        )
     return serialize_page_source_to_toml(page_source)
 
 

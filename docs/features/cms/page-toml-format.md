@@ -145,6 +145,11 @@ Current conversion rules:
 10. `!private` keys are not migrated.
 11. The page folder name remains path-derived identity and is not duplicated into `info.toml`.
 
+When migration also enables CMS, a missing or blank legacy `Title` is written
+as the resolved page title: the first image filename without its extension, or
+the page folder name for an image-free page. Ordinary TOML migration leaves an
+omitted title omitted, preserving the live title fallback behavior.
+
 ## Read-Path Rules
 
 When `info.toml` exists for a page:

@@ -9,6 +9,12 @@
 
 Run tests from the `comic_git_engine` repo root.
 
+`pytest.ini` limits default pytest discovery to `tests/`. Run `pytest` or
+`pytest -q` from the repo root without collecting utility scripts under
+`src/scripts/`. It also includes `tests/build/`, which pytest otherwise skips
+because of its default `build` directory exclusion. The documented full-suite
+command remains `unittest discover`.
+
 The `tests` package adds `src` to `sys.path`, so normal unittest commands do not need a `PYTHONPATH` prefix.
 
 Install the aggregate development requirements before running the full suite:

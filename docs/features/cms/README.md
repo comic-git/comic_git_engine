@@ -128,6 +128,10 @@ This implies `--cms-local-backend` and reinstalls the local bundle after each
 site rebuild. Fork-specific configuration remains an explicit engine-template
 change so selecting a checkout cannot silently alter collection behavior.
 
+## Worker Setup Result
+
+The worker invokes the versioned runner declared by [`cms_migration_contract.json`](../../../cms_migration_contract.json). A legacy INI site returns the usual TOML file plan. When `comic_info.toml` is authoritative, the runner instead checks that CMS is enabled for the requested repository, branch, and worker, then applies the same CMS readiness checks used during the site build. A ready site returns `outcome: "already_enabled"` with an empty file list, so setup can finish without a migration PR. Retained INI files do not override TOML. A TOML site with CMS disabled, mismatched settings, or incompatible pages returns a fixed failure code rather than a false success. Enabling CMS on an existing disabled TOML site remains future work.
+
 ## Product Rules
 
 - CMS must remain optional.

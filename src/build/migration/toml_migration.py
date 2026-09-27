@@ -1,4 +1,5 @@
 import os
+import tomllib
 from dataclasses import dataclass, field
 from glob import iglob
 from typing import Callable
@@ -6,8 +7,10 @@ from typing import Callable
 from configparser import RawConfigParser
 
 from build.content import content_paths
+from build.content.cms_readiness import CmsReadinessError, validate_cms_inputs
 from build.content.comic_config_sources import (
     CmsEnablementConfig,
+    comic_config_data_to_legacy_parser,
     load_comic_config_from_toml,
     serialize_comic_config_to_toml,
 )
@@ -78,6 +81,57 @@ class PageMigrationReport:
     comic_configs_written: list[ComicConfigMigrationTarget] = field(default_factory=list)
     skipped_comic_configs: list[SkippedComicConfigMigration] = field(default_factory=list)
     deleted_legacy_files: list[str] = field(default_factory=list)
+
+
+class CmsSetupError(ValueError):
+    """A fixed, non-sensitive classification for a TOML repository's setup state."""
+
+    def __init__(self, failure_code: str) -> None:
+        self.failure_code = failure_code
+        super().__init__(failure_code)
+
+
+def is_cms_already_enabled(
+        repository_root: str,
+        cms_enablement: CmsEnablementConfig,
+) -> bool:
+    """Validate an existing TOML site before telling the worker that no PR is needed."""
+    content_root = os.path.join(normalize_repository_root(repository_root), "your_content")
+    main_config_path = os.path.join(content_root, "comic_info.toml")
+    if not os.path.isfile(main_config_path):
+        return False
+    try:
+        with open(main_config_path, "rb") as f:
+            data = tomllib.load(f)
+        comic_config_data_to_legacy_parser(data)
+    except (OSError, ValueError, KeyError):
+        raise CmsSetupError("cms_not_ready") from None
+
+    cms = data.get("cms", {})
+    if not isinstance(cms, dict) or cms.get("enabled") is not True:
+        raise CmsSetupError("cms_toml_not_enabled")
+    expected = {
+        "repository": cms_enablement.repository,
+        "branch": cms_enablement.branch,
+        "backend_base_url": cms_enablement.backend_base_url,
+        "backend_auth_endpoint": cms_enablement.backend_auth_endpoint,
+        "editorial_workflow": cms_enablement.editorial_workflow,
+    }
+    if any(cms.get(key, False if key == "editorial_workflow" else None) != value
+           for key, value in expected.items()):
+        raise CmsSetupError("cms_settings_mismatch")
+
+    page_roots = [os.path.join(content_root, "comics")]
+    for folder in data.get("site", {}).get("extra_comics", []):
+        parts = folder.replace("\\", "/").split("/")
+        if any(not part or part in {".", ".."} or ":" in part for part in parts):
+            raise CmsSetupError("cms_not_ready")
+        page_roots.append(os.path.join(content_root, *parts, "comics"))
+    try:
+        validate_cms_inputs(main_config_path, page_roots)
+    except CmsReadinessError:
+        raise CmsSetupError("cms_not_ready") from None
+    return True
 
 
 def plan_page_migration(

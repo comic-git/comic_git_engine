@@ -5,7 +5,12 @@ import sys
 from typing import Any
 
 from build.content.comic_config_sources import CmsEnablementConfig
-from build.migration.toml_migration import PageMigrationPlan, plan_page_migration
+from build.migration.toml_migration import (
+    CmsSetupError,
+    PageMigrationPlan,
+    is_cms_already_enabled,
+    plan_page_migration,
+)
 
 PROTOCOL_VERSION = 1
 
@@ -14,12 +19,18 @@ def main() -> int:
     """Read one runner request from standard input and write one migration plan to standard output."""
     try:
         request = json.load(sys.stdin)
-        plan = plan_page_migration(
-            require_string(request, "repository_root"),
-            cms_enablement=parse_cms_enablement(request.get("cms_enablement")),
-        )
-        json.dump(plan_to_data(plan), sys.stdout)
+        repository_root = require_string(request, "repository_root")
+        cms_enablement = parse_cms_enablement(request.get("cms_enablement"))
+        if is_cms_already_enabled(repository_root, cms_enablement):
+            result = {"protocol_version": PROTOCOL_VERSION, "outcome": "already_enabled", "files": []}
+        else:
+            plan = plan_page_migration(repository_root, cms_enablement=cms_enablement)
+            result = plan_to_data(plan)
+        json.dump(result, sys.stdout)
         sys.stdout.write("\n")
+    except CmsSetupError as error:
+        write_failure(error.failure_code)
+        return 2
     except (TypeError, ValueError, json.JSONDecodeError):
         write_failure("request_invalid")
         return 2

@@ -35,8 +35,14 @@ SHA in review before continuing.
 git switch <reviewed-ref>
 git rev-parse HEAD
 corepack pnpm install --frozen-lockfile
+corepack pnpm run build:esm
 corepack pnpm --filter decap-cms run build
 ```
+
+The ESM step rebuilds workspace packages consumed by the final bundle. Skipping
+it can silently package stale `dist/esm` code even when the source change and
+its tests pass. Before staging, confirm the relevant compiled module and the
+entry bundle both contain the reviewed change.
 
 Create a new engine runtime directory from the package version and the first
 12 characters of that full commit SHA. The selected assets are the entry
@@ -84,7 +90,7 @@ manifest = {
     "fork_repository": "https://github.com/comic-git/decap-cms",
     "fork_commit": commit,
     "upstream_repository": "https://github.com/decaporg/decap-cms",
-    "build_command": "corepack pnpm --filter decap-cms run build",
+    "build_command": "corepack pnpm run build:esm && corepack pnpm --filter decap-cms run build",
     "files": files,
 }
 (runtime / "comic_git_engine_manifest.json").write_text(

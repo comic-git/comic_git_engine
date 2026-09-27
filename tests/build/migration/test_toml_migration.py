@@ -220,6 +220,100 @@ class TestTomlMigration(TestCase):
             )
             self.assertEqual("first", tomllib.loads(response["files"][1]["content"])["title"])
 
+    def test_runner_recognizes_a_ready_toml_site_with_retained_legacy_files(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            content = Path(temp_dir, "your_content")
+            page = content / "comics" / "one"
+            page.mkdir(parents=True)
+            extra_page = content / "extras" / "story" / "comics" / "bonus"
+            extra_page.mkdir(parents=True)
+            (content / "comic_info.ini").write_text(
+                "[Comic Settings]\nEngine version = 1.1\n", encoding="utf-8"
+            )
+            (content / "comic_info.toml").write_text(
+                '[engine]\nversion = "cms"\n'
+                '[site]\nextra_comics = ["extras/story"]\n'
+                '[cms]\nenabled = true\nrepository = "comic-git/example"\n'
+                'branch = "cms"\nbackend_base_url = "https://worker.example.com"\n'
+                'backend_auth_endpoint = "auth"\n',
+                encoding="utf-8",
+            )
+            (page / "info.ini").write_text("Post date = January 02, 2024\n", encoding="utf-8")
+            (page / "info.toml").write_text(
+                'post_date = "2024-01-02"\ntitle = "One"\npost_text = "Hello"\n',
+                encoding="utf-8",
+            )
+            (extra_page / "info.toml").write_text(
+                'post_date = "2024-01-03"\ntitle = "Bonus"\n', encoding="utf-8"
+            )
+            request = {
+                "repository_root": temp_dir,
+                "cms_enablement": {
+                    "repository": "comic-git/example",
+                    "branch": "cms",
+                    "backend_base_url": "https://worker.example.com",
+                    "backend_auth_endpoint": "auth",
+                    "editorial_workflow": False,
+                },
+            }
+            output = io.StringIO()
+            with patch("sys.stdin", io.StringIO(json.dumps(request))), patch("sys.stdout", output):
+                self.assertEqual(0, runner.main())
+
+            self.assertEqual(
+                {"protocol_version": 1, "outcome": "already_enabled", "files": []},
+                json.loads(output.getvalue()),
+            )
+            (page / "info.toml").write_text(
+                'post_date = 2024-01-02\ntitle = "One"\n', encoding="utf-8"
+            )
+            errors = io.StringIO()
+            with patch("sys.stdin", io.StringIO(json.dumps(request))), patch("sys.stderr", errors):
+                self.assertEqual(2, runner.main())
+            self.assertEqual("cms_not_ready", json.loads(errors.getvalue())["failure_code"])
+
+            (page / "info.toml").write_text(
+                'post_date = "2024-01-02"\ntitle = "One"\n', encoding="utf-8"
+            )
+            (extra_page / "info.toml").write_text(
+                'post_date = 2024-01-03\ntitle = "Bonus"\n', encoding="utf-8"
+            )
+            errors = io.StringIO()
+            with patch("sys.stdin", io.StringIO(json.dumps(request))), patch("sys.stderr", errors):
+                self.assertEqual(2, runner.main())
+            self.assertEqual("cms_not_ready", json.loads(errors.getvalue())["failure_code"])
+
+            (extra_page / "info.toml").write_text(
+                'post_date = "2024-01-03"\ntitle = "Bonus"\n', encoding="utf-8"
+            )
+            request["cms_enablement"]["branch"] = "other"
+            errors = io.StringIO()
+            with patch("sys.stdin", io.StringIO(json.dumps(request))), patch("sys.stderr", errors):
+                self.assertEqual(2, runner.main())
+            self.assertEqual("cms_settings_mismatch", json.loads(errors.getvalue())["failure_code"])
+
+            (content / "comic_info.toml").write_text(
+                '[engine]\nversion = "cms"\n[cms]\nenabled = false\n', encoding="utf-8"
+            )
+            errors = io.StringIO()
+            with patch("sys.stdin", io.StringIO(json.dumps(request))), patch("sys.stderr", errors):
+                self.assertEqual(2, runner.main())
+            self.assertEqual("cms_toml_not_enabled", json.loads(errors.getvalue())["failure_code"])
+
+            (content / "comic_info.toml").write_text(
+                '[engine]\nversion = "cms"\n'
+                '[site]\nextra_comics = ["../outside"]\n'
+                '[cms]\nenabled = true\nrepository = "comic-git/example"\n'
+                'branch = "cms"\nbackend_base_url = "https://worker.example.com"\n'
+                'backend_auth_endpoint = "auth"\n',
+                encoding="utf-8",
+            )
+            request["cms_enablement"]["branch"] = "cms"
+            errors = io.StringIO()
+            with patch("sys.stdin", io.StringIO(json.dumps(request))), patch("sys.stderr", errors):
+                self.assertEqual(2, runner.main())
+            self.assertEqual("cms_not_ready", json.loads(errors.getvalue())["failure_code"])
+
     def test_runner_reports_invalid_input_with_a_safe_structured_failure(self):
         stderr = io.StringIO()
 

@@ -68,3 +68,51 @@ class TestMigrationRunnerContract(TestCase):
             [migration_file["path"] for migration_file in response["files"]],
         )
         self.assertIn('title = "comic"', response["files"][1]["content"])
+
+    def test_runner_recognizes_an_already_enabled_site_with_only_declared_dependencies(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository_root = Path(temporary_directory)
+            content = repository_root / "your_content"
+            page = content / "comics" / "first-page"
+            page.mkdir(parents=True)
+            (content / "comic_info.toml").write_text(
+                '[engine]\nversion = "cms"\n'
+                '[cms]\nenabled = true\nrepository = "comic-git/example"\n'
+                'branch = "cms"\nbackend_base_url = "https://worker.example.com"\n'
+                'backend_auth_endpoint = "auth"\n',
+                encoding="utf-8",
+            )
+            (page / "info.toml").write_text(
+                'post_date = "2024-01-02"\ntitle = "First Page"\n', encoding="utf-8"
+            )
+            request = {
+                "repository_root": str(repository_root),
+                "cms_enablement": {
+                    "repository": "comic-git/example",
+                    "branch": "cms",
+                    "backend_base_url": "https://worker.example.com",
+                    "backend_auth_endpoint": "auth",
+                    "editorial_workflow": False,
+                },
+            }
+            environment = {
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONPATH": str(Path(__file__).resolve().parents[3] / "src"),
+            }
+            if os.name == "nt":
+                environment["SYSTEMROOT"] = os.environ["SYSTEMROOT"]
+
+            completed = subprocess.run(
+                [sys.executable, "-m", "build.migration.runner"],
+                input=json.dumps(request),
+                text=True,
+                capture_output=True,
+                check=False,
+                env=environment,
+            )
+
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        self.assertEqual(
+            {"protocol_version": 1, "outcome": "already_enabled", "files": []},
+            json.loads(completed.stdout),
+        )

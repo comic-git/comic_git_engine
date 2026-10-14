@@ -55,24 +55,36 @@ jobs:
       - name: Checkout caller repo
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: false
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Pull in comic_git_engine
+      - name: Read engine version
+        id: engine
+        shell: python
         run: |
-          if [ ! -e comic_git_engine/.git ]; then
-            ENGINE_VERSION=$(sed -n 's/Engine version = \(.*\)/\1/p' your_content/comic_info.ini);
-            echo "Engine version: $ENGINE_VERSION";
-            git submodule add -b "$ENGINE_VERSION" -f https://github.com/comic-git/comic_git_engine;
-          fi
-          git submodule update --remote
-          echo "Branch: $(git -C comic_git_engine branch --show-current)";
-          echo "Commit message: $(git -C comic_git_engine log -1 --pretty=%B)";
-          echo "Commit SHA: $(git -C comic_git_engine rev-parse HEAD)";
+          import configparser
+          import os
+
+          config = configparser.ConfigParser(interpolation=None)
+          with open("your_content/comic_info.ini", encoding="utf-8") as source:
+              config.read_file(source)
+          version = config["Comic Settings"]["Engine version"].strip()
+          if not version or "\n" in version or "\r" in version:
+              raise ValueError("Engine version must be a nonempty, single-line Git ref")
+          print(f"Engine version: {version}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={version}\n")
+
+      - name: Checkout comic engine
+        uses: actions/checkout@v4
+        with:
+          repository: comic-git/comic_git_engine
+          ref: ${{ steps.engine.outputs.version }}
+          path: comic_git_engine
 
       - name: Install dependencies
         run: |

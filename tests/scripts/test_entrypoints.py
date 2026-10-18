@@ -24,10 +24,14 @@ RELEASE_WORKFLOW = os.path.join(ENGINE_ROOT, ".github", "workflows", "main.yaml"
 
 class TestEntrypoints(TestCase):
 
-    def run_entrypoint(self, script_path: str, *args: str) -> subprocess.CompletedProcess[str]:
+    def run_entrypoint(self, script_path: str, *args: str, invalid_config: bool = False) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env.pop("PYTHONPATH", None)
         with tempfile.TemporaryDirectory() as temp_dir:
+            if invalid_config:
+                os.makedirs(os.path.join(temp_dir, "your_content"))
+                with open(os.path.join(temp_dir, "your_content", "comic_info.toml"), "w", encoding="utf-8") as f:
+                    f.write("[invalid")
             return subprocess.run(
                 [sys.executable, script_path, *args],
                 cwd=temp_dir,
@@ -41,6 +45,25 @@ class TestEntrypoints(TestCase):
 
         self.assertEqual(0, result.returncode, msg=result.stderr)
         self.assertIn("--output-dir", result.stdout)
+
+    def test_build_failure_exits_nonzero_in_github_actions(self):
+        with patch.dict(os.environ, {"GITHUB_REPOSITORY": "example/comic"}):
+            result = self.run_entrypoint(BUILD_SITE, invalid_config=True)
+
+        combined_output = result.stdout + result.stderr
+        self.assertEqual(1, result.returncode, msg=combined_output)
+        self.assertIn("Build failed", combined_output)
+        self.assertIn("Traceback", combined_output)
+        self.assertIn("TOMLDecodeError", combined_output)
+
+    def test_build_failure_preserves_local_traceback(self):
+        with patch.dict(os.environ, {"GITHUB_REPOSITORY": ""}):
+            result = self.run_entrypoint(BUILD_SITE, invalid_config=True)
+
+        combined_output = result.stdout + result.stderr
+        self.assertNotEqual(0, result.returncode, msg=combined_output)
+        self.assertIn("Traceback", combined_output)
+        self.assertIn("TOMLDecodeError", combined_output)
 
     def test_migrate_to_toml_can_be_run_directly_by_path(self):
         result = self.run_entrypoint(MIGRATE_TO_TOML, "--help")

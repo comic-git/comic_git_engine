@@ -158,3 +158,4 @@ if __name__ == "__main__":
         # Otherwise, log the error so it's readable in GitHub Actions logs.
         logger.exception("Build failed")
         logger.error("============= ERROR =============\n%s\n=================================", e)
+        sys.exit(1)

@@ -85,7 +85,8 @@ This structure is intentionally file-based and low-friction:
 9. [`src/build/output/rendering.py`](../src/build/output/rendering.py) projects narrow template contexts and renders built-in or theme templates.
 10. [`src/integrations/rss.py`](../src/integrations/rss.py) builds page-level RSS items from structured pages for the main comic and Extra Comics.
 11. [`src/build/output/site_output.py`](../src/build/output/site_output.py) handles cleanup, staging into the configured output directory, and copying any host-managed root files from `your_content/site_root/` into the built site root.
-12. The host repo then publishes that output, typically to GitHub Pages and optionally to Neocities.
+12. When requested, [`src/build/output/sftp.py`](../src/build/output/sftp.py) prepares a separate deployment artifact containing the SFTP commands, connection settings, and standalone runner. Authentication secrets are supplied only when that runner executes in the deployment job.
+13. The host repo then publishes the site output to its selected target: GitHub Pages, Neocities, or SFTP hosting.
 
 ## Key Dependencies
 

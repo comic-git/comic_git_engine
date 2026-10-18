@@ -2,6 +2,7 @@ import logging
 import os
 import shutil
 from configparser import RawConfigParser
+from pathlib import Path, PurePosixPath
 
 from build.content.loaders import load_main_comic_info
 from build.content.site_config import get_extra_comics_list, get_pages_list
@@ -10,6 +11,65 @@ from core.utils import get_output_dir
 logger = logging.getLogger(__name__)
 
 SITE_ROOT_SOURCE = os.path.join("your_content", "site_root")
+
+
+def validate_hidden_path_policy(output_dir: str, hidden_paths: str) -> list[PurePosixPath]:
+    """Validate an explicit publication allowlist before the build changes files."""
+    root = Path(output_dir or ".").resolve()
+    project = Path.cwd().resolve()
+    source_roots = [project / "your_content", project / "comic_git_engine"]
+    if (not output_dir or root == project or root in project.parents
+            or any(root == source.resolve() or source.resolve() in root.parents for source in source_roots)):
+        raise ValueError("Hidden-file filtering requires a separate output directory, not the project or source tree.")
+
+    included = []
+    for line in hidden_paths.splitlines():
+        entry = line.strip().rstrip("/")
+        if not entry:
+            continue
+        parts = entry.split("/")
+        if (any(part in ("", ".", "..") for part in parts)
+                or any(char in entry for char in "\\:*?[]")
+                or any(ord(char) < 32 for char in entry)):
+            raise ValueError("Hidden paths must be exact output-relative paths without traversal or globs.")
+        if not any(part.startswith(".") for part in parts):
+            raise ValueError("Hidden paths must contain a dotfile or hidden directory.")
+        included.append(PurePosixPath(entry))
+    return included
+
+
+def filter_hidden_output_files(output_dir: str, hidden_paths: str) -> None:
+    """Finalize the build in place, retaining only explicitly included hidden paths.
+
+    Call after site_root copying and postprocess hooks. This modifies only the
+    separate generated directory; an empty allowlist removes all hidden paths.
+    """
+    included = validate_hidden_path_policy(output_dir, hidden_paths)
+    root = Path(output_dir).resolve()
+    if not root.is_dir():
+        raise NotADirectoryError(f"Missing built output directory: {output_dir}")
+    for entry in included:
+        if not root.joinpath(*entry.parts).exists():
+            raise ValueError(f"Included hidden path does not exist in the build: {entry}")
+    # Validate before removing anything, and never follow links outside the build.
+    for current, dirs, files in os.walk(root, followlinks=False):
+        if any((Path(current) / name).is_symlink() for name in dirs + files):
+            raise ValueError("Filtered build output must not contain symlinks.")
+
+    def allowed(path: PurePosixPath) -> bool:
+        return (not any(part.startswith(".") for part in path.parts)
+                or any(path == entry or entry in path.parents or path in entry.parents for entry in included))
+
+    for current, dirs, files in os.walk(root):
+        for name in dirs[:]:
+            path = Path(current) / name
+            if not allowed(PurePosixPath(path.relative_to(root).as_posix())):
+                shutil.rmtree(path)
+                dirs.remove(name)
+        for name in files:
+            path = Path(current) / name
+            if not allowed(PurePosixPath(path.relative_to(root).as_posix())):
+                path.unlink()
 
 
 def delete_output_file_space(comic_info: RawConfigParser = None):

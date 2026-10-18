@@ -236,7 +236,7 @@ class TestWorkflowEntrypoints(TestCase):
             workflow,
         )
 
-        self.assertEqual(["${{ inputs.OUTPUT_DIR || '.' }}"] * 2, download_paths)
+        self.assertEqual(["${{ inputs.OUTPUT_DIR || '.' }}"] * 3, download_paths)
         self.assertIn("dist_dir: ${{ inputs.OUTPUT_DIR || '.' }}", workflow)
 
     def run_engine_version_script(self, fixture_files: dict[str, str]) -> subprocess.CompletedProcess[str]:

@@ -16,7 +16,7 @@ on:
   workflow_call:
     inputs:
       DEPLOY_TARGET:
-        description: "`github-pages` or `neocities`"
+        description: "`github-pages`, `neocities`, or `sftp`"
         required: false
         type: string
         default: github-pages
@@ -41,10 +41,43 @@ on:
       INPUTS:
         required: false
         type: string
+      SFTP_HOST:
+        description: "SFTP server hostname (without a protocol or path)."
+        type: string
+        default: ""
+      SFTP_PORT:
+        type: number
+        default: 22
+      SFTP_REMOTE_DIR:
+        description: "Existing website directory owned by this deployment, e.g. /home/username/example.com."
+        type: string
+        default: ""
+      SFTP_CLEAN:
+        description: "Delete remote files absent from the build. The destination directory belongs to comic_git."
+        type: boolean
+        default: true
+      SFTP_HIDDEN_PATHS:
+        description: "Newline-separated exact output-relative hidden files/directories to publish, e.g. .htaccess or .well-known. No globs."
+        type: string
+        default: ""
+      SFTP_EXCLUDE_PATHS:
+        description: "Newline-separated exact destination-relative files/directories to leave untouched (neither uploaded nor deleted). No globs."
+        type: string
+        default: ""
     secrets:
       NEOCITIES_API_TOKEN:
         required: false
       SECRETS:
+        required: false
+      SFTP_USERNAME:
+        required: false
+      SFTP_PASSWORD:
+        required: false
+      SFTP_PRIVATE_KEY:
+        description: "Optional unencrypted OpenSSH private key, used instead of SFTP_PASSWORD."
+        required: false
+      SFTP_KNOWN_HOSTS:
+        description: "Verified OpenSSH known_hosts entry for the server; required for either authentication method."
         required: false
 
 jobs:
@@ -52,9 +85,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate DEPLOY_TARGET
+        env:
+          DEPLOY_TARGET: ${{ inputs.DEPLOY_TARGET }}
         run: |
-          if [[ "${{ inputs.DEPLOY_TARGET }}" != "github-pages" && "${{ inputs.DEPLOY_TARGET }}" != "neocities" ]]; then
-            echo "DEPLOY_TARGET must be 'github-pages' or 'neocities'."
+          if [[ "$DEPLOY_TARGET" != "github-pages" && "$DEPLOY_TARGET" != "neocities" && "$DEPLOY_TARGET" != "sftp" ]]; then
+            echo "DEPLOY_TARGET must be 'github-pages', 'neocities', or 'sftp'."
             exit 1
           fi
       - name: Check Neocities parameters
@@ -136,8 +171,21 @@ jobs:
           OUTPUT_DIR: ${{ inputs.OUTPUT_DIR }}
           INPUTS: ${{ inputs.INPUTS }}
           SECRETS: ${{ secrets.SECRETS }}
+          DEPLOY_TARGET: ${{ inputs.DEPLOY_TARGET }}
+          SFTP_HIDDEN_PATHS: ${{ inputs.SFTP_HIDDEN_PATHS }}
+          SFTP_HOST: ${{ inputs.SFTP_HOST }}
+          SFTP_PORT: ${{ inputs.SFTP_PORT }}
+          SFTP_REMOTE_DIR: ${{ inputs.SFTP_REMOTE_DIR }}
+          SFTP_CLEAN: ${{ inputs.SFTP_CLEAN }}
+          SFTP_EXCLUDE_PATHS: ${{ inputs.SFTP_EXCLUDE_PATHS }}
+          SFTP_DEPLOY_DIR: ${{ runner.temp }}/sftp-deployment
         run: |
-          python comic_git_engine/src/build/build_site.py --delete-scheduled-posts
+          build_args=(--delete-scheduled-posts)
+          if [[ "$DEPLOY_TARGET" == "sftp" ]]; then
+            build_args+=(--hidden-paths "$SFTP_HIDDEN_PATHS")
+            build_args+=(--sftp-deploy-dir "$SFTP_DEPLOY_DIR")
+          fi
+          python comic_git_engine/src/build/build_site.py "${build_args[@]}"
           python_exit_code=$?
           echo "python script exit code: $python_exit_code"
           if [ $python_exit_code -ne 0 ]; then
@@ -149,6 +197,16 @@ jobs:
         with:
           name: site
           path: ${{ inputs.OUTPUT_DIR || '.' }}
+          include-hidden-files: ${{ inputs.DEPLOY_TARGET == 'sftp' }}
+          if-no-files-found: error
+
+      - name: Upload SFTP deployment files
+        if: ${{ inputs.DEPLOY_TARGET == 'sftp' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: sftp-deployment
+          path: ${{ runner.temp }}/sftp-deployment
+          if-no-files-found: error
 
   deploy-github-pages:
     if: ${{ inputs.DEPLOY_TARGET == 'github-pages' }}
@@ -202,3 +260,37 @@ jobs:
           neocities_supporter: ${{ inputs.NEOCITIES_SUPPORTER }}
           preview_before_deploy: true
           protected_files: ${{ inputs.NEOCITIES_PROTECTED_FILES }}
+
+  deploy-sftp:
+    if: ${{ inputs.DEPLOY_TARGET == 'sftp' }}
+    needs: build
+    environment:
+      name: sftp
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: ${{ inputs.OUTPUT_DIR || '.' }}
+
+      - name: Install SFTP client
+        run: sudo apt-get update && sudo apt-get install --yes lftp
+
+      - name: Download SFTP deployment files
+        uses: actions/download-artifact@v4
+        with:
+          name: sftp-deployment
+          path: ${{ runner.temp }}/sftp-deployment
+
+      - name: Deploy via SFTP
+        env:
+          OUTPUT_DIR: ${{ inputs.OUTPUT_DIR }}
+          SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
+          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+          SFTP_PRIVATE_KEY: ${{ secrets.SFTP_PRIVATE_KEY }}
+          SFTP_KNOWN_HOSTS: ${{ secrets.SFTP_KNOWN_HOSTS }}
+        run: python "$RUNNER_TEMP/sftp-deployment/deploy.py" --output-dir "$OUTPUT_DIR"

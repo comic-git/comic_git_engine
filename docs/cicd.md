@@ -31,6 +31,7 @@
 - GitHub's artifact upload excludes files and directories whose names begin with `.` by default. As a result, generated paths such as `.well-known/` are not deployed through this workflow unless hidden-file upload is enabled deliberately. Underscore-prefixed generated files such as `_thumbnail.jpg` are ordinary files and are included. Keep the safer default unless the complete output tree has been reviewed for hidden files that should not be published.
 - Runtime dependency changes are CI/CD-sensitive because every end-user build installs them. Treat dependency additions as product-impacting changes, not just local tooling changes.
 - Migration-only dependencies belong in `requirements_migration.txt`, not `requirements.txt`, unless they become required for normal site builds.
+- The build checks out the engine directly into `comic_git_engine/` using the configured version, with TOML taking precedence over legacy INI and `1.1` as the fallback. Caller submodules are not initialized, so a committed engine submodule does not override that version or require remote-tracking branches during CI.
 - Host repos make two independent version choices: the reusable workflow revision in `uses: .../build_site.yaml@...` and the engine revision in their comic configuration. Changing one does not change the other.
 - `v1` is frozen at the 1.0 reusable-workflow contract. Major tags are managed manually and are never created, moved, or deleted by `main.yaml`.
 

@@ -73,20 +73,21 @@ jobs:
       - name: Checkout caller repo
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: false
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Pull in comic_git_engine
+      - name: Read engine version
+        id: engine
+        shell: python
         run: |
-          if [ ! -e comic_git_engine/.git ]; then
-            ENGINE_VERSION=$(python - <<'PY'
           from configparser import RawConfigParser
           from pathlib import Path
           import tomllib
+          import os
 
           DEFAULT_ENGINE_VERSION = "1.1"
 
@@ -109,16 +110,19 @@ jobs:
           else:
               raise SystemExit("Expected your_content/comic_info.toml or your_content/comic_info.ini")
 
-          print(version.strip() or DEFAULT_ENGINE_VERSION)
-          PY
-            );
-            echo "Engine version: $ENGINE_VERSION";
-            git submodule add -b "$ENGINE_VERSION" -f https://github.com/comic-git/comic_git_engine;
-          fi
-          git submodule update --remote
-          echo "Branch: $(git -C comic_git_engine branch --show-current)";
-          echo "Commit message: $(git -C comic_git_engine log -1 --pretty=%B)";
-          echo "Commit SHA: $(git -C comic_git_engine rev-parse HEAD)";
+          version = version.strip() or DEFAULT_ENGINE_VERSION
+          if "\n" in version or "\r" in version:
+              raise ValueError("Engine version must be a single-line Git ref")
+          print(f"Engine version: {version}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={version}\n")
+
+      - name: Checkout comic engine
+        uses: actions/checkout@v4
+        with:
+          repository: comic-git/comic_git_engine
+          ref: ${{ steps.engine.outputs.version }}
+          path: comic_git_engine
 
       - name: Install dependencies
         run: |

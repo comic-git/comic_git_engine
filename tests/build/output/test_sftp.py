@@ -139,6 +139,24 @@ class TestSftpDeployment(TestCase):
         self.assertIn('--exclude', commands)
         self.assertNotIn('--delete-excluded', commands)
 
+    def test_private_key_is_written_with_lf_bytes_and_final_newline(self):
+        expected = b'-----BEGIN OPENSSH PRIVATE KEY-----\nfixture-key-data\n-----END OPENSSH PRIVATE KEY-----\n'
+        for newline in ('\n', '\r\n'):
+            for final_newline in (False, True):
+                with self.subTest(newline=newline, final_newline=final_newline):
+                    key = expected.decode().replace('\n', newline)
+                    if not final_newline:
+                        key = key.rstrip()
+                    self.env.update(SFTP_PASSWORD='', SFTP_PRIVATE_KEY=key)
+                    def inspect_key(*args, **kwargs):
+                        identities = list(self.root.glob('sftp-auth-*/identity'))
+                        self.assertEqual(1, len(identities))
+                        self.assertEqual(expected, identities[0].read_bytes())
+                        return subprocess.CompletedProcess(args[0], 0)
+                    with patch('subprocess.run', side_effect=inspect_key):
+                        self.run_deployment()
+                    self.assertEqual([], list(self.root.glob('sftp-auth-*')))
+
     def test_invalid_configuration_never_contacts_server(self):
         invalid = [
             ('SFTP_HOST', 'sftp://host'), ('SFTP_HOST', 'host;bye'),

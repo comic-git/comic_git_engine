@@ -127,7 +127,9 @@ def deploy(deployment_dir: str, output_dir: str, env) -> None:
                "-o", "ConnectTimeout=20", "-o", "NumberOfPasswordPrompts=1"]
         if key:
             key_file = auth / "identity"
-            key_file.write_text(key.rstrip() + "\n", encoding="utf-8")
+            # Secrets pasted or piped from Windows may contain CRLF. OpenSSH
+            # expects LF, including the terminating newline, on every platform.
+            key_file.write_bytes((key.replace("\r\n", "\n").rstrip() + "\n").encode("utf-8"))
             key_file.chmod(0o600)
             ssh += ["-i", str(key_file), "-o", "IdentitiesOnly=yes", "-o", "BatchMode=yes"]
         else:

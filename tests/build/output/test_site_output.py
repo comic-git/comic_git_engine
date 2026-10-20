@@ -3,11 +3,79 @@ import tempfile
 from configparser import RawConfigParser
 from unittest import TestCase
 from unittest.mock import patch
+from pathlib import Path
 
 from build.output import site_output
 
 
 MUT = "build.output.site_output."
+
+
+class TestHiddenOutputPolicy(TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name) / "build"
+        self.root.mkdir()
+        self.write("index.html")
+
+    def write(self, relative):
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("content", encoding="utf-8")
+
+    def files(self):
+        return {p.relative_to(self.root).as_posix() for p in self.root.rglob("*") if p.is_file()}
+
+    def test_empty_allowlist_removes_hidden_paths_at_all_depths(self):
+        for path in [".htaccess", ".git/config", "assets/.secret", "assets/_thumbnail.jpg"]:
+            self.write(path)
+        site_output.filter_hidden_output_files(str(self.root), "")
+        self.assertEqual({"index.html", "assets/_thumbnail.jpg"}, self.files())
+
+    def test_exact_files_and_directory_subtrees_preserve_root_layout(self):
+        for path in [".htaccess", ".env", ".well-known/acme/token", ".well-known/other",
+                     "nested/.hidden/file", "nested/.hidden/.nested"]:
+            self.write(path)
+        site_output.filter_hidden_output_files(
+            str(self.root), ".htaccess\n.well-known/acme/token\nnested/.hidden/\n")
+        self.assertEqual({"index.html", ".htaccess", ".well-known/acme/token",
+                          "nested/.hidden/file", "nested/.hidden/.nested"}, self.files())
+
+    def test_invalid_or_missing_entries_fail_before_removing_files(self):
+        self.write(".env")
+        for entry in ["../.env", "/.env", ".hidden/../.env", ".hidden\\secret", ".missing",
+                      "index.html", ".hidden/*", "C:/.env"]:
+            with self.subTest(entry=entry), self.assertRaises(ValueError):
+                site_output.filter_hidden_output_files(str(self.root), entry)
+            self.assertTrue((self.root / ".env").exists())
+
+    def test_in_place_and_source_directory_filtering_are_rejected(self):
+        for output in ["", ".", "..", "your_content", "your_content/site_root", "comic_git_engine"]:
+            with self.subTest(output=output), self.assertRaisesRegex(ValueError, "separate output"):
+                site_output.validate_hidden_path_policy(output, "")
+
+    def test_site_root_copy_is_filtered_without_changing_source(self):
+        source = Path(self.temp.name) / "site_root"
+        source.mkdir()
+        (source / ".htaccess").write_text("rules")
+        (source / ".env").write_text("private")
+        with patch.object(site_output, "SITE_ROOT_SOURCE", str(source)):
+            site_output.copy_site_root_files(str(self.root))
+        site_output.filter_hidden_output_files(str(self.root), ".htaccess")
+        self.assertEqual({"index.html", ".htaccess"}, self.files())
+        self.assertEqual("private", (source / ".env").read_text())
+
+    def test_symlinks_are_rejected_without_touching_external_files(self):
+        external = Path(self.temp.name) / ".external"
+        external.write_text("keep")
+        try:
+            (self.root / "linked").symlink_to(external)
+        except OSError:
+            self.skipTest("Creating symlinks is unavailable on this host")
+        with self.assertRaisesRegex(ValueError, "symlinks"):
+            site_output.filter_hidden_output_files(str(self.root), "")
+        self.assertEqual("keep", external.read_text())
 
 
 class TestSiteOutput(TestCase):

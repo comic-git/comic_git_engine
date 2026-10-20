@@ -1,4 +1,6 @@
 import os
+import tempfile
+from pathlib import Path
 from configparser import RawConfigParser
 from unittest import TestCase
 from unittest.mock import call, patch
@@ -140,8 +142,77 @@ class TestMain(TestCase):
         with self.assertRaisesRegex(RuntimeError, "build failed"):
             build_site.main()
 
+    def test_hidden_policy_runs_after_site_root_and_postprocess(self, *_mocks):
+        m = get_mock_dict(_mocks)
+        m["load_main_comic_info"].return_value = self.make_comic_info()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "build"
+            root.mkdir()
+            def copy_root(_output):
+                (root / ".htaccess").write_text("rules")
+            def hook(_theme, stage, _args):
+                if stage == "postprocess":
+                    (root / ".hook-secret").write_text("private")
+            m["copy_site_root_files"].side_effect = copy_root
+            m["run_hook"].side_effect = hook
+            with patch.dict(os.environ, {"OUTPUT_DIR": str(root)}):
+                build_site.main(hidden_paths=".htaccess")
+            self.assertTrue((root / ".htaccess").exists())
+            self.assertFalse((root / ".hook-secret").exists())
+
+    @patch(MUT + "filter_hidden_output_files")
+    def test_default_build_does_not_filter_hidden_output(self, *_mocks):
+        m = get_mock_dict(_mocks)
+        m["load_main_comic_info"].return_value = self.make_comic_info()
+        build_site.main()
+        m["filter_hidden_output_files"].assert_not_called()
+
+    def test_in_place_policy_fails_before_hooks_or_output_cleanup(self, *_mocks):
+        m = get_mock_dict(_mocks)
+        with patch.dict(os.environ, {"OUTPUT_DIR": ""}):
+            with self.assertRaisesRegex(ValueError, "separate output"):
+                build_site.main(hidden_paths="")
+        m["run_hook"].assert_not_called()
+        m["setup_output_file_space"].assert_not_called()
+
+    def test_sftp_preparation_uses_final_filtered_output_without_credentials(self, *_mocks):
+        m = get_mock_dict(_mocks)
+        m["load_main_comic_info"].return_value = self.make_comic_info()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "build"
+            bundle = Path(temp_dir) / "deployment"
+            root.mkdir()
+            def copy_root(_output):
+                (root / "index.html").write_text("home")
+                (root / ".htaccess").write_text("rules")
+            m["copy_site_root_files"].side_effect = copy_root
+            with patch.dict(os.environ, {"OUTPUT_DIR": str(root), "SFTP_HOST": "example.com",
+                                         "SFTP_REMOTE_DIR": "/home/artist/example.com"}, clear=True):
+                build_site.main(sftp_deploy_dir=str(bundle))
+            self.assertEqual({"index.html"}, {path.name for path in root.iterdir()})
+            self.assertTrue((bundle / "deploy.lftp").is_file())
+            self.assertTrue((bundle / "deploy.py").is_file())
+
+    def test_invalid_sftp_destination_fails_before_build(self, *_mocks):
+        m = get_mock_dict(_mocks)
+        with patch.dict(os.environ, {"SFTP_HOST": "example.com", "SFTP_REMOTE_DIR": "/"}):
+            with self.assertRaisesRegex(ValueError, "website directory"):
+                build_site.main(sftp_deploy_dir="deployment")
+        m["setup_output_file_space"].assert_not_called()
+        m["run_hook"].assert_not_called()
+
 
 class TestCliArgs(TestCase):
+
+    def test_hidden_paths_distinguishes_omitted_from_empty(self):
+        self.assertIsNone(build_site.parse_args([]).hidden_paths)
+        self.assertEqual("", build_site.parse_args(["--hidden-paths", ""]).hidden_paths)
+        self.assertEqual(".htaccess\n.well-known", build_site.parse_args(
+            ["--hidden-paths", ".htaccess\n.well-known"]).hidden_paths)
+
+    def test_cli_accepts_separate_sftp_deployment_directory(self):
+        self.assertEqual("deployment", build_site.parse_args(
+            ["--sftp-deploy-dir", "deployment"]).sftp_deploy_dir)
 
     def test_parse_args_reads_output_dir(self):
         args = build_site.parse_args(["--output-dir", "preview_site"])

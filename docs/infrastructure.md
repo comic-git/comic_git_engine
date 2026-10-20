@@ -12,7 +12,7 @@ This repo does not run a server application or own a traditional cloud stack. It
 | Environment | Purpose                                                                                               | URL / access                                                               |
 |-------------|-------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
 | Development | Local development and manual testing, usually through a host `comic_git` repo such as `comic_git_dev` | Local filesystem plus optional `http://localhost:8000` via `dev_server.py` |
-| Production  | End-user static site deployments built by host repos                                                  | Usually GitHub Pages; optionally Neocities                                 |
+| Production  | End-user static site deployments built by host repos                                                  | GitHub Pages, Neocities, or SFTP hosting                                 |
 
 There is no formal staging environment for `comic_git_engine`.
 
@@ -25,6 +25,7 @@ There is no formal staging environment for `comic_git_engine`.
 | GitHub Actions | Builds host repos with the reusable `build_site.yaml` workflow and runs this repo's release automation |
 | GitHub Pages   | Primary deployment target for end-user static sites                                                    |
 | Neocities      | Optional alternate deployment target for end-user static sites                                         |
+| SFTP hosting   | Generic website upload target; see [SFTP deployment](features/sftp/) |
 
 ## Deployment
 
@@ -61,7 +62,7 @@ Relevant network touchpoints are:
 
 - GitHub Actions runners downloading dependencies and invoking the build
 - optional HTTP fetches such as webring JSON endpoints during site generation
-- static artifact deployment to GitHub Pages or Neocities through workflow steps
+- static artifact deployment to GitHub Pages, Neocities, or SFTP hosting through workflow steps
 
 ## Secrets Management
 
@@ -71,6 +72,7 @@ Common examples:
 
 - `SECRETS` input for build-time secret injection into the engine environment
 - `NEOCITIES_API_TOKEN` for Neocities deployment
+- `SFTP_USERNAME`, `SFTP_KNOWN_HOSTS`, and either `SFTP_PASSWORD` or `SFTP_PRIVATE_KEY` for SFTP deployment
 - standard GitHub token usage for release automation
 
 Do not store secrets in this repo. Reference them through workflow inputs and GitHub Actions secrets.

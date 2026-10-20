@@ -8,6 +8,7 @@ import sys
 import tempfile
 import textwrap
 from types import ModuleType
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -223,7 +224,9 @@ class TestWorkflowEntrypoints(TestCase):
 
     def extract_engine_version_script(self) -> str:
         workflow = self.read_build_workflow()
-        match = re.search(r"ENGINE_VERSION=\$\(python - <<'PY'\n(?P<script>.*?)\n\s*PY", workflow, re.DOTALL)
+        match = re.search(
+            r"- name: Read engine version\n\s+id: engine\n\s+shell: python\n\s+run: \|\n"
+            r"(?P<script>.*?)(?=\n      - name:)", workflow, re.DOTALL)
         self.assertIsNotNone(match)
         return textwrap.dedent(match.group("script"))
 
@@ -236,7 +239,7 @@ class TestWorkflowEntrypoints(TestCase):
             workflow,
         )
 
-        self.assertEqual(["${{ inputs.OUTPUT_DIR || '.' }}"] * 2, download_paths)
+        self.assertEqual(["${{ inputs.OUTPUT_DIR || '.' }}"] * 3, download_paths)
         self.assertIn("dist_dir: ${{ inputs.OUTPUT_DIR || '.' }}", workflow)
 
     def run_engine_version_script(self, fixture_files: dict[str, str]) -> subprocess.CompletedProcess[str]:
@@ -247,12 +250,16 @@ class TestWorkflowEntrypoints(TestCase):
                 os.makedirs(os.path.dirname(path), exist_ok=True)
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(content)
-            return subprocess.run(
+            output_path = Path(temp_dir) / 'github-output'
+            result = subprocess.run(
                 [sys.executable, "-c", script],
                 cwd=temp_dir,
+                env={**os.environ, 'GITHUB_OUTPUT': str(output_path)},
                 capture_output=True,
                 text=True,
             )
+            self.engine_version_output = output_path.read_text() if output_path.exists() else ''
+            return result
 
     def test_build_workflow_reads_engine_version_from_toml(self):
         result = self.run_engine_version_script({
@@ -260,7 +267,7 @@ class TestWorkflowEntrypoints(TestCase):
         })
 
         self.assertEqual(0, result.returncode, msg=result.stderr)
-        self.assertEqual("1.2", result.stdout.strip())
+        self.assertEqual("version=1.2\n", self.engine_version_output)
 
     def test_build_workflow_prefers_toml_engine_version_over_ini(self):
         result = self.run_engine_version_script({
@@ -269,7 +276,7 @@ class TestWorkflowEntrypoints(TestCase):
         })
 
         self.assertEqual(0, result.returncode, msg=result.stderr)
-        self.assertEqual("1.2", result.stdout.strip())
+        self.assertEqual("version=1.2\n", self.engine_version_output)
 
     def test_build_workflow_rejects_non_table_engine_toml_value(self):
         result = self.run_engine_version_script({
@@ -293,7 +300,7 @@ class TestWorkflowEntrypoints(TestCase):
         })
 
         self.assertEqual(0, result.returncode, msg=result.stderr)
-        self.assertEqual("1.3", result.stdout.strip())
+        self.assertEqual("version=1.3\n", self.engine_version_output)
 
     def test_build_workflow_defaults_engine_version_when_toml_omits_it(self):
         result = self.run_engine_version_script({
@@ -301,7 +308,7 @@ class TestWorkflowEntrypoints(TestCase):
         })
 
         self.assertEqual(0, result.returncode, msg=result.stderr)
-        self.assertEqual("1.1", result.stdout.strip())
+        self.assertEqual("version=1.1\n", self.engine_version_output)
 
     def test_build_workflow_fails_when_config_file_is_missing(self):
         result = self.run_engine_version_script({})

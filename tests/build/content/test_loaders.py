@@ -1,3 +1,4 @@
+import builtins
 import os
 import tempfile
 from configparser import RawConfigParser
@@ -82,6 +83,27 @@ class TestLoadExtraComicInfo(TestCase):
         with open(path, "w", encoding="utf-8") as f:
             f.write(text)
         return path
+
+    def test_legacy_extra_comic_info_reads_utf8_with_non_utf8_system_default(self):
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        path = os.path.join(temp_dir.name, "comic_info.ini")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("[Pages]\narchive = Arşiv\n[Links Bar]\nAna Sayfa = /\n")
+
+        actual_open = builtins.open
+
+        def open_with_non_utf8_default(file, mode="r", *args, **kwargs):
+            if os.fspath(file) == path and kwargs.get("encoding") is None:
+                kwargs["encoding"] = "cp1252"
+            return actual_open(file, mode, *args, **kwargs)
+
+        with patch("builtins.open", side_effect=open_with_non_utf8_default):
+            extra_info = loaders.load_legacy_extra_comic_info(path, self.make_parent_info())
+
+        self.assertEqual("Arşiv", extra_info.get("Pages", "archive"))
+        self.assertEqual("/", extra_info.get("Links Bar", "Ana Sayfa"))
+        self.assertFalse(extra_info.has_option("Links Bar", "Home"))
 
     @patch(MUT + "load_legacy_extra_comic_info")
     @patch(MUT + "os.path.isfile", side_effect=lambda path: path.endswith("comic_info.toml"))

@@ -64,10 +64,10 @@ def load_legacy_extra_comic_info(path: str, comic_info: RawConfigParser) -> RawC
     if merged_info.has_section("Pages"):
         del merged_info["Pages"]
     extra_comic_info = RawConfigParser()
-    extra_comic_info.read(path)
+    extra_comic_info.read(path, encoding="utf-8")
     if extra_comic_info.has_section("Links Bar") and merged_info.has_section("Links Bar"):
         del merged_info["Links Bar"]
-    merged_info.read(path)
+    merged_info.read(path, encoding="utf-8")
     return merged_info
 
 

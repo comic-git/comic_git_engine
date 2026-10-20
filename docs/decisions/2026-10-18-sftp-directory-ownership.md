@@ -56,3 +56,4 @@ performance and does not promise atomic publication or automatic rollback.
 - `tests/build/output/test_sftp.py`
 - `tests/scripts/test_sftp_workflow.py`
 - `docs/cicd.md`
+- `docs/features/sftp/README.md`

@@ -25,7 +25,7 @@ There is no formal staging environment for `comic_git_engine`.
 | GitHub Actions | Builds host repos with the reusable `build_site.yaml` workflow and runs this repo's release automation |
 | GitHub Pages   | Primary deployment target for end-user static sites                                                    |
 | Neocities      | Optional alternate deployment target for end-user static sites                                         |
-| SFTP hosting   | Generic website upload target, with DreamHost as the initial manual-test provider; see [CI/CD](cicd.md#sftp-deployment-contract) |
+| SFTP hosting   | Generic website upload target; see [SFTP deployment](features/sftp/) |
 
 ## Deployment
 

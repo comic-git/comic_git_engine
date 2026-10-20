@@ -48,6 +48,7 @@ Use short kebab-case names matching the feature or product area. Examples: `maps
 - [Extra Comics](extra-comics/) - Multi-comic site behavior built on inheritance, selective overrides, and separate comic subdirectories, `active`
 - [RSS](rss/) - Feed generation rules for the main comic and Extra Comics, including inheritance and feed-combination behavior, `active`
 - [Social media previews](social-media-previews/) - Open Graph-style preview metadata defaults and override points for shared links, `active`
+- [SFTP deployment](sftp/) - Directory ownership, hidden output, authentication, and transfer recovery rules, `active`
 - [Themes and presentation overrides](themes-and-presentation-overrides/) - Theme behavior, template overrides, CSS layering, and presentation asset customization, `active`
 - [Transcripts](transcripts/) - Per-page transcript loading, source precedence, and language ordering behavior, `active`
 - [Webring](webring/) - Optional site webring behavior driven by a shared JSON endpoint and local/site configuration, `active`

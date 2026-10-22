@@ -20,6 +20,13 @@ def normalize_web_path(value: str) -> str:
     return value.replace("\\", "/").strip("/")
 
 
+def validate_tag_name(value: str, source: str) -> None:
+    if (not value or value in {".", ".."} or value.endswith((".", " "))
+            or any(char in value for char in '\\/:*?"<>|')
+            or any(ord(char) < 32 or ord(char) == 127 for char in value)):
+        raise ValueError(f"Invalid tag or character name {value!r} in {source}: use a single directory name without separators or traversal.")
+
+
 def validate_page_asset_path(page_path: str, filename: str, description: str) -> tuple[str, str]:
     normalized = filename.replace("\\", "/")
     pure_path = PurePosixPath(normalized)

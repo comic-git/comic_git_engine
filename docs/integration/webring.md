@@ -72,9 +72,11 @@ Current test coverage for this integration lives in [`tests/integrations/test_we
 
 ## Gotchas
 
-- If `Show all members = False` and the configured `Webring ID` is missing from the JSON, the engine prints the received webring data to logs before raising an error
+- Missing own IDs in previous/next mode fail validation; external payloads are not dumped into logs.
 - `Endpoint = local` reads `your_content/webring.json` from the host repo root; it does not fetch that file over HTTP
-- The engine does not validate the full schema beyond the fields it reads, so malformed or incomplete member objects may fail later in templates instead of during parsing
+- The loader validates member structure, unique IDs, and absolute HTTP(S) links before rendering. Optional names/images default to empty strings.
+- Owner configuration selects `Text mode` / TOML `text_mode` (`text`, `markdown`, `unsafe_html`) and `On error` / `on_error` (`abort`, `omit`). Defaults are `text` and `abort`. See the [security decision](../decisions/2026-10-21-external-data-and-preview-security.md) for rationale and template boundaries.
+- Responses are limited to 1 MiB. HTTP requests use a 10-second socket timeout and a 20-second deadline checked between body reads (an active read may last until its socket timeout), with at most two attempts for transient failures. Invalid JSON/schema and permanent HTTP errors are not retried. No cache is persisted.
 
 ## Related Decisions
 

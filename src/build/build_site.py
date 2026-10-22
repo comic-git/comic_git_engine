@@ -138,7 +138,7 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False,
     print_processing_times()
 
 
-def parse_args(argv: list[str] | None = None):
+def parse_args(argv: list[str] | None = None, *, preview: bool = False):
     parser = argparse.ArgumentParser(description='Manual build of comic_git')
     parser.add_argument(
         "-d",
@@ -170,6 +170,9 @@ def parse_args(argv: list[str] | None = None):
         help="Write SFTP deployment files outside the public output. Reads SFTP_HOST, SFTP_PORT, "
              "SFTP_REMOTE_DIR, SFTP_CLEAN, and SFTP_EXCLUDE_PATHS from the environment. Does not deploy."
     )
+    if preview:
+        parser.add_argument("--listen", default="127.0.0.1",
+                            help="Preview bind address. Use 0.0.0.0 only to intentionally share on your network.")
     return parser.parse_args(argv)
 
 

@@ -161,6 +161,7 @@ class TestEntrypoints(TestCase):
             delete_scheduled_posts=False,
             publish_all_comics=False,
             output_dir=None,
+            listen="127.0.0.1",
         )
         comic_info = object()
 
@@ -234,7 +235,7 @@ class TestWorkflowEntrypoints(TestCase):
         workflow = self.read_build_workflow()
         download_paths = re.findall(
             r"- name: Download build artifact\s+"
-            r"uses: actions/download-artifact@v4\s+"
+            r"uses: actions/download-artifact@[0-9a-f]{40}[^\n]*\s+"
             r"with:\s+name: site\s+path: (.+)",
             workflow,
         )

@@ -29,6 +29,7 @@ Use [`_template.md`](_template.md) to create a new doc. Name files `YYYY-MM-DD-s
 
 ## Index
 
+- [External data and preview security](2026-10-21-external-data-and-preview-security.md) - Owner-selected webring trust, path containment, local preview, and dependency pins for 1.1.1, `active`
 - [SFTP directory ownership and publication](2026-10-18-sftp-directory-ownership.md) - Password-first setup, default cleanup, and hidden-path policy owned by build output handling, `active`
 - [Shared archive and social thumbnails](2026-09-05-shared-archive-and-social-thumbnails.md) - Generate one reusable thumbnail per page or image, defaulting to 100 pixels wide, `active`
 - [Release reference policy](2026-09-04-release-reference-policy.md) - Keep exact refs immutable, minor refs moving, major tags manual, and workflow and engine selectors independent, `active`

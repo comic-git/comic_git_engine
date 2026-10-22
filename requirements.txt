@@ -1,4 +1,7 @@
-Jinja2
-markdown2
-Pillow
-pytz
+# Runtime pins, including transitive dependencies. Update and test together.
+Jinja2==3.1.6
+MarkupSafe==3.0.4
+markdown2==2.5.5
+Pillow==13.0.0
+pytz==2026.5
+nh3==0.3.7

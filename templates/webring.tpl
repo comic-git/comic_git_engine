@@ -1,4 +1,4 @@
-<nav class="webring">
+{% autoescape true %}<nav class="webring">
     {%- if webring_label %}
     <h2 class="webring-header">{{ webring_label }}</h2>
     {%- endif %}
@@ -12,7 +12,7 @@
             {%- if member.image %}
                 <img class="webring-img" src="{{ member.image }}" title="{{ member.name }}">
             {%- else %}
-                {{ member.name }}
+                {{ member.name_html }}
             {%- endif %}
             </a>
         </div>
@@ -25,12 +25,12 @@
         {%- if webring_home.image %}
             <img class="webring-img" src="{{ webring_home.image }}" title="{{ webring_home.name }}">
         {%- else %}
-            {{ webring_home.name }}
+            {{ webring_home.name_html }}
         {%- endif %}
         </a>
     </div>
     <div class="webring-label">
-        <a class="webring-link" href="{{ webring_home.url }}" target="_blank">{{ webring_home.name }}</a>
+        <a class="webring-link" href="{{ webring_home.url }}" target="_blank">{{ webring_home.name_html }}</a>
     </div>
     {%- endif %}
 
@@ -42,7 +42,7 @@
             {%- if webring_prev.image %}
                 <img class="webring-img" src="{{ webring_prev.image }}" title="{{ webring_prev.name }}">
             {%- else %}
-                {{ webring_prev.name }}
+                {{ webring_prev.name_html }}
             {%- endif %}
             </a>
         </div>
@@ -53,7 +53,7 @@
             {%- if webring_home.image %}
                 <img class="webring-img" src="{{ webring_home.image }}" title="{{ webring_home.name }}">
             {%- else %}
-                {{ webring_home.name }}
+                {{ webring_home.name_html }}
             {%- endif %}
             </a>
         </div>
@@ -67,7 +67,7 @@
             {%- if webring_next.image %}
                 <img class="webring-img" src="{{ webring_next.image }}" title="{{ webring_next.name }}">
             {%- else %}
-                {{ webring_next.name }}
+                {{ webring_next.name_html }}
             {%- endif %}
             </a>
         </div>
@@ -77,7 +77,7 @@
         </div>
         {%- if webring_home %}
         <div class="webring-label">
-            <a class="webring-link" href="{{ webring_home.url }}" target="_blank">{{ webring_home.name }}</a>
+            <a class="webring-link" href="{{ webring_home.url }}" target="_blank">{{ webring_home.name_html }}</a>
         </div>
         {%- else %}
         <!-- Blank div to make sure grid spacing still works properly -->
@@ -89,4 +89,4 @@
     </div>
     {%- endif %}
 
-</nav>
+</nav>{% endautoescape %}

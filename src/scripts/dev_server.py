@@ -9,6 +9,7 @@ import logging
 import threading
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from functools import partial
+from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -16,6 +17,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from build import build_site
 from build.content.loaders import load_main_comic_info
 from build.output.site_output import delete_output_file_space
+from build.output.site_output import validate_hidden_path_policy
 from core import utils
 from core.logging_config import configure_logging
 
@@ -42,6 +44,24 @@ SKIP_REBUILD = False
 
 
 class PreviewRequestHandler(SimpleHTTPRequestHandler):
+    def send_head(self):
+        candidate = Path(self.translate_path(self.path)).resolve()
+        root = Path(self.directory).resolve()
+        if candidate.is_dir():
+            for index in ("index.html", "index.htm"):
+                if (candidate / index).exists():
+                    candidate = (candidate / index).resolve()
+                    break
+        if (not candidate.is_relative_to(root)
+                or any(part.startswith(".") for part in candidate.relative_to(root).parts)):
+            self.send_error(404)
+            return None
+        return super().send_head()
+
+    def list_directory(self, path):
+        self.send_error(404, "Directory listing is disabled")
+        return None
+
     def translate_path(self, path: str) -> str:
         request_path = path.split("?", 1)[0].split("#", 1)[0]
         prefix = PREVIEW_SUBDIRECTORY.rstrip("/")
@@ -99,10 +119,12 @@ def start_observer(observer: Observer):
         pass
 
 
-def start_http_server(subdirectory: str):
+def start_http_server(subdirectory: str, listen: str = "127.0.0.1"):
     if HTTP_ROOT is None:
         raise RuntimeError("HTTP root was not initialized before starting the preview server.")
-    server_address = ('', 8000)
+    server_address = (listen, 8000)
+    if listen not in ("127.0.0.1", "localhost"):
+        logger.warning("Preview shared on %s:8000. Reachable network users can read preview content, including unpublished assets.", listen)
     request_handler = partial(PreviewRequestHandler, directory=HTTP_ROOT)
     httpd = HTTPServer(server_address, request_handler)
     url = f"http://localhost:{server_address[1]}{subdirectory}"
@@ -117,7 +139,7 @@ def main():
     PROJECT_ROOT = os.getcwd()
 
     # Get build args
-    args = build_site.parse_args()
+    args = build_site.parse_args(preview=True)
     build_site.apply_cli_environment_overrides(args)
     build_args = [args.delete_scheduled_posts, args.publish_all_comics]
 
@@ -126,6 +148,7 @@ def main():
     _comic_url, subdirectory = utils.get_comic_url(comic_info)
     PREVIEW_SUBDIRECTORY = subdirectory
     output_dir = utils.get_output_dir()
+    validate_hidden_path_policy(output_dir, "")
     HTTP_ROOT = os.path.abspath(output_dir) if output_dir else PROJECT_ROOT
 
     # Initial build
@@ -139,7 +162,7 @@ def main():
 
     # Start HTTP server (blocking)
     try:
-        start_http_server(subdirectory)
+        start_http_server(subdirectory, args.listen)
     except KeyboardInterrupt:
         pass
 

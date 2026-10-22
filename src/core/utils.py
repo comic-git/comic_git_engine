@@ -5,6 +5,7 @@ import os
 import re
 from configparser import RawConfigParser
 from copy import deepcopy
+from pathlib import Path, PureWindowsPath
 from urllib.parse import urljoin
 
 from build.content.content_paths import get_comic_social_media_paths
@@ -165,6 +166,14 @@ def write_to_template(template_name: str, html_path: str, data_dict: dict | None
         raise RuntimeError("Jinja environment was not initialized before write_to_template was called.")
     if data_dict is None:
         data_dict = {}
+    # Validate before template rendering or directory creation, including Windows
+    # absolute paths when builds run on Linux and symlinks escaping the root.
+    output_root = Path(get_output_dir() or ".").resolve()
+    destination = (output_root / html_path).resolve()
+    if (Path(html_path).is_absolute() or PureWindowsPath(html_path).drive
+            or "\\" in html_path and os.sep != "\\"
+            or not destination.is_relative_to(output_root)):
+        raise ValueError(f"Template output must stay inside the output directory: {html_path}")
     data_dict["template_name"] = template_name
     file_contents = build_md_page(template_name, data_dict)
     if file_contents is None:

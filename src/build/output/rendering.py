@@ -4,7 +4,7 @@ from collections import defaultdict
 from configparser import RawConfigParser
 
 from build.content.comic_data import page_to_template_context
-from build.content.page_models import ComicPage
+from build.content.page_models import ComicPage, validate_tag_name
 from build.content.site_config import get_pages_list, is_page_configured
 from core import utils
 from integrations.hooks import run_hook
@@ -110,6 +110,7 @@ def write_tagged_pages(
         for tag in page.tags:
             tags[tag].append(page)
     for tag, tagged_pages in tags.items():
+        validate_tag_name(tag, tagged_pages[0].page_dir)
         context = global_values.copy()
         context.update({
             "_title": f"Posts tagged with {tag}",
@@ -123,7 +124,4 @@ def write_tagged_pages(
             "tagged",
             filename,
         )
-        try:
-            utils.write_to_template("tagged", filename, context)
-        except Exception:
-            logger.exception("Failed to create '%s' from 'tagged' template", filename)
+        utils.write_to_template("tagged", filename, context)

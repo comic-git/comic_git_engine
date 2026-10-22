@@ -106,12 +106,12 @@ jobs:
 
     steps:
       - name: Checkout caller repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout@v4
         with:
           submodules: false
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -153,7 +153,7 @@ jobs:
               output.write(f"version={version}\n")
 
       - name: Checkout comic engine
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout@v4
         with:
           repository: comic-git/comic_git_engine
           ref: ${{ steps.engine.outputs.version }}
@@ -161,10 +161,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install -r comic_git_engine/requirements.txt
           python comic_git_engine/src/scripts/make_requirements_hooks_file.py
-          pip install -r comic_git_engine/requirements_hooks.txt
+          pip install -c comic_git_engine/requirements.txt -r comic_git_engine/requirements_hooks.txt
 
       - name: Run python build script
         env:
@@ -193,7 +192,7 @@ jobs:
           fi
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # actions/upload-artifact@v4
         with:
           name: site
           path: ${{ inputs.OUTPUT_DIR || '.' }}
@@ -202,7 +201,7 @@ jobs:
 
       - name: Upload SFTP deployment files
         if: ${{ inputs.DEPLOY_TARGET == 'sftp' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # actions/upload-artifact@v4
         with:
           name: sftp-deployment
           path: ${{ runner.temp }}/sftp-deployment
@@ -219,22 +218,22 @@ jobs:
 
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # actions/download-artifact@v4
         with:
           name: site
           path: ${{ inputs.OUTPUT_DIR || '.' }}
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # actions/configure-pages@v5
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # actions/upload-pages-artifact@v3
         with:
           path: ${{ inputs.OUTPUT_DIR || '.' }}
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # actions/deploy-pages@v4
 
   deploy-neocities:
     if: ${{ inputs.DEPLOY_TARGET == 'neocities' }}
@@ -246,13 +245,13 @@ jobs:
 
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # actions/download-artifact@v4
         with:
           name: site
           path: ${{ inputs.OUTPUT_DIR || '.' }}
 
       - name: Deploy to neocities
-        uses: bcomnes/deploy-to-neocities@v3
+        uses: bcomnes/deploy-to-neocities@44e42387b3267e31432ca34b01f013b94956f2f2 # bcomnes/deploy-to-neocities@v3
         with:
           api_key: ${{ secrets.NEOCITIES_API_TOKEN }}
           dist_dir: ${{ inputs.OUTPUT_DIR || '.' }}
@@ -272,7 +271,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # actions/download-artifact@v4
         with:
           name: site
           path: ${{ inputs.OUTPUT_DIR || '.' }}
@@ -281,7 +280,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --yes lftp
 
       - name: Download SFTP deployment files
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # actions/download-artifact@v4
         with:
           name: sftp-deployment
           path: ${{ runner.temp }}/sftp-deployment

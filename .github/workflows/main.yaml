@@ -45,7 +45,7 @@ jobs:
           echo "minor_version=$MAJOR.$MINOR" >> "$GITHUB_OUTPUT"
 
       - name: Reject overlapping release runs
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # actions/github-script@v7
         with:
           script: |
             const activeStatuses = new Set([
@@ -76,7 +76,7 @@ jobs:
             }
 
       - name: Load master
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout@v4
         with:
           ref: master
           fetch-depth: 0
@@ -109,7 +109,7 @@ jobs:
       queue: max
     steps:
       - name: Load repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout@v4
         with:
           ref: master
           fetch-depth: 0
@@ -194,7 +194,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout@v4
         with:
           ref: master
           fetch-depth: 0
@@ -237,7 +237,7 @@ jobs:
           echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...$NEW_TAG" >> release.md
 
       - name: Create draft GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@26994186c0ac3ef5cae75ac16aa32e8153525f77 # softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.validate_release.outputs.version }}
           name: v${{ needs.validate_release.outputs.version }}

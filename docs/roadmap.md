@@ -26,6 +26,9 @@ Source files and generated output should be fully separated:
 - source content stays in the host repo
 - generated site files remain in the configured output directory
 - deployment publishes only that output directory
+- stage only explicitly public assets instead of copying all of `your_content/`
+- exclude original INI/TOML source files by default; if compatibility requires public info files, generate sanitized copies with `!`-prefixed private values removed, leaving source files unchanged
+- verify private values are absent from every published representation, not only `page_info_list.json`
 
 ### Why this is desirable
 

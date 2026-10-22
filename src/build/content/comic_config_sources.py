@@ -33,6 +33,8 @@ STRING_OPTIONS = {
     ("rss", "channel_description"): ("RSS Feed", "Description"),
     ("webring", "endpoint"): ("Webring", "Endpoint"),
     ("webring", "id"): ("Webring", "Webring ID"),
+    ("webring", "text_mode"): ("Webring", "Text mode"),
+    ("webring", "on_error"): ("Webring", "On error"),
 }
 
 BOOL_OPTIONS = {

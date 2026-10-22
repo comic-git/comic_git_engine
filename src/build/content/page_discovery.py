@@ -21,6 +21,7 @@ from build.content.page_models import (
     resolve_page_title,
     validate_page_asset_path,
     validate_unique_filenames,
+    validate_tag_name,
 )
 from build.content.page_sources import PageSource, iso_date_to_legacy, post_date_to_datetime
 from build.content.site_config import get_image_title_fallback
@@ -57,6 +58,8 @@ def discover_pages(
         if page_source is None or filepath is None:
             logger.warning("%s is missing its info.ini/info.toml file. Skipping", page_path)
             continue
+        for name in page_source.tags + page_source.characters:
+            validate_tag_name(name, filepath)
         try:
             post_date = post_date_to_datetime(page_source.post_date, tz_info)
         except (ValueError, InvalidTimeError) as e:

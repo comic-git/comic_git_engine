@@ -5,7 +5,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from jinja2 import Environment, DictLoader
-from core import utils
+from core import rendering_utils
 from build.content.page_models import validate_tag_name
 
 
@@ -24,14 +24,14 @@ class TestOutputSecurity(TestCase):
             outside.parent.mkdir()
             outside.write_text("original")
             with (patch.dict(os.environ, OUTPUT_DIR=str(root / "build")),
-                  patch.object(utils, "jinja_environment", Environment(loader=DictLoader({"tagged.tpl": "changed"}))),
-                  patch.object(utils, "build_md_page", return_value=None)):
+                  patch.object(rendering_utils, "jinja_environment", Environment(loader=DictLoader({"tagged.tpl": "changed"}))),
+                  patch.object(rendering_utils, "build_md_page", return_value=None)):
                 for path in ["tagged/../../outside/index.html", str(outside), "C:\\outside\\index.html"]:
                     with self.subTest(path=path), self.assertRaisesRegex(ValueError, "inside the output"):
-                        utils.write_to_template("tagged", path)
+                        rendering_utils.write_to_template("tagged", path)
                 self.assertEqual("original", outside.read_text())
                 self.assertFalse((root / "build").exists())
-                utils.write_to_template("tagged", "tagged/Normal tag/index.html")
+                rendering_utils.write_to_template("tagged", "tagged/Normal tag/index.html")
                 self.assertEqual("changed", (root / "build/tagged/Normal tag/index.html").read_text())
 
     def test_output_writer_rejects_symlink_escape(self):
@@ -44,6 +44,6 @@ class TestOutputSecurity(TestCase):
             except OSError:
                 self.skipTest("Creating symlinks is unavailable")
             with (patch.dict(os.environ, OUTPUT_DIR=str(root / "build")),
-                  patch.object(utils, "jinja_environment", Environment()),
+                  patch.object(rendering_utils, "jinja_environment", Environment()),
                   self.assertRaisesRegex(ValueError, "inside the output")):
-                utils.write_to_template("tagged", "link/index.html")
+                rendering_utils.write_to_template("tagged", "link/index.html")

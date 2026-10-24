@@ -16,6 +16,7 @@ import os
 import re
 from configparser import RawConfigParser
 from copy import deepcopy
+from pathlib import Path
 from urllib.parse import urljoin
 
 from build.content.content_paths import get_comic_social_media_paths
@@ -89,12 +90,13 @@ def str_to_list(s: str, delimiter: str = ",", max_split: int = -1) -> list[str]:
 
 
 def find_project_root():
-    while not os.path.exists("your_content"):
-        last_cwd = os.getcwd()
-        os.chdir("..")
-        if os.getcwd() == last_cwd:
-            raise FileNotFoundError("Couldn't find a folder in the path matching 'your_content'. Make sure you're "
-                                    "running this script from within the comic_git repository.")
+    cwd = Path.cwd()
+    for root in (cwd, *cwd.parents):
+        if (root / "your_content").is_dir():
+            os.chdir(root)
+            return
+    raise FileNotFoundError("Couldn't find a folder in the path matching 'your_content'. Make sure you're "
+                            "running this script from within the comic_git repository.")
 
 
 def read_info(filepath, to_dict=False):

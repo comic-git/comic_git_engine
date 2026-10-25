@@ -82,7 +82,7 @@ When a feature or fix is done, the right question is not "should I preserve the 
 - **Run `/docs`** to update existing docs that reflect changed behavior, interfaces, or conventions.
 - **Write a `docs/decisions/` entry** if a non-obvious architectural choice was made that a future developer might want to reverse without knowing the cost. The reasoning in the plan is ephemeral; a decision doc is permanent.
 - **Write a `docs/features/` entry** if there is intent, requirements, or business rules behind the feature that can't be derived from reading the implementation — applying the intent-over-implementation rule.
-- **Don't preserve `specs/` files.** They are scaffolding. Once the work is merged, delete them.
+- **Don't preserve temporary `specs/` plans and tasks.** Once the work is merged, delete them. Keep `specs/backlog.md` as the tracked index of deferred work and release checks; move durable feature intent and decisions into `docs/`.
 
 ## Quick Decision Guide
 

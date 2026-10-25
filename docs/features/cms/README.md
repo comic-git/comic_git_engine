@@ -10,15 +10,15 @@
 
 This feature covers the optional Decap CMS editing workflow for `comic_git`.
 
-It includes the static admin surface, the TOML-backed content model, migration rules from legacy files, and the boundary between `comic_git_engine` and the future hosted GitHub App / OAuth backend.
+It includes the static admin surface, the TOML-backed content model, migration rules from legacy files, and the boundary between `comic_git_engine` and the separate GitHub App / OAuth worker.
 
 ## Current State
 
 The engine-side editing slice is implemented. It generates a static `/admin/`
 surface for editing the main comic settings and TOML-backed comic pages in the
 main comic and Extra Comics. Page and settings editing have completed local
-browser round trips against `comic_git_dev`. The hosted GitHub OAuth backend is
-not implemented, so production sign-in is still deferred.
+browser round trips against `comic_git_dev`. The OAuth worker is implemented in
+`github_oauth_worker`, but end-to-end production sign-in remains a release check.
 
 Current behavior:
 

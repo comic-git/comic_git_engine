@@ -40,6 +40,7 @@ See [`docs/dev_setup.md`](docs/dev_setup.md) for the full local-development work
 | [`docs/features/`](docs/features/README.md)              | Feature-scoped documentation                                  |
 | [`docs/decisions/`](docs/decisions/README.md)            | Significant past decisions                                    |
 | [`docs/documentation.md`](docs/documentation.md)         | Docs structure and where things go                            |
+| [`specs/backlog.md`](specs/backlog.md)                    | Deferred work and pre-release checks                           |
 
 ## AI Skills
 

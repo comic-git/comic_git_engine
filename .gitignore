@@ -26,5 +26,4 @@ requirements_hooks.txt
 !.codex/skills/review/**
 !.codex/skills/test/
 !.codex/skills/test/**
-specs/*
-!specs/backlog.md
+specs/

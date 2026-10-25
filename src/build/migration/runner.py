@@ -1,6 +1,7 @@
 """Versioned JSON entry point for isolated CMS-enablement migration runners."""
 
 import json
+import os
 import sys
 from typing import Any
 
@@ -8,11 +9,11 @@ from build.content.comic_config_sources import CmsEnablementConfig
 from build.migration.toml_migration import (
     CmsSetupError,
     PageMigrationPlan,
-    is_cms_already_enabled,
+    plan_existing_toml_cms,
     plan_page_migration,
 )
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 
 
 def main() -> int:
@@ -21,8 +22,12 @@ def main() -> int:
         request = json.load(sys.stdin)
         repository_root = require_string(request, "repository_root")
         cms_enablement = parse_cms_enablement(request.get("cms_enablement"))
-        if is_cms_already_enabled(repository_root, cms_enablement):
-            result = {"protocol_version": PROTOCOL_VERSION, "outcome": "already_enabled", "files": []}
+        if os.path.isfile(os.path.join(repository_root, "your_content", "comic_info.toml")):
+            plan = plan_existing_toml_cms(repository_root, cms_enablement)
+            result = (
+                {"protocol_version": PROTOCOL_VERSION, "outcome": "already_enabled", "files": []}
+                if not plan.files else plan_to_data(plan)
+            )
         else:
             plan = plan_page_migration(repository_root, cms_enablement=cms_enablement)
             result = plan_to_data(plan)

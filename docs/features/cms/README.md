@@ -130,7 +130,7 @@ change so selecting a checkout cannot silently alter collection behavior.
 
 ## Worker Setup Result
 
-The worker invokes the versioned runner declared by [`cms_migration_contract.json`](../../../cms_migration_contract.json). A legacy INI site returns the usual TOML file plan. When `comic_info.toml` is authoritative, the runner instead checks that CMS is enabled for the requested repository, branch, and worker, then applies the same CMS readiness checks used during the site build. A ready site returns `outcome: "already_enabled"` with an empty file list, so setup can finish without a migration PR. Retained INI files do not override TOML. A TOML site with CMS disabled, mismatched settings, or incompatible pages returns a fixed failure code rather than a false success. Enabling CMS on an existing disabled TOML site remains future work.
+The worker invokes the versioned runner declared by [`cms_migration_contract.json`](../../../cms_migration_contract.json). A legacy INI site returns the usual TOML file plan. When `comic_info.toml` is authoritative, the runner checks the requested repository, branch, and worker settings. A matching CMS-ready site returns `outcome: "already_enabled"` with an empty file list. Otherwise it plans a narrow update to worker-owned `[cms]` settings, preserving unrelated TOML content and comments with `tomlkit`. The resulting site must pass the normal CMS editing checks before the plan is returned. Retained INI files do not override TOML. `requirements_migration.txt` is the isolated runner dependency set and must match the contract's package list.
 
 ## Product Rules
 

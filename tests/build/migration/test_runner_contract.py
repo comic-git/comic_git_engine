@@ -59,7 +59,7 @@ class TestMigrationRunnerContract(TestCase):
 
         self.assertEqual(0, completed.returncode, completed.stderr)
         response = json.loads(completed.stdout)
-        self.assertEqual(1, response["protocol_version"])
+        self.assertEqual(2, response["protocol_version"])
         self.assertEqual(
             [
                 "your_content/comic_info.toml",
@@ -113,6 +113,6 @@ class TestMigrationRunnerContract(TestCase):
 
         self.assertEqual(0, completed.returncode, completed.stderr)
         self.assertEqual(
-            {"protocol_version": 1, "outcome": "already_enabled", "files": []},
+            {"protocol_version": 2, "outcome": "already_enabled", "files": []},
             json.loads(completed.stdout),
         )

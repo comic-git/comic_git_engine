@@ -261,7 +261,7 @@ class TestTomlMigration(TestCase):
                 self.assertEqual(0, runner.main())
 
             self.assertEqual(
-                {"protocol_version": 1, "outcome": "already_enabled", "files": []},
+                {"protocol_version": runner.PROTOCOL_VERSION, "outcome": "already_enabled", "files": []},
                 json.loads(output.getvalue()),
             )
             (page / "info.toml").write_text(
@@ -287,18 +287,21 @@ class TestTomlMigration(TestCase):
                 'post_date = "2024-01-03"\ntitle = "Bonus"\n', encoding="utf-8"
             )
             request["cms_enablement"]["branch"] = "other"
-            errors = io.StringIO()
-            with patch("sys.stdin", io.StringIO(json.dumps(request))), patch("sys.stderr", errors):
-                self.assertEqual(2, runner.main())
-            self.assertEqual("cms_settings_mismatch", json.loads(errors.getvalue())["failure_code"])
+            output = io.StringIO()
+            with patch("sys.stdin", io.StringIO(json.dumps(request))), patch("sys.stdout", output):
+                self.assertEqual(0, runner.main())
+            repair = json.loads(output.getvalue())["files"]
+            self.assertEqual(["your_content/comic_info.toml"], [item["path"] for item in repair])
+            self.assertEqual("other", tomllib.loads(repair[0]["content"])["cms"]["branch"])
 
             (content / "comic_info.toml").write_text(
                 '[engine]\nversion = "cms"\n[cms]\nenabled = false\n', encoding="utf-8"
             )
-            errors = io.StringIO()
-            with patch("sys.stdin", io.StringIO(json.dumps(request))), patch("sys.stderr", errors):
-                self.assertEqual(2, runner.main())
-            self.assertEqual("cms_toml_not_enabled", json.loads(errors.getvalue())["failure_code"])
+            output = io.StringIO()
+            with patch("sys.stdin", io.StringIO(json.dumps(request))), patch("sys.stdout", output):
+                self.assertEqual(0, runner.main())
+            repair = json.loads(output.getvalue())["files"]
+            self.assertTrue(tomllib.loads(repair[0]["content"])["cms"]["enabled"])
 
             (content / "comic_info.toml").write_text(
                 '[engine]\nversion = "cms"\n'
@@ -328,6 +331,41 @@ class TestTomlMigration(TestCase):
             json.loads(stderr.getvalue()),
         )
 
+    def test_runner_repairs_only_cms_fields_without_losing_comments(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            content = Path(temp_dir, "your_content")
+            page = content / "comics" / "one"
+            page.mkdir(parents=True)
+            (page / "info.toml").write_text(
+                'post_date = "2024-01-02"\ntitle = "One"\n', encoding="utf-8"
+            )
+            original = (
+                '# Keep this creator note\n[engine]\nversion = "cms"\n'
+                '[site]\nextra_comics = []\n'
+                '[cms]\nenabled = false # Keep this note\n'
+                'backend_auth_endpoint = "auth"\n'
+            )
+            (content / "comic_info.toml").write_text(original, encoding="utf-8")
+            request = {
+                "repository_root": temp_dir,
+                "cms_enablement": {
+                    "repository": "comic-git/example",
+                    "branch": "cms",
+                    "backend_base_url": "https://worker.example.com",
+                    "backend_auth_endpoint": "auth/123",
+                    "editorial_workflow": False,
+                },
+            }
+            output = io.StringIO()
+            with patch("sys.stdin", io.StringIO(json.dumps(request))), patch("sys.stdout", output):
+                self.assertEqual(0, runner.main())
+            updated = json.loads(output.getvalue())["files"][0]["content"]
+            self.assertIn("# Keep this creator note", updated)
+            self.assertIn("# Keep this note", updated)
+            self.assertIn('extra_comics = []', updated)
+            self.assertEqual("auth/123", tomllib.loads(updated)["cms"]["backend_auth_endpoint"])
+            self.assertEqual(original, (content / "comic_info.toml").read_text(encoding="utf-8"))
+
     def test_migration_contract_declares_the_runner_protocol(self):
         contract_path = Path(__file__).resolve().parents[3] / "cms_migration_contract.json"
         with open(contract_path, encoding="utf-8") as f:
@@ -335,7 +373,7 @@ class TestTomlMigration(TestCase):
 
         self.assertEqual(runner.PROTOCOL_VERSION, contract["protocol_version"])
         self.assertEqual("build.migration.runner", contract["runner_module"])
-        self.assertEqual(["tomli-w"], contract["required_runtime_packages"])
+        self.assertEqual(["tomli-w", "tomlkit"], contract["required_runtime_packages"])
 
     def test_dry_run_reports_page_without_writing_toml(self):
         with tempfile.TemporaryDirectory() as temp_dir:

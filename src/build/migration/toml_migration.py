@@ -1,5 +1,6 @@
 import os
 import tomllib
+import tomlkit
 from dataclasses import dataclass, field
 from glob import iglob
 from typing import Callable
@@ -107,20 +108,6 @@ def is_cms_already_enabled(
     except (OSError, ValueError, KeyError):
         raise CmsSetupError("cms_not_ready") from None
 
-    cms = data.get("cms", {})
-    if not isinstance(cms, dict) or cms.get("enabled") is not True:
-        raise CmsSetupError("cms_toml_not_enabled")
-    expected = {
-        "repository": cms_enablement.repository,
-        "branch": cms_enablement.branch,
-        "backend_base_url": cms_enablement.backend_base_url,
-        "backend_auth_endpoint": cms_enablement.backend_auth_endpoint,
-        "editorial_workflow": cms_enablement.editorial_workflow,
-    }
-    if any(cms.get(key, False if key == "editorial_workflow" else None) != value
-           for key, value in expected.items()):
-        raise CmsSetupError("cms_settings_mismatch")
-
     page_roots = [os.path.join(content_root, "comics")]
     for folder in data.get("site", {}).get("extra_comics", []):
         parts = folder.replace("\\", "/").split("/")
@@ -131,7 +118,51 @@ def is_cms_already_enabled(
         validate_cms_inputs(main_config_path, page_roots)
     except CmsReadinessError:
         raise CmsSetupError("cms_not_ready") from None
-    return True
+    cms = data.get("cms", {})
+    return isinstance(cms, dict) and all(
+        cms.get(key, False if key == "editorial_workflow" else None) == value
+        for key, value in _cms_settings(cms_enablement).items()
+    )
+
+
+def plan_existing_toml_cms(
+        repository_root: str,
+        cms_enablement: CmsEnablementConfig,
+) -> PageMigrationPlan:
+    """Repair only worker-owned CMS fields in an otherwise CMS-editable TOML site."""
+    repository_root = normalize_repository_root(repository_root)
+    path = os.path.join(repository_root, "your_content", "comic_info.toml")
+    try:
+        with open(path, encoding="utf-8") as source:
+            document = tomlkit.parse(source.read())
+        cms = document.get("cms")
+        if cms is None:
+            cms = tomlkit.table()
+            document["cms"] = cms
+        if not isinstance(cms, tomlkit.items.Table):
+            raise CmsSetupError("cms_not_ready")
+        for key, value in _cms_settings(cms_enablement).items():
+            if cms.get(key) != value:
+                cms[key] = value
+        updated = tomlkit.dumps(document)
+        comic_config_data_to_legacy_parser(tomllib.loads(updated))
+    except (OSError, ValueError, KeyError, TypeError, tomlkit.exceptions.TOMLKitError):
+        raise CmsSetupError("cms_not_ready") from None
+    files = () if is_cms_already_enabled(repository_root, cms_enablement) else (
+        MigrationFile(repository_relative_path(repository_root, path), updated),
+    )
+    return PageMigrationPlan(files, (), (), (), ())
+
+
+def _cms_settings(cms_enablement: CmsEnablementConfig) -> dict[str, str | bool]:
+    return {
+        "enabled": True,
+        "repository": cms_enablement.repository,
+        "branch": cms_enablement.branch,
+        "backend_base_url": cms_enablement.backend_base_url,
+        "backend_auth_endpoint": cms_enablement.backend_auth_endpoint,
+        "editorial_workflow": cms_enablement.editorial_workflow,
+    }
 
 
 def plan_page_migration(

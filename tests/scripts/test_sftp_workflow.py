@@ -16,7 +16,7 @@ class TestSftpWorkflow(TestCase):
         self.assertIn("include-hidden-files: ${{ inputs.DEPLOY_TARGET == 'sftp' }}", workflow)
         self.assertIn("if: ${{ inputs.DEPLOY_TARGET == 'sftp' }}", workflow)
         download_paths = re.findall(r'uses: actions/download-artifact@[0-9a-f]{40}[^\n]*\s+with:\s+name: site\s+path: (.+)', workflow)
-        self.assertEqual(["${{ inputs.OUTPUT_DIR || '.' }}"] * 3, download_paths)
+        self.assertEqual(["${{ inputs.OUTPUT_DIR || 'build' }}"] * 2, download_paths)
         deploy_job = workflow.split('  deploy-sftp:', 1)[1]
         self.assertNotIn('shell: python', deploy_job)
         self.assertNotIn('SFTP_REMOTE_DIR:', deploy_job)

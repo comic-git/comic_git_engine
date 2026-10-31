@@ -1,10 +1,7 @@
 name: Build Site
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
@@ -24,6 +21,16 @@ on:
         required: false
         type: string
         default: build
+      ARTIFACT_RETENTION_DAYS:
+        description: "Days to retain deployment artifacts (1-90). This also limits deployment-job retries."
+        required: false
+        type: string
+        default: "1"
+      CHECKOUT_EXCLUDE_PATHS:
+        description: "Optional newline-separated repository-relative directories to omit from the caller checkout."
+        required: false
+        type: string
+        default: ""
       NEOCITIES_CLEAN:
         description: "If true, will destructively delete files found on Neocities not found in your OUTPUT_DIR."
         required: false
@@ -96,6 +103,19 @@ jobs:
         run: |
           echo "NEOCITIES_CLEAN: ${{ inputs.NEOCITIES_CLEAN == true }}"
           echo "NEOCITIES_SUPPORTER: ${{ inputs.NEOCITIES_SUPPORTER == true }}"
+      - name: Validate artifact and output settings
+        env:
+          ARTIFACT_RETENTION_DAYS: ${{ inputs.ARTIFACT_RETENTION_DAYS }}
+          OUTPUT_DIR: ${{ inputs.OUTPUT_DIR || 'build' }}
+        run: |
+          if [[ ! "$ARTIFACT_RETENTION_DAYS" =~ ^([1-9]|[1-8][0-9]|90)$ ]]; then
+            echo "ARTIFACT_RETENTION_DAYS must be an integer from 1 to 90."
+            exit 1
+          fi
+          if [[ "$(realpath -m -- "$OUTPUT_DIR")" == "$(realpath -m -- "$GITHUB_WORKSPACE")" ]]; then
+            echo "OUTPUT_DIR must be a separate directory, not the checkout root."
+            exit 1
+          fi
 
   build:
     needs: check-parameters
@@ -105,15 +125,72 @@ jobs:
         python-version: [3.12]
 
     steps:
-      - name: Checkout caller repo
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout@v4
-        with:
-          submodules: false
-
       - name: Set up Python
         uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Checkout caller repo
+        if: ${{ inputs.CHECKOUT_EXCLUDE_PATHS == '' }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Sparse checkout caller repo
+        if: ${{ inputs.CHECKOUT_EXCLUDE_PATHS != '' }}
+        shell: bash
+        env:
+          CHECKOUT_EXCLUDE_PATHS: ${{ inputs.CHECKOUT_EXCLUDE_PATHS }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          patterns = ["/*"]
+          for raw in os.environ["CHECKOUT_EXCLUDE_PATHS"].splitlines():
+              if not raw.strip():
+                  continue
+              path = raw.rstrip("\r")
+              parts = path.split("/")
+              if (path != path.strip() or path.startswith("/") or path.endswith("/")
+                      or any(part in ("", ".", "..") for part in parts)
+                      or parts[0] in (".git", ".github")
+                      or any(char in path for char in "\\*?[]!#:")
+                      or any(ord(char) < 32 or ord(char) == 127 for char in path)):
+                  raise SystemExit(f"Invalid CHECKOUT_EXCLUDE_PATHS directory: {path!r}")
+              patterns.append(f"!/{path}/")
+          if len(patterns) == 1:
+              raise SystemExit("CHECKOUT_EXCLUDE_PATHS must name at least one directory")
+          Path(os.environ["RUNNER_TEMP"], "comic-git-sparse-patterns").write_text(
+              "\n".join(patterns) + "\n", encoding="utf-8"
+          )
+          PY
+          git init --quiet .
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c "http.${GITHUB_SERVER_URL}/.extraheader=AUTHORIZATION: basic $auth" \
+            fetch --depth=1 --filter=blob:none origin "$GITHUB_SHA"
+          python - <<'PY'
+          import os
+          import subprocess
+          from pathlib import Path
+
+          patterns = Path(os.environ["RUNNER_TEMP"], "comic-git-sparse-patterns").read_text(
+              encoding="utf-8"
+          ).splitlines()[1:]
+          for pattern in patterns:
+              path = pattern[2:-1]
+              result = subprocess.run(
+                  ["git", "cat-file", "-t", f"FETCH_HEAD:{path}"],
+                  capture_output=True, text=True,
+              )
+              if result.returncode or result.stdout.strip() != "tree":
+                  raise SystemExit(f"CHECKOUT_EXCLUDE_PATHS is not a directory: {path!r}")
+          PY
+          git sparse-checkout set --no-cone --stdin < "$RUNNER_TEMP/comic-git-sparse-patterns"
+          git -c "http.${GITHUB_SERVER_URL}/.extraheader=AUTHORIZATION: basic $auth" \
+            checkout --detach FETCH_HEAD
 
       - name: Read engine version
         id: engine
@@ -167,7 +244,7 @@ jobs:
 
       - name: Run python build script
         env:
-          OUTPUT_DIR: ${{ inputs.OUTPUT_DIR }}
+          OUTPUT_DIR: ${{ inputs.OUTPUT_DIR || 'build' }}
           INPUTS: ${{ inputs.INPUTS }}
           SECRETS: ${{ secrets.SECRETS }}
           DEPLOY_TARGET: ${{ inputs.DEPLOY_TARGET }}
@@ -191,13 +268,31 @@ jobs:
             exit $python_exit_code
           fi
 
+      - name: Verify generated output
+        env:
+          OUTPUT_DIR: ${{ inputs.OUTPUT_DIR || 'build' }}
+        run: |
+          if [[ ! -d "$OUTPUT_DIR" ]]; then
+            echo "Missing generated output directory: $OUTPUT_DIR"
+            exit 1
+          fi
+
+      - name: Upload Pages artifact
+        if: ${{ inputs.DEPLOY_TARGET == 'github-pages' }}
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # actions/upload-pages-artifact@v4.0.0
+        with:
+          path: ${{ inputs.OUTPUT_DIR || 'build' }}
+          retention-days: ${{ inputs.ARTIFACT_RETENTION_DAYS }}
+
       - name: Upload build artifact
+        if: ${{ inputs.DEPLOY_TARGET == 'neocities' || inputs.DEPLOY_TARGET == 'sftp' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # actions/upload-artifact@v4
         with:
           name: site
-          path: ${{ inputs.OUTPUT_DIR || '.' }}
+          path: ${{ inputs.OUTPUT_DIR || 'build' }}
           include-hidden-files: ${{ inputs.DEPLOY_TARGET == 'sftp' }}
           if-no-files-found: error
+          retention-days: ${{ inputs.ARTIFACT_RETENTION_DAYS }}
 
       - name: Upload SFTP deployment files
         if: ${{ inputs.DEPLOY_TARGET == 'sftp' }}
@@ -206,6 +301,7 @@ jobs:
           name: sftp-deployment
           path: ${{ runner.temp }}/sftp-deployment
           if-no-files-found: error
+          retention-days: ${{ inputs.ARTIFACT_RETENTION_DAYS }}
 
   deploy-github-pages:
     if: ${{ inputs.DEPLOY_TARGET == 'github-pages' }}
@@ -213,23 +309,15 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
 
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # actions/download-artifact@v4
-        with:
-          name: site
-          path: ${{ inputs.OUTPUT_DIR || '.' }}
-
       - name: Setup Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # actions/upload-pages-artifact@v3
-        with:
-          path: ${{ inputs.OUTPUT_DIR || '.' }}
 
       - name: Deploy to GitHub Pages
         id: deployment
@@ -248,13 +336,13 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # actions/download-artifact@v4
         with:
           name: site
-          path: ${{ inputs.OUTPUT_DIR || '.' }}
+          path: ${{ inputs.OUTPUT_DIR || 'build' }}
 
       - name: Deploy to neocities
         uses: bcomnes/deploy-to-neocities@44e42387b3267e31432ca34b01f013b94956f2f2 # bcomnes/deploy-to-neocities@v3
         with:
           api_key: ${{ secrets.NEOCITIES_API_TOKEN }}
-          dist_dir: ${{ inputs.OUTPUT_DIR || '.' }}
+          dist_dir: ${{ inputs.OUTPUT_DIR || 'build' }}
           cleanup: ${{ inputs.NEOCITIES_CLEAN }}
           neocities_supporter: ${{ inputs.NEOCITIES_SUPPORTER }}
           preview_before_deploy: true
@@ -274,7 +362,7 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # actions/download-artifact@v4
         with:
           name: site
-          path: ${{ inputs.OUTPUT_DIR || '.' }}
+          path: ${{ inputs.OUTPUT_DIR || 'build' }}
 
       - name: Install SFTP client
         run: sudo apt-get update && sudo apt-get install --yes lftp
@@ -287,7 +375,7 @@ jobs:
 
       - name: Deploy via SFTP
         env:
-          OUTPUT_DIR: ${{ inputs.OUTPUT_DIR }}
+          OUTPUT_DIR: ${{ inputs.OUTPUT_DIR || 'build' }}
           SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
           SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
           SFTP_PRIVATE_KEY: ${{ secrets.SFTP_PRIVATE_KEY }}

@@ -88,8 +88,12 @@ on:
         required: false
 
 jobs:
-  check-parameters:
+  build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.12]
+
     steps:
       - name: Validate DEPLOY_TARGET
         env:
@@ -100,6 +104,7 @@ jobs:
             exit 1
           fi
       - name: Check Neocities parameters
+        if: ${{ inputs.DEPLOY_TARGET == 'neocities' }}
         run: |
           echo "NEOCITIES_CLEAN: ${{ inputs.NEOCITIES_CLEAN == true }}"
           echo "NEOCITIES_SUPPORTER: ${{ inputs.NEOCITIES_SUPPORTER == true }}"
@@ -117,14 +122,6 @@ jobs:
             exit 1
           fi
 
-  build:
-    needs: check-parameters
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.12]
-
-    steps:
       - name: Set up Python
         uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # actions/setup-python@v4
         with:

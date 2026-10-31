@@ -67,6 +67,11 @@ class TestActionsPerformanceWorkflow(TestCase):
         self.assertIn("name: sftp-deployment", neocities)
 
     def test_output_and_retention_contract(self) -> None:
+        self.assertNotIn("  check-parameters:", self.workflow)
+        self.assertLess(
+            self.workflow.index("- name: Validate DEPLOY_TARGET"),
+            self.workflow.index("- name: Set up Python"),
+        )
         self.assertEqual(3, self.workflow.count("retention-days: ${{ inputs.ARTIFACT_RETENTION_DAYS }}"))
         self.assertNotIn("inputs.OUTPUT_DIR || '.'", self.workflow)
         self.assertIn("OUTPUT_DIR: ${{ inputs.OUTPUT_DIR || 'build' }}", self.workflow)

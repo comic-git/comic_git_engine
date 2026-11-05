@@ -193,6 +193,18 @@ class TestGetSocialMediaData(TestCase):
         )
         self.assertEqual(expected, actual)
 
+    def test_windows_path_uses_forward_slashes_in_social_url(self):
+        data = utils.get_social_media_data(
+            self.comic_info,
+            self.comic_data_dict,
+            "archive",
+            r"extra\archive\index.html",
+        )
+        self.assertEqual(
+            "https://ryanvilbrandt.github.io/comic_git_dev/extra/archive/",
+            data["og:url"],
+        )
+
     def test_default_data_comic(self):
         """Test that a 'comic' template uses the 'comic' default data."""
         expected = {

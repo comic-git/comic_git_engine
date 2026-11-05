@@ -257,9 +257,34 @@ class TestRssFeed(TestCase):
 
         self.assertEqual([], self.get_channel(output).findall("item"))
 
-    def test_build_rss_feed_rejects_duplicate_page_names(self):
-        with self.assertRaisesRegex(ValueError, "Duplicate page_name 'Same'"):
+    def test_build_rss_feed_rejects_duplicate_page_ids(self):
+        with self.assertRaisesRegex(ValueError, "Duplicate page ID 'main/Same'"):
             self.build_feed_output([make_page("Same"), make_page("Same")])
+
+    def test_combined_feed_allows_same_page_name_in_different_comics(self):
+        main_page = make_page("001")
+        extra_page = make_page(
+            "001",
+            id="nightofthelustmoon/001",
+            comic_id="nightofthelustmoon",
+            comic_folder="nightofthelustmoon/",
+            page_dir="your_content/nightofthelustmoon/comics/001/",
+            url="/nightofthelustmoon/comic/001/",
+        )
+        job = rss.FeedJob(self.comic_info, [
+            rss.FeedPage(main_page, "Main page"),
+            rss.FeedPage(extra_page, "Extra page", comic_page_relative_path="nightofthelustmoon/comic"),
+        ])
+
+        with patch("builtins.open", new_callable=mock_open) as open_mock:
+            rss.build_rss_feed_from_job(job)
+
+        output = open_mock().write.call_args.args[0].decode("utf-8")
+        items = self.get_channel(output).findall("item")
+        self.assertEqual(
+            ["https://www.example.com/comic/001/", "https://www.example.com/nightofthelustmoon/comic/001/"],
+            [item.find("guid").text for item in items],
+        )
 
     def test_build_rss_feed_preserves_absolute_image_url(self):
         page = make_page(images=[make_image(web_path="https://cdn.example.com/page.png")])

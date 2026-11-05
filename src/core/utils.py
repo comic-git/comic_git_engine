@@ -325,7 +325,7 @@ def get_social_media_data(
         comic_url += "/"
     if html_path.endswith("index.html"):
         html_path = html_path[:-10]
-    html_path = urljoin(comic_url, html_path)
+    html_path = urljoin(comic_url, html_path.replace("\\", "/"))
     comic_page = comic_data_dict.get("page")
     preview_image = "your_content/images/preview_image.png"
     page_thumbnail = comic_page.thumbnail_path if comic_page is not None else None

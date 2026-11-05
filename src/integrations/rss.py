@@ -134,15 +134,15 @@ def pretty_xml(element: ElementTree.Element) -> str:
 
 
 def validate_feed_pages(feed_pages: list[FeedPage]) -> None:
-    seen_page_names = set()
+    seen_page_ids = set()
     for feed_page in feed_pages:
-        page_name = feed_page.page.page_name
-        if page_name in seen_page_names:
+        page_id = feed_page.page.id
+        if page_id in seen_page_ids:
             raise ValueError(
-                f"Duplicate page_name '{page_name}' found in RSS feed input.\n"
-                f"Each comic page in a single feed must have a unique page_name."
+                f"Duplicate page ID '{page_id}' found in RSS feed input.\n"
+                "Each comic page in a single feed must have a unique comic-scoped ID."
             )
-        seen_page_names.add(page_name)
+        seen_page_ids.add(page_id)
 
 
 def order_feed_pages(comic_info: RawConfigParser, feed_pages: list[FeedPage]) -> list[FeedPage]:

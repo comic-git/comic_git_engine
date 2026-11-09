@@ -1,4 +1,5 @@
 import os
+import subprocess
 import tempfile
 from configparser import RawConfigParser
 from unittest import TestCase
@@ -76,6 +77,29 @@ class TestHiddenOutputPolicy(TestCase):
         with self.assertRaisesRegex(ValueError, "symlinks"):
             site_output.filter_hidden_output_files(str(self.root), "")
         self.assertEqual("keep", external.read_text())
+
+
+    def test_junctions_are_rejected_without_touching_external_files(self):
+        if os.name != "nt":
+            self.skipTest("Directory junctions are specific to Windows")
+        self.write(".local")
+        external = Path(self.temp.name) / "external"
+        external.mkdir()
+        sentinel = external / ".keep"
+        sentinel.write_text("keep", encoding="utf-8")
+        junction = self.root / "linked"
+        subprocess.run(["cmd", "/c", "mklink", "/J", str(junction), str(external)],
+                       check=True, capture_output=True)
+        self.addCleanup(junction.rmdir)
+
+        with self.assertRaisesRegex(ValueError, "junctions"):
+            site_output.filter_hidden_output_files(str(self.root), "")
+
+        with self.assertRaisesRegex(ValueError, "junctions"):
+            site_output.filter_hidden_output_files(str(junction), "")
+
+        self.assertTrue((self.root / ".local").is_file())
+        self.assertEqual("keep", sentinel.read_text(encoding="utf-8"))
 
 
 class TestSiteOutput(TestCase):

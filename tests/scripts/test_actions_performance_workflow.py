@@ -78,6 +78,53 @@ class TestActionsPerformanceWorkflow(TestCase):
         self.assertIn("if [[ ! -d \"$OUTPUT_DIR\" ]]", self.workflow)
         self.assertIn("ARTIFACT_RETENTION_DAYS must be an integer from 1 to 90", self.workflow)
 
+    def test_caller_submodules_update_to_remote_tip_without_loading_engine_or_sparse_exclusions(self) -> None:
+        block = self.workflow.split("- name: Update caller submodules", 1)[1].split(
+            "- name: Checkout comic engine", 1
+        )[0]
+        script = textwrap.dedent(block.split("run: |\n", 1)[1])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            assets = root / "assets"
+            caller = root / "caller"
+            for repo in (assets, caller):
+                repo.mkdir()
+                run_git("init", "-b", "main", cwd=repo)
+
+            def commit(repo: Path) -> None:
+                run_git("add", ".", cwd=repo)
+                run_git("-c", "user.name=Test", "-c", "user.email=test@example.com",
+                        "commit", "-m", "fixture", cwd=repo)
+
+            (assets / "asset.txt").write_text("recorded commit", encoding="utf-8")
+            commit(assets)
+            run_git("branch", "live", cwd=assets)
+            for path in ("content assets", "archive/omitted", "comic_git_engine"):
+                run_git("-c", "protocol.file.allow=always", "submodule", "add", "-b", "live",
+                        assets.as_uri(), path, cwd=caller)
+            commit(caller)
+            run_git("switch", "live", cwd=assets)
+            (assets / "asset.txt").write_text("latest live branch", encoding="utf-8")
+            commit(assets)
+            run_git("switch", "main", cwd=assets)
+
+            for sparse in (False, True):
+                with self.subTest(sparse=sparse):
+                    host = root / ("sparse" if sparse else "full")
+                    run_git("clone", caller.as_uri(), str(host), cwd=root)
+                    if sparse:
+                        run_git("sparse-checkout", "set", "--no-cone", "--stdin", cwd=host,
+                                input_text="/*\n!/archive/\n")
+                    result = subprocess.run(
+                        [sys.executable, "-c", script], cwd=host, capture_output=True, text=True,
+                        env={**os.environ, "GITHUB_SERVER_URL": "https://github.example",
+                             "GH_TOKEN": "fixture-token", "GIT_ALLOW_PROTOCOL": "file"},
+                    )
+                    self.assertEqual(0, result.returncode, result.stderr)
+                    self.assertEqual("latest live branch", (host / "content assets/asset.txt").read_text())
+                    self.assertEqual(not sparse, (host / "archive/omitted/asset.txt").is_file())
+                    self.assertFalse((host / "comic_git_engine/asset.txt").exists())
+
     def test_sparse_input_rejects_patterns_and_traversal(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

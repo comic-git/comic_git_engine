@@ -45,17 +45,22 @@ def filter_hidden_output_files(output_dir: str, hidden_paths: str) -> None:
     Call after site_root copying and postprocess hooks. This modifies only the
     separate generated directory; an empty allowlist removes all hidden paths.
     """
+    root = Path(output_dir)
+    if root.is_symlink() or root.is_junction():
+        raise ValueError("Filtered build output must not contain symlinks or junctions.")
     included = validate_hidden_path_policy(output_dir, hidden_paths)
-    root = Path(output_dir).resolve()
+    root = root.resolve()
     if not root.is_dir():
         raise NotADirectoryError(f"Missing built output directory: {output_dir}")
+    # Top-down validation stops os.walk before it descends into a junction.
+    for current, dirs, files in os.walk(root, followlinks=False):
+        for name in dirs + files:
+            path = Path(current) / name
+            if path.is_symlink() or path.is_junction():
+                raise ValueError("Filtered build output must not contain symlinks or junctions.")
     for entry in included:
         if not root.joinpath(*entry.parts).exists():
             raise ValueError(f"Included hidden path does not exist in the build: {entry}")
-    # Validate before removing anything, and never follow links outside the build.
-    for current, dirs, files in os.walk(root, followlinks=False):
-        if any((Path(current) / name).is_symlink() for name in dirs + files):
-            raise ValueError("Filtered build output must not contain symlinks.")
 
     def allowed(path: PurePosixPath) -> bool:
         return (not any(part.startswith(".") for part in path.parts)

@@ -226,6 +226,39 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"version={version}\n")
 
+      - name: Update caller submodules
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          import base64
+          import os
+          import subprocess
+          from urllib.parse import urlsplit
+
+          entries = subprocess.check_output(["git", "ls-files", "--stage", "-t", "-z"])
+          paths = []
+          for entry in entries.split(b"\0"):
+              metadata, _, path = entry.partition(b"\t")
+              # H marks a regular index entry; sparse-excluded entries are S.
+              if metadata.startswith(b"H 160000 ") and path != b"comic_git_engine":
+                  paths.append(os.fsdecode(path))
+          if paths:
+              server = os.environ["GITHUB_SERVER_URL"].rstrip("/")
+              host = urlsplit(server).netloc
+              token = os.environ["GH_TOKEN"]
+              auth = base64.b64encode(f"x-access-token:{token}".encode()).decode()
+              print(f"::add-mask::{auth}", flush=True)
+              header = f"http.{server}/.extraheader"
+              config = [(header, ""), (header, f"AUTHORIZATION: basic {auth}"),
+                        (f"url.{server}/.insteadOf", f"git@{host}:")]
+              env = dict(os.environ, GIT_LITERAL_PATHSPECS="1", GIT_CONFIG_COUNT=str(len(config)))
+              for i, (key, value) in enumerate(config):
+                  env[f"GIT_CONFIG_KEY_{i}"] = key
+                  env[f"GIT_CONFIG_VALUE_{i}"] = value
+              subprocess.run(["git", "submodule", "update", "--init", "--remote", "--", *paths],
+                             env=env, check=True)
+
       - name: Checkout comic engine
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout@v4
         with:

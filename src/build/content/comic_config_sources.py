@@ -39,7 +39,6 @@ STRING_OPTIONS = {
 
 BOOL_OPTIONS = {
     ("build", "selective_copy"): ("Build", "Selective copy"),
-    ("build", "include_hidden_files"): ("Build", "Include hidden files"),
     ("archive", "use_thumbnails"): ("Archive", "Use thumbnails"),
     ("archive", "list_images_separately"): ("Archive", "List images separately"),
     ("archive", "show_uncategorized_comics"): ("Archive", "Show Uncategorized comics"),

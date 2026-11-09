@@ -315,19 +315,18 @@ about = "Legacy About"
         self.assertIn('"Allow missing variables in templates" = "True"', toml_text)
 
     def test_build_settings_round_trip_preserves_hidden_paths_with_commas(self):
-        data = {'build': {'selective_copy': True, 'include_hidden_files': False,
+        data = {'build': {'selective_copy': True,
                           'hidden_paths': ['.htaccess', 'assets/.notes,private']}}
         parser = comic_config_sources.comic_config_data_to_legacy_parser(data)
         self.assertEqual('.htaccess\nassets/.notes,private', parser.get('Build', 'Hidden paths'))
         text = comic_config_sources.serialize_comic_config_to_toml(parser)
         loaded = comic_config_sources.load_comic_config_from_toml(self.write_toml(text))
         self.assertTrue(loaded.getboolean('Build', 'Selective copy'))
-        self.assertFalse(loaded.getboolean('Build', 'Include hidden files'))
         self.assertEqual(parser.get('Build', 'Hidden paths'), loaded.get('Build', 'Hidden paths'))
         self.assertEqual(data, comic_config_sources.legacy_parser_to_comic_config_data(loaded))
 
     def test_build_settings_reject_invalid_types_and_multiline_path_entries(self):
-        for settings in [{'selective_copy': 'true'}, {'include_hidden_files': 1},
+        for settings in [{'selective_copy': 'true'},
                          {'hidden_paths': '.htaccess'}, {'hidden_paths': ['.one\n.two']}]:
             with self.subTest(settings=settings), self.assertRaises(ValueError):
                 comic_config_sources.comic_config_data_to_legacy_parser({'build': settings})

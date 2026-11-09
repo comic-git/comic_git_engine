@@ -21,11 +21,6 @@ on:
         required: false
         type: string
         default: build
-      ARTIFACT_RETENTION_DAYS:
-        description: "Days to retain deployment artifacts (1-90). This also limits deployment-job retries."
-        required: false
-        type: string
-        default: "1"
       CHECKOUT_EXCLUDE_PATHS:
         description: "Optional newline-separated repository-relative directories to omit from the caller checkout."
         required: false
@@ -89,6 +84,8 @@ on:
 
 jobs:
   build:
+    outputs:
+      engine_sha: ${{ steps.engine-checkout.outputs.commit }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -108,15 +105,10 @@ jobs:
         run: |
           echo "NEOCITIES_CLEAN: ${{ inputs.NEOCITIES_CLEAN == true }}"
           echo "NEOCITIES_SUPPORTER: ${{ inputs.NEOCITIES_SUPPORTER == true }}"
-      - name: Validate artifact and output settings
+      - name: Validate output directory
         env:
-          ARTIFACT_RETENTION_DAYS: ${{ inputs.ARTIFACT_RETENTION_DAYS }}
           OUTPUT_DIR: ${{ inputs.OUTPUT_DIR || 'build' }}
         run: |
-          if [[ ! "$ARTIFACT_RETENTION_DAYS" =~ ^([1-9]|[1-8][0-9]|90)$ ]]; then
-            echo "ARTIFACT_RETENTION_DAYS must be an integer from 1 to 90."
-            exit 1
-          fi
           if [[ "$(realpath -m -- "$OUTPUT_DIR")" == "$(realpath -m -- "$GITHUB_WORKSPACE")" ]]; then
             echo "OUTPUT_DIR must be a separate directory, not the checkout root."
             exit 1
@@ -227,39 +219,10 @@ jobs:
               output.write(f"version={version}\n")
 
       - name: Update caller submodules
-        shell: python
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          import base64
-          import os
-          import subprocess
-          from urllib.parse import urlsplit
-
-          entries = subprocess.check_output(["git", "ls-files", "--stage", "-t", "-z"])
-          paths = []
-          for entry in entries.split(b"\0"):
-              metadata, _, path = entry.partition(b"\t")
-              # H marks a regular index entry; sparse-excluded entries are S.
-              if metadata.startswith(b"H 160000 ") and path != b"comic_git_engine":
-                  paths.append(os.fsdecode(path))
-          if paths:
-              server = os.environ["GITHUB_SERVER_URL"].rstrip("/")
-              host = urlsplit(server).netloc
-              token = os.environ["GH_TOKEN"]
-              auth = base64.b64encode(f"x-access-token:{token}".encode()).decode()
-              print(f"::add-mask::{auth}", flush=True)
-              header = f"http.{server}/.extraheader"
-              config = [(header, ""), (header, f"AUTHORIZATION: basic {auth}"),
-                        (f"url.{server}/.insteadOf", f"git@{host}:")]
-              env = dict(os.environ, GIT_LITERAL_PATHSPECS="1", GIT_CONFIG_COUNT=str(len(config)))
-              for i, (key, value) in enumerate(config):
-                  env[f"GIT_CONFIG_KEY_{i}"] = key
-                  env[f"GIT_CONFIG_VALUE_{i}"] = value
-              subprocess.run(["git", "submodule", "update", "--init", "--remote", "--", *paths],
-                             env=env, check=True)
+        run: git submodule update --init --remote -- ':(exclude)comic_git_engine'
 
       - name: Checkout comic engine
+        id: engine-checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout@v4
         with:
           repository: comic-git/comic_git_engine
@@ -279,17 +242,10 @@ jobs:
           SECRETS: ${{ secrets.SECRETS }}
           DEPLOY_TARGET: ${{ inputs.DEPLOY_TARGET }}
           SFTP_HIDDEN_PATHS: ${{ inputs.SFTP_HIDDEN_PATHS }}
-          SFTP_HOST: ${{ inputs.SFTP_HOST }}
-          SFTP_PORT: ${{ inputs.SFTP_PORT }}
-          SFTP_REMOTE_DIR: ${{ inputs.SFTP_REMOTE_DIR }}
-          SFTP_CLEAN: ${{ inputs.SFTP_CLEAN }}
-          SFTP_EXCLUDE_PATHS: ${{ inputs.SFTP_EXCLUDE_PATHS }}
-          SFTP_DEPLOY_DIR: ${{ runner.temp }}/sftp-deployment
         run: |
           build_args=(--delete-scheduled-posts)
           if [[ "$DEPLOY_TARGET" == "sftp" ]]; then
             build_args+=(--hidden-paths "$SFTP_HIDDEN_PATHS")
-            build_args+=(--sftp-deploy-dir "$SFTP_DEPLOY_DIR")
           fi
           python comic_git_engine/src/build/build_site.py "${build_args[@]}"
           python_exit_code=$?
@@ -312,7 +268,7 @@ jobs:
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # actions/upload-pages-artifact@v4.0.0
         with:
           path: ${{ inputs.OUTPUT_DIR || 'build' }}
-          retention-days: ${{ inputs.ARTIFACT_RETENTION_DAYS }}
+          retention-days: 1
 
       - name: Upload build artifact
         if: ${{ inputs.DEPLOY_TARGET == 'neocities' || inputs.DEPLOY_TARGET == 'sftp' }}
@@ -322,16 +278,7 @@ jobs:
           path: ${{ inputs.OUTPUT_DIR || 'build' }}
           include-hidden-files: ${{ inputs.DEPLOY_TARGET == 'sftp' }}
           if-no-files-found: error
-          retention-days: ${{ inputs.ARTIFACT_RETENTION_DAYS }}
-
-      - name: Upload SFTP deployment files
-        if: ${{ inputs.DEPLOY_TARGET == 'sftp' }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # actions/upload-artifact@v4
-        with:
-          name: sftp-deployment
-          path: ${{ runner.temp }}/sftp-deployment
-          if-no-files-found: error
-          retention-days: ${{ inputs.ARTIFACT_RETENTION_DAYS }}
+          retention-days: 1
 
   deploy-github-pages:
     if: ${{ inputs.DEPLOY_TARGET == 'github-pages' }}
@@ -388,26 +335,47 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Validate engine revision
+        env:
+          ENGINE_SHA: ${{ needs.build.outputs.engine_sha }}
+        run: |
+          if [[ ! "$ENGINE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "The build did not report an exact comic_git_engine commit."
+            exit 1
+          fi
+
+      - name: Checkout build engine revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout@v4
+        with:
+          repository: comic-git/comic_git_engine
+          ref: ${{ needs.build.outputs.engine_sha }}
+          path: comic_git_engine
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install SFTP dependencies
+        run: python -m pip install -r comic_git_engine/requirements_sftp.txt
+
       - name: Download build artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # actions/download-artifact@v4
         with:
           name: site
-          path: ${{ inputs.OUTPUT_DIR || 'build' }}
-
-      - name: Install SFTP client
-        run: sudo apt-get update && sudo apt-get install --yes lftp
-
-      - name: Download SFTP deployment files
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # actions/download-artifact@v4
-        with:
-          name: sftp-deployment
-          path: ${{ runner.temp }}/sftp-deployment
+          path: ${{ runner.temp }}/comic-git-site
 
       - name: Deploy via SFTP
         env:
-          OUTPUT_DIR: ${{ inputs.OUTPUT_DIR || 'build' }}
+          SITE_DIR: ${{ runner.temp }}/comic-git-site
+          SFTP_HOST: ${{ inputs.SFTP_HOST }}
+          SFTP_PORT: ${{ inputs.SFTP_PORT }}
+          SFTP_REMOTE_DIR: ${{ inputs.SFTP_REMOTE_DIR }}
+          SFTP_CLEAN: ${{ inputs.SFTP_CLEAN }}
+          SFTP_EXCLUDE_PATHS: ${{ inputs.SFTP_EXCLUDE_PATHS }}
           SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
           SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
           SFTP_PRIVATE_KEY: ${{ secrets.SFTP_PRIVATE_KEY }}
           SFTP_KNOWN_HOSTS: ${{ secrets.SFTP_KNOWN_HOSTS }}
-        run: python "$RUNNER_TEMP/sftp-deployment/deploy.py" --output-dir "$OUTPUT_DIR"
+        run: python comic_git_engine/src/scripts/deploy_sftp.py --upload-only "$SITE_DIR"

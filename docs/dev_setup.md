@@ -50,7 +50,7 @@ The migration and hook dependency steps are optional for normal site builds. Kee
 
 For native local SFTP transfer or its loopback connection tests, also install
 `requirements_sftp.txt` into the test environment. It is optional for ordinary
-builds and is not used by the GitHub Actions `lftp` runner.
+builds. The GitHub Actions SFTP deploy job installs these same pins.
 
 For manual site testing, load this repo into a host `comic_git` repo such as `comic_git_dev`:
 

@@ -12,7 +12,6 @@ from build.output.site_output import (
     copy_output_assets, copy_site_root_files, filter_hidden_output_files,
     setup_output_file_space, validate_hidden_path_policy,
 )
-from build.output.sftp import SftpConfig, validate_deployment_directory, write_deployment_files
 from build.output.content_staging import resolve_copy_policy, managed_comic_roots, validate_selective_output
 from core import utils
 from core.logging_config import configure_logging
@@ -44,7 +43,7 @@ def add_inputs_to_env_vars(inputs: str):
 
 
 def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False,
-         hidden_paths: str | None = None, sftp_deploy_dir: str | None = None,
+         hidden_paths: str | None = None,
          *, selective_copy: bool | None = None):
     configure_logging()
     checkpoint("Start", clear=True)
@@ -55,13 +54,9 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False,
 
     # Get site-wide settings for this comic
     utils.find_project_root()
-    sftp_config = None
-    if sftp_deploy_dir is not None:
-        sftp_config = SftpConfig.from_environment(os.environ)
-        validate_deployment_directory(utils.get_output_dir(), sftp_deploy_dir)
     comic_info = load_main_comic_info()
     policy = resolve_copy_policy(comic_info, selective_copy=selective_copy,
-                                 hidden_paths=hidden_paths, sftp=sftp_config is not None)
+                                 hidden_paths=hidden_paths)
     hidden_paths = policy.hidden_paths
     if hidden_paths is not None:
         validate_hidden_path_policy(utils.get_output_dir(), hidden_paths)
@@ -152,10 +147,6 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False,
         filter_hidden_output_files(output_dir, hidden_paths)
         checkpoint("Filter hidden output files")
 
-    if sftp_config is not None:
-        write_deployment_files(output_dir, sftp_deploy_dir, sftp_config)
-        checkpoint("Prepare SFTP deployment files")
-
     print_processing_times()
 
 
@@ -191,11 +182,6 @@ def parse_args(argv: list[str] | None = None, *, preview: bool = False):
              "An empty string excludes all hidden paths; omit this option to retain existing behavior. "
              "Requires a separate output directory."
     )
-    parser.add_argument(
-        "--sftp-deploy-dir",
-        help="Write SFTP deployment files outside the public output. Reads SFTP_HOST, SFTP_PORT, "
-             "SFTP_REMOTE_DIR, SFTP_CLEAN, and SFTP_EXCLUDE_PATHS from the environment. Does not deploy."
-    )
     if preview:
         parser.add_argument("--listen", default="127.0.0.1",
                             help="Preview bind address. Use 0.0.0.0 only to intentionally share on your network.")
@@ -211,7 +197,7 @@ if __name__ == "__main__":
     args = parse_args()
     apply_cli_environment_overrides(args)
     try:
-        main(args.delete_scheduled_posts, args.publish_all_comics, args.hidden_paths, args.sftp_deploy_dir,
+        main(args.delete_scheduled_posts, args.publish_all_comics, args.hidden_paths,
              selective_copy=args.selective_copy)
     except Exception as e:
         # If the repo is not running in GitHub, raise the error normally

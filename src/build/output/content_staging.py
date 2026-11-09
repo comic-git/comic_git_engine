@@ -1,6 +1,5 @@
 """Folder-level publication policy and non-destructive selective staging."""
 
-import logging
 import shutil
 from configparser import RawConfigParser
 from dataclasses import dataclass
@@ -8,9 +7,6 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from build.content.page_models import ComicPage
 from build.output.site_output import PYTHON_CACHE_DIR, validate_hidden_path_policy
-
-logger = logging.getLogger(__name__)
-
 
 @dataclass(frozen=True)
 class ContentCopyPolicy:
@@ -30,16 +26,13 @@ class ContentCopyPolicy:
 
 
 def resolve_copy_policy(comic_info: RawConfigParser, *, selective_copy: bool | None = None,
-                        hidden_paths: str | None = None, sftp: bool = False) -> ContentCopyPolicy:
+                        hidden_paths: str | None = None) -> ContentCopyPolicy:
     selective = (comic_info.getboolean('Build', 'Selective copy', fallback=False)
                  if selective_copy is None else selective_copy)
-    include_hidden = comic_info.getboolean('Build', 'Include hidden files', fallback=False)
     if hidden_paths is None and comic_info.has_option('Build', 'Hidden paths'):
         hidden_paths = comic_info.get('Build', 'Hidden paths')
-    if hidden_paths is None and (sftp or (selective and not include_hidden)):
+    if hidden_paths is None and selective:
         hidden_paths = ''
-    if include_hidden and hidden_paths is not None:
-        logger.info('The hidden-path allowlist takes precedence over Include hidden files.')
     return ContentCopyPolicy(selective, hidden_paths)
 
 

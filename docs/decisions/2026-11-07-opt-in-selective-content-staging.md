@@ -21,12 +21,12 @@ that deletion, changing the working directory and hiding host files from hooks.
   contain only eligible page folders; loose files there are omitted.
 - Prune all configured Extra Comic comics roots from auxiliary copying, including
   nested paths. Unconfigured directories remain ordinary content.
-- Skip incomplete required metadata with diagnostics only in selective mode.
-  Malformed syntax, invalid supplied values, and unsafe/missing assets still fail.
+- Skip page folders without a metadata file. Missing required values, malformed
+  metadata, and unsafe or missing assets fail the build.
 - Keep thumbnail generation in source folders before copying. Creators can commit
   this cache; selective builds prevent scheduled-source deletion, not all writes.
-- Exclude hidden output by default in selective mode, support configured include-all,
-  and let explicit exact-path allowlists take precedence. Preserve SFTP's final
+- Exclude hidden output by default in selective mode and allow exact-path
+  exceptions. Preserve SFTP's final
   hidden-path filter after root copying and hooks.
 - Use the actual host working directory for native local SFTP, with temporary
   output and selective copying enabled. Leave credentials and transfer behavior

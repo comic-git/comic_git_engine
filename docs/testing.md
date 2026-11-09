@@ -368,10 +368,9 @@ its static golden check flags are intentionally disabled. The dedicated pytest
 module runs those contracts in the default non-browser test suite.
 
 Install `requirements_sftp.txt` into the engine test environment to enable the
-native connection tests in `tests.build.output.test_local_sftp`. The e2e repo's
-`tests/test_native_sftp_deployment.py` additionally exercises the public local
-deployment command with a disposable loopback server. The optional real-`lftp`
-client test remains separate and requires `LFTP_BINARY` on Linux.
+connection tests in `tests.build.output.test_local_sftp`. The e2e repo exercises
+the public local command and the Actions upload-only command against a disposable
+loopback SFTP server.
 
 Before interpreting full e2e golden checks, verify that the harness branch and
 linked engine revision represent the same baseline. CMS fixtures and goldens

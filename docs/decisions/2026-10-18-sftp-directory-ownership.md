@@ -23,15 +23,12 @@ normally excludes dotfiles even when the engine copied them from `site_root`.
   after asset copying and postprocess hooks. Upload the resulting directory
   directly, without a second staging copy. Preserve existing local-build and
   other deployment-target defaults when this policy is not requested.
-- Have the build validate deployment settings and generate the `lftp` script and
-  standalone runner in a separate, non-public artifact. Keep this logic in a
-  standard-library-only Python module so it can be unit-tested without extracting
-  code from YAML. The workflow downloads artifacts, installs the client, and
-  invokes the runner.
-- Supply credentials only at deployment time. The runner owns their temporary
-  files and cleanup; the build never serializes them into either artifact.
-- Pass `--hidden-paths` and `--sftp-deploy-dir` explicitly, requiring an engine
-  that supports preparation; older engines fail rather than ignoring the policy.
+- The build publishes the filtered site artifact. The deploy job checks out the
+  exact engine commit reported by the build and uses the same Paramiko uploader
+  as local deployment. It downloads site data to a separate directory and installs
+  the pinned SFTP dependencies before receiving transfer settings and credentials.
+- Pass `--hidden-paths` explicitly at build time. The upload-only command transfers
+  the prepared output and validates connection settings before connecting.
 - Require separate generated output for filtering, protecting source files from
   deletion in legacy in-place builds.
 - Use SFTP alone, without requiring remote shell commands or rsync. Transfer all

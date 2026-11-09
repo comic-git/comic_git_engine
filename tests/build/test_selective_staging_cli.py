@@ -34,7 +34,6 @@ class TestSelectiveStagingCLI(TestCase):
         for base in ('your_content', 'your_content/extras/story'):
             self.page(base + '/comics/ready', '2020-01-01')
             self.page(base + '/comics/future', '2099-01-01')
-            self.write(base + '/comics/incomplete/info.toml', 'title = "Unfinished"\n')
             self.write(base + '/comics/no-metadata/asset.txt', 'unfinished')
             self.write(base + '/comics/loose.txt', 'loose')
             self.write(base + '/banner.txt', 'shared')
@@ -73,12 +72,12 @@ class TestSelectiveStagingCLI(TestCase):
     def test_selection_extra_comics_and_source_thumbnail_cache(self):
         before = self.snapshot()
         result = self.build('--selective-copy', '--delete-scheduled-posts')
-        self.assertIn('Skipping incomplete', result.stderr)
+        self.assertIn('is missing its info.ini/info.toml file', result.stderr)
         self.assertIn('does not delete scheduled', result.stderr)
         output = self.host / 'build'
         for base, html_base in [('your_content', ''), ('your_content/extras/story', 'extras/story/')]:
             self.assertTrue((output / (html_base + 'comic/ready/index.html')).is_file())
-            for skipped in ('future', 'incomplete', 'no-metadata'):
+            for skipped in ('future', 'no-metadata'):
                 self.assertFalse((output / base / 'comics' / skipped).exists())
                 self.assertFalse((output / (html_base + f'comic/{skipped}')).exists())
             self.assertFalse((output / base / 'comics/loose.txt').exists())
@@ -111,7 +110,6 @@ class TestSelectiveStagingCLI(TestCase):
             self.write(cache + '/helper.cpython-314.pyc', 'bytecode')
         self.write('your_content/themes/default/css/theme.css', 'body {}')
         self.write('your_content/site_root/assets/keep.txt', 'asset')
-        self.write('your_content/comic_info.ini', self.config + '[Build]\nInclude hidden files = true\n')
 
         self.build('--selective-copy')
 
@@ -123,16 +121,14 @@ class TestSelectiveStagingCLI(TestCase):
         self.assertTrue((output / 'your_content/comics/ready/image.png').is_file())
         self.assertTrue((output / 'assets/keep.txt').is_file())
 
-    def test_hidden_include_all_and_explicit_allowlist_precedence(self):
-        self.write('your_content/comic_info.ini', self.config + '[Build]\nSelective copy = true\nInclude hidden files = true\n')
+    def test_cli_hidden_allowlist_overrides_config(self):
+        self.write('your_content/comic_info.ini',
+                   self.config + '[Build]\nSelective copy = true\nHidden paths = your_content/.secret\n')
         self.build()
-        for name in ('your_content/.secret', 'your_content/comics/ready/.notes',
-                     'your_content/comics/.hidden/image.png', '.htaccess'):
-            self.assertTrue((self.host / 'build' / name).is_file(), name)
+        self.assertTrue((self.host / 'build/your_content/.secret').is_file())
         self.build('--hidden-paths', '.htaccess')
         self.assertTrue((self.host / 'build/.htaccess').is_file())
         self.assertFalse((self.host / 'build/your_content/.secret').exists())
-        self.assertFalse((self.host / 'build/your_content/comics/.hidden').exists())
 
     def test_publish_all_includes_future_and_generates_its_thumbnail(self):
         self.build('--selective-copy', '--publish-all-comics', '--delete-scheduled-posts')
@@ -140,13 +136,18 @@ class TestSelectiveStagingCLI(TestCase):
         self.assertTrue((self.host / 'build/your_content/comics/future/_thumbnail.jpg').is_file())
         self.assertTrue((self.host / 'your_content/comics/future/info.toml').is_file())
 
-    def test_malformed_input_fails_even_when_other_required_values_are_missing(self):
-        self.write('your_content/comics/incomplete/info.toml', 'title = 123\n')
-        before = self.snapshot()
-        result = self.build('--selective-copy', succeeds=False)
-        self.assertIn("Expected 'title'", result.stderr)
-        for name, data in before.items():
-            self.assertEqual(data, (self.host / name).read_bytes())
+    def test_missing_required_post_date_fails_without_changing_source(self):
+        for filename, contents, diagnostic in (
+            ('info.ini', 'Title = Unfinished\n', 'Missing required Post date'),
+            ('info.toml', 'title = "Unfinished"\n', 'Missing required post_date'),
+        ):
+            with self.subTest(filename=filename):
+                page = self.write('your_content/extras/story/comics/incomplete/' + filename, contents)
+                before = self.snapshot()
+                result = self.build('--selective-copy', succeeds=False)
+                self.assertIn(diagnostic, result.stderr)
+                self.assertEqual(before, self.snapshot())
+                page.unlink()
 
     def test_invalid_output_fails_before_cleanup_or_thumbnail_generation(self):
         sentinel = self.write('your_content/keep.txt', 'keep')
@@ -162,9 +163,6 @@ class TestSelectiveStagingCLI(TestCase):
         self.assertIn('hidden-path policy', result.stderr)
 
     def test_legacy_override_retains_wholesale_copy_behavior(self):
-        # Missing required values fail in legacy mode, so remove only those fixtures.
-        for base in ('your_content', 'your_content/extras/story'):
-            shutil.rmtree(self.host / base / 'comics/incomplete')
         self.write('your_content/comic_info.ini', self.config + '[Build]\nSelective copy = true\n')
         self.write('your_content/themes/default/scripts/__pycache__/helper.cpython-314.pyc', 'bytecode')
         self.build('--no-selective-copy')
@@ -189,30 +187,23 @@ class TestSelectiveStagingCLI(TestCase):
         self.assertIn('changed the selected page folder', result.stderr)
         self.assertFalse((self.host / 'your_content/comics/future/_thumbnail.jpg').exists())
 
-    def test_legacy_auto_images_respect_hidden_policy_and_missing_ini_values_skip(self):
+    def test_legacy_auto_images_respect_hidden_allowlist(self):
         folder = self.host / 'your_content/comics/ready'
         (folder / 'info.toml').unlink()
         self.write('your_content/comics/ready/info.ini', 'Post date = January 01, 2020\n')
         shutil.copyfile(folder / 'image.png', folder / '.hidden.png')
-        self.write('your_content/comics/incomplete/info.ini', 'Title = Unfinished\n')
-        (self.host / 'your_content/comics/incomplete/info.toml').unlink()
         self.build('--selective-copy')
-        metadata = (self.host / 'build/comic/page_info_list.json').read_text()
-        self.assertNotIn('.hidden.png', metadata)
-        self.assertIn('image.png', metadata)
-        self.write('your_content/comic_info.ini', self.config + '[Build]\nInclude hidden files = true\n')
-        self.build('--selective-copy')
-        self.assertIn('.hidden.png', (self.host / 'build/comic/page_info_list.json').read_text())
+        metadata = self.host / 'build/comic/page_info_list.json'
+        self.assertNotIn('.hidden.png', metadata.read_text())
+        self.assertIn('image.png', metadata.read_text())
+        self.build('--selective-copy', '--hidden-paths', 'your_content/comics/ready/.hidden.png')
+        self.assertIn('.hidden.png', metadata.read_text())
 
-    def test_missing_declared_filename_skips_but_invalid_supplied_values_fail(self):
+    def test_missing_declared_filename_fails(self):
         self.write('your_content/comics/incomplete/info.toml',
                    'post_date = "2020-01-01"\n[[images]]\ntitle = "Unfinished"\n')
-        self.build('--selective-copy')
-        self.assertFalse((self.host / 'build/your_content/comics/incomplete').exists())
-        self.write('your_content/comics/incomplete/info.toml',
-                   '[[images]]\nfilename = "missing.png"\n')
         result = self.build('--selective-copy', succeeds=False)
-        self.assertIn('must be a file', result.stderr)
+        self.assertIn('images[0].filename', result.stderr)
 
     def test_loose_files_and_unselected_pages_cannot_be_restored_by_allowlist(self):
         self.write('your_content/comics/.loose', 'loose')

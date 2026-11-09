@@ -12,8 +12,8 @@ separate output directory is required. In selective mode the deletion flag never
 deletes scheduled source folders. `--publish-all-comics` includes future pages.
 
 Discovery's page models govern HTML, JSON, navigation, RSS, and copied page folders. Missing
-metadata files or required values skip a folder with a diagnostic; malformed
-documents and invalid supplied values fail. Valid text-only pages remain valid.
+metadata files skip a folder with a diagnostic. Missing required values and
+malformed or invalid metadata fail the build. Valid text-only pages remain valid.
 Selective builds omit Python's `__pycache__` directories when copying assets,
 including under selected page folders, themes, and `site_root/`. Source caches
 stay in place. The rest of each selected page folder is copied. Files directly under managed
@@ -35,22 +35,19 @@ source files or turn source notes into private data.
 
 ## Hidden files
 
-Selective mode excludes dotfiles and dot-directories by default. Main-config
-`[Build] Include hidden files` / `[build] include_hidden_files = true` includes
-them. Underscore-prefixed assets are ordinary files. This setting does not change
-Windows hidden attributes, preview HTTP restrictions, scheduling/metadata validity,
-or loose-file omission.
+Selective mode excludes dotfiles and dot-directories by default. Underscore-prefixed
+assets are ordinary files. Use an exact-path allowlist for deliberate exceptions.
 
 An explicit `--hidden-paths` overrides configured `[Build] Hidden paths` /
-`[build] hidden_paths`; either exact-path allowlist overrides include-all. Empty
+`[build] hidden_paths`. An empty list
 means exclude all hidden output. SFTP preparation defaults to an empty allowlist
 and local SFTP explicitly passes `SFTP_HIDDEN_PATHS`. Paths refer to final output:
 `.htaccess` permits the root copy from site_root, not its separate duplicate
 under `your_content/site_root/`. Missing allowlisted output fails.
 
 When an allowlist applies, filtering runs after asset copying, site_root copying,
-and postprocess hooks; effective include-all retains hidden output. Hidden page
-directories need include-all or an allowlist covering both their complete asset
+and postprocess hooks. Hidden page directories need an allowlist covering both
+their complete asset
 directory (`your_content/comics/.page`) and generated HTML directory
 (`comic/.page`). Hidden auto-discovered images are omitted when excluded; explicit
 image/thumbnail references to excluded paths fail instead of producing broken

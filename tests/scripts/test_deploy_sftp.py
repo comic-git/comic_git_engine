@@ -104,16 +104,28 @@ class TestLocalSftpDeployment(TestCase):
 
     def test_help_runs_directly(self):
         script = deploy_sftp.ENGINE_ROOT / "src/scripts/deploy_sftp.py"
-        result = subprocess.run([sys.executable, str(script), "--help"], cwd=self.host,
+        result = subprocess.run([sys.executable, "-S", str(script), "--help"], cwd=self.host,
                                 capture_output=True, text=True)
         self.assertEqual(0, result.returncode, msg=result.stderr)
         self.assertIn("SFTP_KNOWN_HOSTS", result.stdout)
         self.assertIn("--verbose", result.stdout)
+        self.assertIn("--upload-only", result.stdout)
+        self.assertNotIn("--publish-all-comics", result.stdout)
 
-    def test_publish_all_is_explicit_and_build_uses_real_host_context(self):
+    def test_upload_only_requires_a_built_index_before_connecting(self):
+        with (
+            patch.object(deploy_sftp, "require_paramiko"),
+            patch("build.output.local_sftp.require_paramiko") as connect,
+            patch.dict(os.environ, self.env, clear=True),
+            self.assertRaisesRegex(ValueError, "without a built index.html"),
+        ):
+            deploy_sftp.main(["--upload-only", str(self.host)])
+        connect.assert_not_called()
+
+    def test_build_uses_real_host_context(self):
         self.write_host_hook()
         with patch.object(deploy_sftp, 'deploy') as transfer:
-            deploy_sftp.build_and_deploy(self.host, self.env, publish_all_comics=True)
+            deploy_sftp.build_and_deploy(self.host, self.env)
         transfer.assert_called_once()
         self.assertEqual('host data', (self.host / 'hook-saw-host.txt').read_text())
 

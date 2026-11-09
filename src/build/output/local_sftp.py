@@ -1,4 +1,4 @@
-"""Native local SFTP transfer. The GitHub artifact runner stays dependency-free."""
+"""Shared Paramiko SFTP transfer for local builds and GitHub Actions."""
 
 from __future__ import annotations
 
@@ -101,6 +101,7 @@ def deploy(source: Path, config: SftpConfig, env: dict[str, str]) -> None:
     username, password, key, known_hosts = deployment_credentials(env)
     method = "password" if password else "public key"
     paramiko = require_paramiko()
+    print(f"Uploading to {config.host}:{config.port} ({config.remote_dir})", flush=True)
     try:
         with TemporaryDirectory(prefix="comic-git-sftp-auth-") as auth_dir, paramiko.SSHClient() as ssh:
             hosts_file = Path(auth_dir) / "known_hosts"

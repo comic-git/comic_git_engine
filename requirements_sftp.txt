@@ -1,4 +1,4 @@
-# Optional native local SFTP uploader. Install alongside requirements.txt.
+# SFTP transfer dependencies for local deployment and the Actions deploy job.
 paramiko==5.1.0
 bcrypt==5.0.0
 cryptography==50.0.2

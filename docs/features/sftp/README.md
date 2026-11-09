@@ -44,31 +44,29 @@ separately from the server's filesystem path.
 
 ## Build and workflow boundary
 
-In GitHub Actions, the build owns publication policy and prepares a separate, credential-free
-deployment bundle. The deploy job only transfers the prepared site with the
-credentials supplied at that point. This makes the same policy testable without a
-live server. SFTP requires a separate output directory so filtering cannot remove
-source files; legacy in-place output is unsupported. GitHub Pages and Neocities
-retain their existing hidden-file artifact behavior.
+The build job filters the public output and uploads it as the site artifact. The
+deploy job downloads that artifact outside the engine checkout, checks out the
+exact engine commit reported by the build, and runs `deploy_sftp.py --upload-only`.
+Connection settings and credentials are supplied to that step. SFTP uses separate
+build output to protect source files during filtering.
 
 The local command enables [selective staging](../content-staging/), building
 from the actual host checkout into temporary output. Future source folders remain
 intact and hooks can read host-owned inputs; thumbnail generation still creates
 or updates the committable source cache. Existing previews remain separate.
 Its optional Python SFTP dependencies support native Windows environments
-and stay out of regular builds and the GitHub artifact runner. Run the engine's
+and are installed in the hosted deploy job and for local SFTP. Run the engine's
 loopback tests with `requirements_sftp.txt` installed to exercise both
 authentication methods and host-key verification.
 
 Hosted SFTP builds keep legacy content copying unless the main config opts into
 selective staging. The native local command always enables it. Both use the
-explicit SFTP hidden-path allowlist, which takes precedence over configured
-include-all; local transfer does not prepare or execute the Actions `lftp` bundle.
+explicit SFTP hidden-path allowlist and the same Paramiko transfer.
 The local command suppresses build-subprocess bytecode writes so importing theme
 hooks does not add Python cache files to creator content. Selective staging
 also skips existing `__pycache__` directories when copying assets. With cleanup
-disabled, any caches from an earlier upload remain on the server. `--publish-all-comics`
-on that command explicitly uploads future pages too.
+disabled, any caches from an earlier upload remain on the server. Local SFTP
+omits scheduled pages and their assets.
 
 ## Supporting documents
 

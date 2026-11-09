@@ -1,6 +1,5 @@
 """Check reusable-workflow wiring; deployment behavior is tested as Python."""
 from pathlib import Path
-import re
 from unittest import TestCase
 
 WORKFLOW = Path(__file__).resolve().parents[2] / '.github/workflows/build_site.yaml'
@@ -15,10 +14,15 @@ class TestSftpWorkflow(TestCase):
         self.assertIn('if [[ "$DEPLOY_TARGET" == "sftp" ]]', workflow)
         self.assertIn("include-hidden-files: ${{ inputs.DEPLOY_TARGET == 'sftp' }}", workflow)
         self.assertIn("if: ${{ inputs.DEPLOY_TARGET == 'sftp' }}", workflow)
-        download_paths = re.findall(r'uses: actions/download-artifact@[0-9a-f]{40}[^\n]*\s+with:\s+name: site\s+path: (.+)', workflow)
-        self.assertEqual(["${{ inputs.OUTPUT_DIR || 'build' }}"] * 2, download_paths)
-        deploy_job = workflow.split('  deploy-sftp:', 1)[1]
-        self.assertNotIn('shell: python', deploy_job)
-        self.assertNotIn('SFTP_REMOTE_DIR:', deploy_job)
-        self.assertIn('name: sftp-deployment', deploy_job)
-        self.assertIn('run: python "$RUNNER_TEMP/sftp-deployment/deploy.py" --output-dir "$OUTPUT_DIR"', deploy_job)
+        build_job, deploy_job = workflow.split("  deploy-sftp:", 1)
+        self.assertIn("engine_sha: ${{ steps.engine-checkout.outputs.commit }}", build_job)
+        self.assertNotIn("SFTP_PASSWORD:", build_job.split("jobs:", 1)[1])
+        self.assertNotIn("SFTP_PRIVATE_KEY:", build_job.split("jobs:", 1)[1])
+        self.assertNotIn("SFTP_REMOTE_DIR:", build_job.split("jobs:", 1)[1])
+        self.assertIn("ref: ${{ needs.build.outputs.engine_sha }}", deploy_job)
+        self.assertIn("path: ${{ runner.temp }}/comic-git-site", deploy_job)
+        self.assertIn("SITE_DIR: ${{ runner.temp }}/comic-git-site", deploy_job)
+        self.assertIn("requirements_sftp.txt", deploy_job)
+        self.assertIn('deploy_sftp.py --upload-only "$SITE_DIR"', deploy_job)
+        self.assertNotIn("sftp-deployment", workflow)
+        self.assertNotIn("lftp", workflow)

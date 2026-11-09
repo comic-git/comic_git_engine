@@ -92,14 +92,12 @@ before copying. Final hidden-path filtering still follows root copies and hooks.
 9. [`src/build/output/rendering.py`](../src/build/output/rendering.py) projects narrow template contexts and renders built-in or theme templates. In selective mode, the per-comic pipeline then stages the selected page folders through [`content_staging.py`](../src/build/output/content_staging.py).
 10. [`src/integrations/rss.py`](../src/integrations/rss.py) builds page-level RSS items from structured pages for the main comic and Extra Comics.
 11. [`src/build/output/site_output.py`](../src/build/output/site_output.py) handles output cleanup, static asset copying, and `site_root` files. The selective auxiliary-content pass prunes every managed comics root so it cannot reintroduce unselected pages. Final hidden filtering follows root copying and postprocess hooks.
-12. When requested, [`src/build/output/sftp.py`](../src/build/output/sftp.py) prepares a separate deployment artifact containing the SFTP commands, connection settings, and standalone runner. Authentication secrets are supplied only when that runner executes in the deployment job.
-13. The host repo then publishes the site output to its selected target: GitHub Pages, Neocities, or SFTP hosting.
+12. The host repo publishes the site output to GitHub Pages, Neocities, or SFTP.
 
-For native local SFTP, [`src/scripts/deploy_sftp.py`](../src/scripts/deploy_sftp.py)
-instead builds from the real host directory into temporary output with selective
-copying enabled, then invokes [`local_sftp.py`](../src/build/output/local_sftp.py).
-The optional native transfer dependencies are separate from ordinary builds and
-the Actions artifact runner; no temporary source checkout or `lftp` bundle is used.
+The Actions SFTP job supplies transfer credentials only to
+[the shared uploader](../src/build/output/local_sftp.py), using the engine commit
+that built the downloaded site. The local [deploy command](../src/scripts/deploy_sftp.py)
+builds into temporary output with selective copying before invoking the same uploader.
 
 ## Key Dependencies
 

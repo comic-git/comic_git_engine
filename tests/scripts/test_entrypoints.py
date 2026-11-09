@@ -163,7 +163,6 @@ class TestEntrypoints(TestCase):
             output_dir=None,
             listen="127.0.0.1",
             hidden_paths='.htaccess',
-            sftp_deploy_dir=None,
             selective_copy=True,
         )
         comic_info = object()
@@ -206,7 +205,7 @@ class TestEntrypoints(TestCase):
         self.assertEqual("/comic", module.PREVIEW_SUBDIRECTORY)
         mock_load_config.assert_called_once_with()
         mock_apply_overrides.assert_called_once_with(args)
-        options = dict(hidden_paths='.htaccess', sftp_deploy_dir=None, selective_copy=True)
+        options = dict(hidden_paths='.htaccess', selective_copy=True)
         mock_build.assert_called_once_with(False, False, **options)
         mock_watch.assert_called_once_with([False, False], options)
         thread.start.assert_called_once_with()
@@ -235,7 +234,7 @@ class TestWorkflowEntrypoints(TestCase):
         self.assertIsNotNone(match)
         return textwrap.dedent(match.group("script"))
 
-    def test_build_workflow_preserves_output_directory_across_artifact_jobs(self):
+    def test_build_workflow_uses_target_specific_artifact_download_directories(self):
         workflow = self.read_build_workflow()
         download_paths = re.findall(
             r"- name: Download build artifact\s+"
@@ -244,7 +243,7 @@ class TestWorkflowEntrypoints(TestCase):
             workflow,
         )
 
-        self.assertEqual(["${{ inputs.OUTPUT_DIR || 'build' }}"] * 2, download_paths)
+        self.assertEqual(["${{ inputs.OUTPUT_DIR || 'build' }}", "${{ runner.temp }}/comic-git-site"], download_paths)
         self.assertIn("dist_dir: ${{ inputs.OUTPUT_DIR || 'build' }}", workflow)
 
     def run_engine_version_script(self, fixture_files: dict[str, str]) -> subprocess.CompletedProcess[str]:

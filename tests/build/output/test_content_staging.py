@@ -20,16 +20,9 @@ class TestCopyPolicy(TestCase):
         self.assertEqual(ContentCopyPolicy(True, ''), resolve_copy_policy(self.config(), selective_copy=True))
 
     def test_config_and_explicit_override(self):
-        config = self.config(selective_copy=True, include_hidden_files=True)
-        self.assertEqual(ContentCopyPolicy(True, None), resolve_copy_policy(config))
+        config = self.config(selective_copy=True)
+        self.assertEqual(ContentCopyPolicy(True, ''), resolve_copy_policy(config))
         self.assertEqual(ContentCopyPolicy(False, None), resolve_copy_policy(config, selective_copy=False))
-        self.assertEqual('', resolve_copy_policy(config, hidden_paths='').hidden_paths)
-
-    def test_allowlist_and_sftp_override_include_all(self):
-        config = self.config(selective_copy=True, include_hidden_files=True)
-        self.assertEqual('', resolve_copy_policy(config, sftp=True).hidden_paths)
-        config.set('Build', 'Hidden paths', '.htaccess')
-        self.assertEqual('.htaccess', resolve_copy_policy(config).hidden_paths)
         self.assertEqual('', resolve_copy_policy(config, hidden_paths='').hidden_paths)
 
     def test_cli_boolean_override_is_tristate(self):

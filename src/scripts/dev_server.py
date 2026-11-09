@@ -143,8 +143,7 @@ def main():
     args = build_site.parse_args(preview=True)
     build_site.apply_cli_environment_overrides(args)
     build_args = [args.delete_scheduled_posts, args.publish_all_comics]
-    build_kwargs = dict(hidden_paths=args.hidden_paths, sftp_deploy_dir=args.sftp_deploy_dir,
-                        selective_copy=args.selective_copy)
+    build_kwargs = dict(hidden_paths=args.hidden_paths, selective_copy=args.selective_copy)
 
     # Set HTTP_ROOT
     comic_info = load_main_comic_info()

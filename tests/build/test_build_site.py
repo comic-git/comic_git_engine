@@ -175,33 +175,6 @@ class TestMain(TestCase):
         m["run_hook"].assert_not_called()
         m["setup_output_file_space"].assert_not_called()
 
-    def test_sftp_preparation_uses_final_filtered_output_without_credentials(self, *_mocks):
-        m = get_mock_dict(_mocks)
-        m["load_main_comic_info"].return_value = self.make_comic_info()
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir) / "build"
-            bundle = Path(temp_dir) / "deployment"
-            root.mkdir()
-            def copy_root(_output):
-                (root / "index.html").write_text("home")
-                (root / ".htaccess").write_text("rules")
-            m["copy_site_root_files"].side_effect = copy_root
-            with patch.dict(os.environ, {"OUTPUT_DIR": str(root), "SFTP_HOST": "example.com",
-                                         "SFTP_REMOTE_DIR": "/home/artist/example.com"}, clear=True):
-                build_site.main(sftp_deploy_dir=str(bundle))
-            self.assertEqual({"index.html"}, {path.name for path in root.iterdir()})
-            self.assertTrue((bundle / "deploy.lftp").is_file())
-            self.assertTrue((bundle / "deploy.py").is_file())
-
-    def test_invalid_sftp_destination_fails_before_build(self, *_mocks):
-        m = get_mock_dict(_mocks)
-        with patch.dict(os.environ, {"SFTP_HOST": "example.com", "SFTP_REMOTE_DIR": "/"}):
-            with self.assertRaisesRegex(ValueError, "website directory"):
-                build_site.main(sftp_deploy_dir="deployment")
-        m["setup_output_file_space"].assert_not_called()
-        m["run_hook"].assert_not_called()
-
-
 class TestCliArgs(TestCase):
 
     def test_hidden_paths_distinguishes_omitted_from_empty(self):
@@ -209,10 +182,6 @@ class TestCliArgs(TestCase):
         self.assertEqual("", build_site.parse_args(["--hidden-paths", ""]).hidden_paths)
         self.assertEqual(".htaccess\n.well-known", build_site.parse_args(
             ["--hidden-paths", ".htaccess\n.well-known"]).hidden_paths)
-
-    def test_cli_accepts_separate_sftp_deployment_directory(self):
-        self.assertEqual("deployment", build_site.parse_args(
-            ["--sftp-deploy-dir", "deployment"]).sftp_deploy_dir)
 
     def test_parse_args_reads_output_dir(self):
         args = build_site.parse_args(["--output-dir", "preview_site"])

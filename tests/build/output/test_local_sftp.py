@@ -64,7 +64,8 @@ class TestMirrorSite(TestCase):
 
 
 @contextmanager
-def sftp_server(root, host_key, login_key, attempts, *, allowed_auths="password,publickey"):
+def sftp_server(root, host_key, login_key, attempts, *, allowed_auths="password,publickey",
+                expect_host_rejection=False):
     import paramiko
 
     class Login(paramiko.ServerInterface):
@@ -129,7 +130,12 @@ def sftp_server(root, host_key, login_key, attempts, *, allowed_auths="password,
             with connection, paramiko.Transport(connection) as transport:
                 transport.add_server_key(host_key)
                 transport.set_subsystem_handler("sftp", paramiko.SFTPServer, Files)
-                transport.start_server(server=Login())
+                try:
+                    transport.start_server(server=Login())
+                except (EOFError, ConnectionResetError):
+                    if not expect_host_rejection:
+                        raise
+                    return
                 channel = transport.accept(5)
                 stop.wait(5)
                 if channel is not None:
@@ -208,7 +214,8 @@ class TestNativeSftpConnection(TestCase):
                 with self.subTest(auth=auth):
                     (remote / "old.html").write_text("obsolete", encoding="utf-8")
                     attempts = []
-                    with sftp_server(remote.parent, server_key, login_key, attempts) as port:
+                    with sftp_server(remote.parent, server_key, login_key, attempts,
+                                     expect_host_rejection=auth == "wrong host") as port:
                         supplied_key = wrong_key if auth == "wrong host" else server_key
                         env = {
                             "SFTP_USERNAME": "artist",

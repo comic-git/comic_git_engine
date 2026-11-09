@@ -2,6 +2,7 @@
 
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -64,7 +65,7 @@ class TestActionsPerformanceWorkflow(TestCase):
         self.assertIn("uses: actions/deploy-pages@", pages)
         self.assertIn("pages: write\n      id-token: write", pages)
         self.assertIn("name: site", neocities)
-        self.assertIn("name: sftp-deployment", neocities)
+        self.assertNotIn("name: sftp-deployment", self.workflow)
 
     def test_output_and_retention_contract(self) -> None:
         self.assertNotIn("  check-parameters:", self.workflow)
@@ -72,17 +73,18 @@ class TestActionsPerformanceWorkflow(TestCase):
             self.workflow.index("- name: Validate DEPLOY_TARGET"),
             self.workflow.index("- name: Set up Python"),
         )
-        self.assertEqual(3, self.workflow.count("retention-days: ${{ inputs.ARTIFACT_RETENTION_DAYS }}"))
+        self.assertEqual(2, self.workflow.count("retention-days: 1"))
         self.assertNotIn("inputs.OUTPUT_DIR || '.'", self.workflow)
         self.assertIn("OUTPUT_DIR: ${{ inputs.OUTPUT_DIR || 'build' }}", self.workflow)
         self.assertIn("if [[ ! -d \"$OUTPUT_DIR\" ]]", self.workflow)
-        self.assertIn("ARTIFACT_RETENTION_DAYS must be an integer from 1 to 90", self.workflow)
+        self.assertNotIn("ARTIFACT_RETENTION_DAYS", self.workflow)
 
-    def test_caller_submodules_update_to_remote_tip_without_loading_engine_or_sparse_exclusions(self) -> None:
+    def test_caller_submodules_update_to_remote_tip_without_loading_engine(self) -> None:
         block = self.workflow.split("- name: Update caller submodules", 1)[1].split(
             "- name: Checkout comic engine", 1
         )[0]
-        script = textwrap.dedent(block.split("run: |\n", 1)[1])
+        command = shlex.split(block.split("run: ", 1)[1])
+        self.assertEqual("git", command[0])
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             assets = root / "assets"
@@ -99,7 +101,10 @@ class TestActionsPerformanceWorkflow(TestCase):
             (assets / "asset.txt").write_text("recorded commit", encoding="utf-8")
             commit(assets)
             run_git("branch", "live", cwd=assets)
-            for path in ("content assets", "archive/omitted", "comic_git_engine"):
+            (caller / "README.md").write_text("caller", encoding="utf-8")
+            commit(caller)
+            run_git(*command[1:], cwd=caller)
+            for path in ("content assets", "comic_git_engine"):
                 run_git("-c", "protocol.file.allow=always", "submodule", "add", "-b", "live",
                         assets.as_uri(), path, cwd=caller)
             commit(caller)
@@ -108,22 +113,11 @@ class TestActionsPerformanceWorkflow(TestCase):
             commit(assets)
             run_git("switch", "main", cwd=assets)
 
-            for sparse in (False, True):
-                with self.subTest(sparse=sparse):
-                    host = root / ("sparse" if sparse else "full")
-                    run_git("clone", caller.as_uri(), str(host), cwd=root)
-                    if sparse:
-                        run_git("sparse-checkout", "set", "--no-cone", "--stdin", cwd=host,
-                                input_text="/*\n!/archive/\n")
-                    result = subprocess.run(
-                        [sys.executable, "-c", script], cwd=host, capture_output=True, text=True,
-                        env={**os.environ, "GITHUB_SERVER_URL": "https://github.example",
-                             "GH_TOKEN": "fixture-token", "GIT_ALLOW_PROTOCOL": "file"},
-                    )
-                    self.assertEqual(0, result.returncode, result.stderr)
-                    self.assertEqual("latest live branch", (host / "content assets/asset.txt").read_text())
-                    self.assertEqual(not sparse, (host / "archive/omitted/asset.txt").is_file())
-                    self.assertFalse((host / "comic_git_engine/asset.txt").exists())
+            host = root / "checkout"
+            run_git("clone", caller.as_uri(), str(host), cwd=root)
+            run_git("-c", "protocol.file.allow=always", *command[1:], cwd=host)
+            self.assertEqual("latest live branch", (host / "content assets/asset.txt").read_text())
+            self.assertFalse((host / "comic_git_engine/asset.txt").exists())
 
     def test_sparse_input_rejects_patterns_and_traversal(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

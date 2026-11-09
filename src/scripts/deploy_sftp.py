@@ -1,4 +1,4 @@
-"""Build from the host checkout into temporary output and publish it over SFTP."""
+"""Build and deploy a site over SFTP, or upload an existing build."""
 
 import argparse
 from getpass import getpass
@@ -14,10 +14,9 @@ sys.path.insert(0, str(ENGINE_ROOT / "src"))
 
 from build.output.local_sftp import deploy, require_paramiko
 from build.output.sftp import SftpConfig, deployment_credentials
-from core.utils import find_project_root
 
 
-def build_and_deploy(project_root: Path, env: dict[str, str], *, publish_all_comics: bool = False) -> None:
+def build_and_deploy(project_root: Path, env: dict[str, str]) -> None:
     config = SftpConfig.from_environment(env)
     deployment_credentials(env)
     content = (project_root / 'your_content').resolve(strict=True)
@@ -35,11 +34,9 @@ def build_and_deploy(project_root: Path, env: dict[str, str], *, publish_all_com
         subprocess.run(
             [sys.executable, '-B', str(ENGINE_ROOT / "src/build/build_site.py"),
              "--selective-copy", "--output-dir", str(output),
-             "--hidden-paths", env.get("SFTP_HIDDEN_PATHS", ""),
-             *(['--publish-all-comics'] if publish_all_comics else [])],
+             "--hidden-paths", env.get("SFTP_HIDDEN_PATHS", "")],
             cwd=project_root, env=build_env, check=True,
         )
-        print(f"Uploading to {config.host}:{config.port} ({config.remote_dir})", flush=True)
         deploy(output, config, env)
 
 
@@ -50,8 +47,8 @@ def main(argv: list[str] | None = None) -> None:
                "Set SFTP_CLEAN=false to retain remote files absent from this build.",
     )
     parser.add_argument("--verbose", action="store_true", help="Show SSH negotiation and authentication diagnostics.")
-    parser.add_argument('--publish-all-comics', action='store_true',
-                        help='Also publish and upload future-dated comic pages and their assets.')
+    parser.add_argument("--upload-only", type=Path, metavar="DIRECTORY",
+                        help="Upload this existing build without rebuilding.")
     args = parser.parse_args(argv)
     if args.verbose:
         logging.basicConfig(format="%(levelname)s %(name)s: %(message)s")
@@ -59,12 +56,18 @@ def main(argv: list[str] | None = None) -> None:
         logging.getLogger("paramiko.transport").setLevel(logging.DEBUG)
     require_paramiko()
 
-    find_project_root()
     env = os.environ.copy()
     if (sys.stdin.isatty() and env.get("SFTP_USERNAME") and env.get("SFTP_KNOWN_HOSTS", "").strip()
             and not (env.get("SFTP_PASSWORD") or env.get("SFTP_PRIVATE_KEY"))):
         env["SFTP_PASSWORD"] = getpass("SFTP password: ")
-    build_and_deploy(Path.cwd(), env, publish_all_comics=args.publish_all_comics)
+    if args.upload_only is not None:
+        deploy(args.upload_only, SftpConfig.from_environment(env), env)
+        return
+
+    from core.utils import find_project_root
+
+    find_project_root()
+    build_and_deploy(Path.cwd(), env)
 
 
 if __name__ == "__main__":

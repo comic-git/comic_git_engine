@@ -24,7 +24,7 @@ from build.content.page_models import (
     validate_unique_filenames,
     validate_tag_name,
 )
-from build.content.page_sources import PageSource, IncompletePageMetadata, iso_date_to_legacy, post_date_to_datetime
+from build.content.page_sources import PageSource, iso_date_to_legacy, post_date_to_datetime
 from build.output.content_staging import ContentCopyPolicy, check_source_tree, page_selection, validate_selected_pages
 from build.content.site_config import get_image_title_fallback
 from build.content.transcripts import render_transcript_sources, sort_transcript_languages
@@ -66,14 +66,8 @@ def discover_pages(
         page_path = normalize_web_path(page_path) + "/"
         if copy_policy is not None:
             check_source_tree(Path(page_path))
-        try:
-            options = {'image_filter': copy_policy.allows} if copy_policy is not None else {}
-            filepath, page_source = load_page_source(page_path, comic_folder, comic_info, **options)
-        except IncompletePageMetadata as error:
-            if copy_policy is None:
-                raise
-            logger.warning('%s. Skipping incomplete page %s', error, page_path)
-            continue
+        options = {'image_filter': copy_policy.allows} if copy_policy is not None else {}
+        filepath, page_source = load_page_source(page_path, comic_folder, comic_info, **options)
         if page_source is None or filepath is None:
             logger.warning("%s is missing its info.ini/info.toml file. Skipping", page_path)
             continue

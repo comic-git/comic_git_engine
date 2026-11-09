@@ -65,7 +65,9 @@ selective staging. The native local command always enables it. Both use the
 explicit SFTP hidden-path allowlist, which takes precedence over configured
 include-all; local transfer does not prepare or execute the Actions `lftp` bundle.
 The local command suppresses build-subprocess bytecode writes so importing theme
-hooks does not add Python cache files to creator content. `--publish-all-comics`
+hooks does not add Python cache files to creator content. Selective staging
+also skips existing `__pycache__` directories when copying assets. With cleanup
+disabled, any caches from an earlier upload remain on the server. `--publish-all-comics`
 on that command explicitly uploads future pages too.
 
 ## Supporting documents

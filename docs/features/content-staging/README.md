@@ -14,7 +14,9 @@ deletes scheduled source folders. `--publish-all-comics` includes future pages.
 Discovery's page models govern HTML, JSON, navigation, RSS, and copied page folders. Missing
 metadata files or required values skip a folder with a diagnostic; malformed
 documents and invalid supplied values fail. Valid text-only pages remain valid.
-Every selected page folder is copied wholesale. Files directly under managed
+Selective builds omit Python's `__pycache__` directories when copying assets,
+including under selected page folders, themes, and `site_root/`. Source caches
+stay in place. The rest of each selected page folder is copied. Files directly under managed
 `comics/` roots are always omitted. The same rules apply to configured Extra
 Comics. Auxiliary content outside all managed roots retains its existing paths.
 Unconfigured directories are not inferred to be Extra Comics.

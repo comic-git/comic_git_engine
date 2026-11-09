@@ -9,6 +9,21 @@ from build.migration import toml_migration
 
 
 class TestTomlMigration(TestCase):
+    def test_build_policy_migrates_to_native_toml_without_splitting_commas(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.write_main_comic_info(root)
+            path = os.path.join(root, 'your_content', 'comic_info.ini')
+            with open(path, 'a', encoding='utf-8') as source:
+                source.write('\n[Build]\nSelective copy = true\nInclude hidden files = false\n'
+                             'Hidden paths = .htaccess\n    assets/.notes,private\n')
+            report = self.run_in_host(root, lambda: toml_migration.run_page_migration(write=True))
+            self.assertEqual(1, len(report.comic_configs_written))
+            parser = comic_config_sources.load_comic_config_from_toml(
+                os.path.join(root, 'your_content', 'comic_info.toml'))
+            self.assertTrue(parser.getboolean('Build', 'Selective copy'))
+            self.assertFalse(parser.getboolean('Build', 'Include hidden files'))
+            self.assertEqual('.htaccess\nassets/.notes,private', parser.get('Build', 'Hidden paths'))
+
     def write_main_comic_info(
             self,
             root: str,

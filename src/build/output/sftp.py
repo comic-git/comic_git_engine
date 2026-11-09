@@ -103,17 +103,22 @@ def write_deployment_files(output_dir: str, deployment_dir: str, config: SftpCon
     shutil.copyfile(__file__, destination / "deploy.py")
 
 
-def deploy(deployment_dir: str, output_dir: str, env) -> None:
-    """Supply credentials only at execution time, then run the prepared transfer."""
-    source = Path(output_dir).resolve()
-    if not (source / "index.html").is_file():
-        raise ValueError("Refusing SFTP deployment without a built index.html.")
+def deployment_credentials(env) -> tuple[str, str, str, str]:
     username = env.get("SFTP_USERNAME", "")
     password = env.get("SFTP_PASSWORD", "")
     key = env.get("SFTP_PRIVATE_KEY", "")
     known_hosts = env.get("SFTP_KNOWN_HOSTS", "")
     if not username or not known_hosts.strip() or bool(password) == bool(key):
         raise ValueError("Set SFTP_USERNAME, SFTP_KNOWN_HOSTS, and exactly one of SFTP_PASSWORD or SFTP_PRIVATE_KEY.")
+    return username, password, key, known_hosts
+
+
+def deploy(deployment_dir: str, output_dir: str, env) -> None:
+    """Supply credentials only at execution time, then run the prepared transfer."""
+    source = Path(output_dir).resolve()
+    if not (source / "index.html").is_file():
+        raise ValueError("Refusing SFTP deployment without a built index.html.")
+    username, password, key, known_hosts = deployment_credentials(env)
     bundle = Path(deployment_dir)
     connection = json.loads((bundle / "connection.json").read_text(encoding="utf-8"))
     script = (bundle / "deploy.lftp").read_text(encoding="utf-8")

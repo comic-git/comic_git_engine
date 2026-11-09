@@ -15,6 +15,7 @@ from time import strftime, perf_counter_ns
 
 logger = logging.getLogger(__name__)
 
+ENGINE_ROOT = Path(__file__).resolve().parents[2]
 BASE_DIRECTORY = ""
 PROCESSING_TIMES: list[tuple[str, float]] = []
 

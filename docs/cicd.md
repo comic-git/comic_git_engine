@@ -36,6 +36,11 @@
 - Migration-only dependencies belong in `requirements_migration.txt`, not `requirements.txt`, unless they become required for normal site builds.
 - The build checks out the engine directly into `comic_git_engine/` using the configured version, with TOML taking precedence over legacy INI and `1.1` as the fallback. Caller submodules are not initialized, so a committed engine submodule does not override that version or require remote-tracking branches during CI.
 - Host repos make two independent version choices: the reusable workflow revision in `uses: .../build_site.yaml@...` and the engine revision in their comic configuration. Changing one does not change the other.
+- Content copying stays legacy by default, including for hosted SFTP. Main-config
+  `[Build] Selective copy` / `[build] selective_copy` opts into folder-level
+  publication without a new workflow input. In that mode the workflow's existing
+  deletion flag is non-destructive. Source thumbnails generated during Actions
+  remain in its disposable checkout and are not automatically committed.
 - `v1` is frozen at the 1.0 reusable-workflow contract. Major tags are managed manually and are never created, moved, or deleted by `main.yaml`.
 
 ## SFTP deployment
@@ -45,6 +50,11 @@ The build owns publication policy and generates the deployment files; the
 deployment job installs `lftp` and runs them with credentials supplied only at
 deployment time. See [SFTP deployment](features/sftp/) for directory ownership,
 hidden-file, authentication, and failure rules.
+
+Native local deployment uses `src/scripts/deploy_sftp.py`, temporary output, and
+optional Python SFTP dependencies. It always enables selective copying from the
+real host root; it does not use the Actions deployment artifact or require `lftp`.
+The SFTP hidden-path allowlist remains authoritative in either path.
 
 ## Version Source Of Truth
 

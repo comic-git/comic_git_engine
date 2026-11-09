@@ -17,11 +17,12 @@ It is not a task backlog. The goal is to capture:
 
 ### Current state
 
-`comic_git_engine` now builds into `build/` by default, while retaining an explicit legacy in-place mode. The staged build still copies the complete `your_content/` tree, and deployment mode protects future assets by deleting scheduled source page folders before that copy. Source and public assets are therefore not yet fully separated.
+`comic_git_engine` builds into `build/` by default, while retaining legacy in-place mode. In 1.1.1, opt-in [folder-level selective staging](features/content-staging/) copies only eligible page folders and preserves arbitrary auxiliary content. Native local SFTP enables it by default. Existing builds retain wholesale copying and scheduled-source deletion when requested. Thumbnail generation remains a committable source cache; selected source metadata remains public.
 
 ### Desired future state
 
-Source files and generated output should be fully separated:
+Source inputs and published output should be clearly separated, while retaining
+intentional committable thumbnail caches:
 
 - source content stays in the host repo
 - generated site files remain in the configured output directory
@@ -49,17 +50,17 @@ Potential risks include:
 - local preview and manual-testing workflows assuming the complete source tree is public
 - hidden compatibility issues that only appear in long-lived user repos
 
-Because host repos follow patch updates automatically, this must not be introduced as a patch-level behavior change.
+Because host repos follow patch updates automatically, changing the default or excluding source info files must not be introduced as an automatic patch-level behavior change. The opt-in 1.1.1 mode provides real-world testing without that default switch.
 
 ### Likely release horizon
 
 `2.0+`
 
-The initial output-directory default is part of 1.1, but selective asset staging remains a separate compatibility-sensitive migration.
+The output-directory default is part of 1.1 and folder-level staging is opt-in in 1.1.1. Source-info exclusion, reference-based selection, and changing defaults remain separate compatibility-sensitive migrations.
 
 ### Likely follow-on work
 
-Once selective asset staging is established, the engine should be able to move away from destructive scheduled-post deletion and publish only the files needed for the final site output.
+Use experience with opt-in staging to evaluate changing the default and eventually retiring destructive scheduled-post deletion. Do not conflate that change with excluding source metadata or redesigning asset URLs.
 
 This may also be the point where the output structure itself is redesigned more aggressively. Instead of leaving source-style assets under `your_content/` in the published site, a future build could copy only the required assets into the generated site structure alongside the relevant HTML output.
 
@@ -146,13 +147,14 @@ Plan this alongside the analytics modernization and CMS configuration work, whil
 
 ### Current behavior
 
-The current `--delete-scheduled-posts` behavior exists to protect creators from accidentally publishing future comic assets under the legacy root-output model.
+The legacy `--delete-scheduled-posts` behavior exists to protect creators from accidentally publishing future comic assets under the root-output model. The opt-in 1.1.1 staging mode already protects that boundary by omitting scheduled page folders from output while preserving their sources.
 
 That behavior was a rational solution to the original GitHub Pages deployment model, where source files in the repo could end up publicly accessible even if no generated HTML page linked to them.
 
 ### Desired future state
 
-With staged output now available, scheduled-post handling should become non-destructive once the engine can selectively copy public assets:
+The remaining work is to make non-destructive selective copying the default,
+using evidence from the opt-in mode and an explicit compatibility decision:
 
 - source files for future comics should remain in the repo
 - normal builds should publish only pages and assets whose post date is in the past
@@ -167,7 +169,7 @@ With staged output now available, scheduled-post handling should become non-dest
 
 ### Why this is risky
 
-This depends on selective asset staging and should not be attempted as an isolated patch-level cleanup.
+The 1.1.1 opt-in mode already avoids destructive deletion by selecting whole page folders. Replacing the legacy default remains a compatibility-sensitive change; reference-based asset selection is not a prerequisite for non-destructive folder staging.
 
 Risks include:
 
@@ -179,7 +181,7 @@ Risks include:
 
 `2.0+`
 
-This should be treated as a follow-on architectural migration after selective asset staging is established.
+The future default switch should use evidence from the opt-in mode and explicit migration guidance. Existing legacy defaults remain supported in 1.1.1.
 
 ## Harden code hook contracts
 

@@ -38,6 +38,8 @@ STRING_OPTIONS = {
 }
 
 BOOL_OPTIONS = {
+    ("build", "selective_copy"): ("Build", "Selective copy"),
+    ("build", "include_hidden_files"): ("Build", "Include hidden files"),
     ("archive", "use_thumbnails"): ("Archive", "Use thumbnails"),
     ("archive", "list_images_separately"): ("Archive", "List images separately"),
     ("archive", "show_uncategorized_comics"): ("Archive", "Show Uncategorized comics"),
@@ -59,6 +61,7 @@ BOOL_OPTIONS = {
 }
 
 LIST_OPTIONS = {
+    ("build", "hidden_paths"): ("Build", "Hidden paths"),
     ("site", "extra_comics"): ("Comic Settings", "Extra comics"),
     ("site", "markdown_extras"): ("Comic Settings", "Markdown extras"),
 }
@@ -224,7 +227,10 @@ def apply_list_options(parser: RawConfigParser, data: dict[str, Any]) -> None:
         value = data[table_name][key]
         if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
             raise ValueError(f"Expected {table_name}.{key} in comic_info.toml to be a list of strings")
-        set_option(parser, section, option, ", ".join(value))
+        separator = "\n" if (table_name, key) == ("build", "hidden_paths") else ", "
+        if separator == "\n" and any('\n' in item or '\r' in item for item in value):
+            raise ValueError('build.hidden_paths entries must be single paths, not multiline strings')
+        set_option(parser, section, option, separator.join(value))
 
 
 def apply_links(parser: RawConfigParser, data: dict[str, Any]) -> None:
@@ -308,7 +314,8 @@ def write_legacy_list_options(
     for (table_name, key), (section, option) in LIST_OPTIONS.items():
         if not comic_info.has_option(section, option):
             continue
-        ensure_toml_table(data, table_name)[key] = utils.str_to_list(comic_info.get(section, option))
+        separator = "\n" if (table_name, key) == ("build", "hidden_paths") else ","
+        ensure_toml_table(data, table_name)[key] = utils.str_to_list(comic_info.get(section, option), separator)
         handled_options.add((section, option))
 
 

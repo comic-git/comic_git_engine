@@ -28,7 +28,8 @@ Important current behavior:
 - each image has a resolved archive title, hover description, screen-reader text,
   and thumbnail data; its ordered array position determines its presentation
   anchors
-- future-dated pages are treated as scheduled posts and are not published by default
+- future-dated pages are excluded from generated HTML, JSON, and RSS unless
+  `--publish-all-comics` is requested; asset publication depends on the copying mode
 - local development may opt into previewing future posts
 - generated page metadata is versioned and validated by a deployed JSON Schema
 - public image metadata omits internal IDs and anchors; `filename`, `url`, and
@@ -55,11 +56,19 @@ Important current behavior:
   plain text and logs one actionable warning for the affected comic
 - no-image pages keep their post, navigation, RSS item, and page archive entry
 - generated sites are staged into `build/` by default; an empty output-directory
-  setting retains the legacy in-place build mode
+  setting retains the legacy in-place build mode when selective copying is disabled
+- opt-in [selective staging](../content-staging/) copies only eligible page folders
+  and never deletes scheduled source folders; supporting content outside all managed
+  main/Extra Comic `comics/` roots is still copied, with hidden-path rules applied
+- legacy copying retains future source assets unless `--delete-scheduled-posts`
+  deletes those folders first; ordinary local HTML filtering alone is not asset filtering
+- thumbnail generation still writes source caches for selected pages, allowing
+  creators to commit and reuse them; source metadata remains public when copied
 
 This feature is under active long-term architectural pressure from the roadmap:
 
-- destructive scheduled-post deletion is legacy behavior that should eventually be replaced by selective publishing
+- changing the default from legacy deletion/wholesale copying to the implemented
+  opt-in selective mode remains a separate compatibility decision
 - generated output structure may continue to evolve independently now that build
   output is staged separately from host-repo source by default
 

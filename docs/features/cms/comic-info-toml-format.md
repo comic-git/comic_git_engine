@@ -46,6 +46,22 @@ Extra Comics still inherit from the main comic config, but their own config file
 
 ## Proposed Main Schema
 
+The reader also accepts the main-config-owned `[build]` table (1.1.1):
+
+```toml
+[build]
+selective_copy = true
+include_hidden_files = false
+hidden_paths = [".htaccess"]
+```
+
+All keys are optional. Omitted selective_copy is false. Selective mode excludes
+hidden output unless include_hidden_files is true; an explicit hidden_paths
+array takes precedence, including an empty array. These values map to legacy
+`[Build] Selective copy`, `Include hidden files`, and newline-separated `Hidden
+paths`. The policy applies to the whole site, not individual Extra Comic overrides.
+See [content staging](../content-staging/) for the complete publication contract.
+
 ```toml
 [engine]
 version = "1.1"

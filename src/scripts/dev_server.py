@@ -71,10 +71,11 @@ class PreviewRequestHandler(SimpleHTTPRequestHandler):
 
 
 class WatchdogEventHandler(FileSystemEventHandler):
-    def __init__(self, observer: Observer, args: list[Any]):
+    def __init__(self, observer: Observer, args: list[Any], kwargs: dict | None = None):
         super().__init__()
         self.observer = observer
         self.build_args = args
+        self.build_kwargs = kwargs or {}
 
     def on_any_event(self, event):
         global SKIP_REBUILD
@@ -89,7 +90,7 @@ class WatchdogEventHandler(FileSystemEventHandler):
                 SKIP_REBUILD = True
                 os.chdir(PROJECT_ROOT)
                 try:
-                    build_site.main(*self.build_args)
+                    build_site.main(*self.build_args, **self.build_kwargs)
                 except Exception:
                     logger.exception("Build failed after file change")
                 # Drain remaining events
@@ -101,11 +102,11 @@ class WatchdogEventHandler(FileSystemEventHandler):
                 SKIP_REBUILD = False
 
 
-def watch_and_rebuild(build_args: list[Any]) -> Observer:
+def watch_and_rebuild(build_args: list[Any], build_kwargs: dict | None = None) -> Observer:
     if PROJECT_ROOT is None:
         raise RuntimeError("Project root was not initialized before starting the file watcher.")
     observer = Observer()
-    event_handler = WatchdogEventHandler(observer, build_args)
+    event_handler = WatchdogEventHandler(observer, build_args, build_kwargs)
     observer.schedule(event_handler, PROJECT_ROOT, recursive=True)
     return observer
 
@@ -142,6 +143,8 @@ def main():
     args = build_site.parse_args(preview=True)
     build_site.apply_cli_environment_overrides(args)
     build_args = [args.delete_scheduled_posts, args.publish_all_comics]
+    build_kwargs = dict(hidden_paths=args.hidden_paths, sftp_deploy_dir=args.sftp_deploy_dir,
+                        selective_copy=args.selective_copy)
 
     # Set HTTP_ROOT
     comic_info = load_main_comic_info()
@@ -152,11 +155,11 @@ def main():
     HTTP_ROOT = os.path.abspath(output_dir) if output_dir else PROJECT_ROOT
 
     # Initial build
-    build_site.main(*build_args)
+    build_site.main(*build_args, **build_kwargs)
     logger.info("")
 
     # Start watcher thread
-    observer = watch_and_rebuild(build_args)
+    observer = watch_and_rebuild(build_args, build_kwargs)
     watcher_thread = threading.Thread(target=start_observer, args=[observer], daemon=True)
     watcher_thread.start()
 

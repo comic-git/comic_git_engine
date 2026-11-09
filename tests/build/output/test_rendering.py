@@ -1,6 +1,7 @@
 import os
 import re
 from configparser import RawConfigParser
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -194,7 +195,7 @@ class TestRendering(TestCase):
             [
                 "your_content/themes/theme-name/templates/extras/story/",
                 "your_content/themes/theme-name/templates",
-                "comic_git_engine/templates",
+                str(Path(__file__).resolve().parents[3] / "templates"),
             ],
         )
         self.assertEqual("extras/story/comic/001/index.html", mock_write.call_args.args[1])

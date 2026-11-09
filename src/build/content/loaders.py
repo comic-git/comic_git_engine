@@ -46,11 +46,14 @@ def load_page_source(
         page_path: str,
         comic_folder: str,
         comic_info: RawConfigParser,
+        *, image_filter=None,
 ) -> tuple[str | None, PageSource | None]:
     toml_path, legacy_path = content_paths.get_page_info_candidates(page_path)
     if os.path.isfile(toml_path):
         return toml_path, load_page_source_from_toml(toml_path)
     if os.path.isfile(legacy_path):
+        if image_filter is not None:
+            return legacy_path, load_legacy_page_source(page_path, comic_folder, comic_info, image_filter=image_filter)
         return legacy_path, load_legacy_page_source(page_path, comic_folder, comic_info)
     return None, None
 

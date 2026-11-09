@@ -44,6 +44,20 @@ class TestPageDiscovery(TestCase):
         finally:
             os.chdir(cwd)
 
+    def test_scheduled_deletion_rejects_directory_outside_content(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            page_dir = self.write_page(
+                temp_dir, "scheduled", "Post date = January 01, 2099\n",
+            )
+            staging = os.path.join(temp_dir, "staging")
+            os.makedirs(os.path.join(staging, "your_content"))
+            with (
+                patch(MUT + "iglob", return_value=["../your_content/comics/scheduled/"]),
+                self.assertRaisesRegex(ValueError, "outside your_content"),
+            ):
+                self.run_discovery(staging, self.make_comic_info(), delete=True)
+            self.assertTrue(os.path.isdir(page_dir))
+
     def test_discover_pages_rejects_invalid_timezone(self):
         comic_info = self.make_comic_info()
         comic_info.set("Comic Settings", "Timezone", "Not/AZone")

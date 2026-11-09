@@ -48,6 +48,10 @@ pip install -r path/to/custom/theme/requirements.txt
 
 The migration and hook dependency steps are optional for normal site builds. Keep one-off migration tooling out of `requirements.txt` so regular build installs stay minimal.
 
+For native local SFTP transfer or its loopback connection tests, also install
+`requirements_sftp.txt` into the test environment. It is optional for ordinary
+builds and is not used by the GitHub Actions `lftp` runner.
+
 For manual site testing, load this repo into a host `comic_git` repo such as `comic_git_dev`:
 
 - symlink or junction `comic_git_engine` into the host repo, or
@@ -90,6 +94,22 @@ $env:GITHUB_REPOSITORY='ryanvilbrandt/comic_git_dev'
 python comic_git_engine\src\build\build_site.py --publish-all-comics
 ```
 
+To exercise the opt-in publication boundary without deleting scheduled sources:
+
+```powershell
+# Run from the host repo root; default output is build/
+python comic_git_engine\src\build\build_site.py --selective-copy
+```
+
+Selective copying requires separate output and uses the discovered pages for
+rendering and copied comic folders. It still generates thumbnails into source so
+they can be committed and reused. See [content staging](features/content-staging/)
+for hidden settings, main-config ownership, and the legacy override. The native
+local SFTP command enables this mode automatically; hosted workflows opt in only
+through the main comic config.
+The preview server accepts the same option after installing its optional watcher
+as shown below; add `--publish-all-comics` to include future pages deliberately.
+
 For an auto-rebuilding local preview server:
 
 ```powershell
@@ -104,7 +124,10 @@ python comic_git_engine\src\scripts\dev_server.py
 `http://localhost:8000`. It rebuilds when `.tpl`, `.txt`, `.html`, `.md`,
 `.ini`, and `.toml` files change.
 
-Do not use `--delete-scheduled-posts` during normal local development. That flag is appropriate for deployment builds because it removes future-dated page content from the published output, but locally it can delete uncommitted user data files.
+In legacy mode, `--delete-scheduled-posts` deletes future-dated source folders;
+reserve it for disposable deployment checkouts. Selective builds do not need it
+and suppress its deletion behavior when supplied. Use `--publish-all-comics`
+explicitly when checking future pages.
 
 ## Running Tests
 
@@ -126,8 +149,8 @@ See [`docs/testing.md`](testing.md) for more detail on test structure and conven
 
 - **Do not treat this repo like a standalone app.** Manual site builds should normally happen through a host `comic_git` repo such as `comic_git_dev`.
 - **Run build scripts from the host repo root.** `build_site.py` and `dev_server.py` expect the current working directory to be the root of the loading `comic_git` repo.
-- **Do not use `--delete-scheduled-posts` for normal local development.** It can delete future-dated comic data from the host repo. Use `--publish-all-comics` instead when you need to preview unpublished pages locally.
+- **Use selective copying for local publication.** Legacy `--delete-scheduled-posts` can delete future-dated source data. Selective mode preserves those folders, and `--publish-all-comics` explicitly includes future pages for preview.
 - **PyCharm can show the same file through multiple paths when this repo is symlinked into another repo.** If the duplicate views become confusing, mark the symlinked copy as `Excluded` in PyCharm so you only work from one visible path.
 - **Be careful about setting `Comic domain` or `Comic subdirectory` directly in a host repo during local development.** For repos intended to be distributed to end users, prefer setting `GITHUB_REPOSITORY` locally instead so `comic_info.ini` stays close to the fresh-install defaults.
 - **`requirements_hooks.txt` is generated during the GitHub Action, not hand-maintained.** Do not create or commit this file to the repo. If you need to install custom dependencies from a custom theme, install directly from the requirements.txt in that theme.
-- If you want the old in-place build behavior for debugging or ad-hoc previewing, set `OUTPUT_DIR` to an empty value before running the build script. `--output-dir` is the cleaner option for normal one-off local overrides.
+- Legacy builder-only in-place output is available with an explicitly empty `OUTPUT_DIR`; selective mode and `dev_server.py` require separate output. Prefer `--output-dir` for normal one-off local overrides.

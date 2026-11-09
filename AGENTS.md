@@ -39,3 +39,7 @@ The following actions require explicit human confirmation before proceeding, reg
 | [`docs/decisions/`](docs/decisions/README.md)            | Significant decisions and the files they affect               |
 | [`docs/features/`](docs/features/README.md)              | Feature-scoped documentation                                  |
 | [`docs/documentation.md`](docs/documentation.md)         | Docs structure, philosophy, and where new content belongs     |
+
+## Refactoring scope
+
+Adjust and refactor code structure when it improves the implementation of the current task. Preserve supported behavior and validate related changes with the unit and e2e suites. Avoid unrelated refactoring unless the task is explicitly a separate refactor pass.

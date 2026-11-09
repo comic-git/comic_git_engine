@@ -6,11 +6,12 @@ from pathlib import Path, PurePosixPath
 
 from build.content.loaders import load_main_comic_info
 from build.content.site_config import get_extra_comics_list, get_pages_list
-from core.utils import get_output_dir
+from core.utils import ENGINE_ROOT, get_output_dir
 
 logger = logging.getLogger(__name__)
 
 SITE_ROOT_SOURCE = os.path.join("your_content", "site_root")
+PYTHON_CACHE_DIR = "__pycache__"
 
 
 def validate_hidden_path_policy(output_dir: str, hidden_paths: str) -> list[PurePosixPath]:
@@ -101,16 +102,20 @@ def setup_output_file_space(comic_info: RawConfigParser):
     delete_output_file_space(comic_info)
 
 
-def copy_output_assets(output_dir: str):
+def copy_output_assets(output_dir: str, *, managed_roots: tuple[Path, ...] | None = None):
     if not output_dir:
         return
-    shutil.copytree("comic_git_engine/css", os.path.join(output_dir, "comic_git_engine/css"))
-    shutil.copytree("comic_git_engine/js", os.path.join(output_dir, "comic_git_engine/js"))
-    shutil.copytree("comic_git_engine/schemas", os.path.join(output_dir, "comic_git_engine/schemas"))
-    shutil.copytree("your_content", os.path.join(output_dir, "your_content"))
+    ignore = shutil.ignore_patterns(PYTHON_CACHE_DIR) if managed_roots is not None else None
+    for directory in ("css", "js", "schemas"):
+        shutil.copytree(ENGINE_ROOT / directory, Path(output_dir) / "comic_git_engine" / directory, ignore=ignore)
+    if managed_roots is None:
+        shutil.copytree("your_content", os.path.join(output_dir, "your_content"))
+    else:
+        from build.output.content_staging import stage_remaining_content
+        stage_remaining_content(output_dir, managed_roots)
 
 
-def copy_site_root_files(output_dir: str) -> None:
+def copy_site_root_files(output_dir: str, *, selective_copy: bool = False) -> None:
     if not os.path.isdir(SITE_ROOT_SOURCE):
         raise NotADirectoryError(
             "Missing required folder: your_content/site_root\n"
@@ -118,7 +123,9 @@ def copy_site_root_files(output_dir: str) -> None:
         )
 
     output_root = output_dir or "."
-    for current_root, _dir_names, file_names in os.walk(SITE_ROOT_SOURCE):
+    for current_root, dir_names, file_names in os.walk(SITE_ROOT_SOURCE):
+        if selective_copy and PYTHON_CACHE_DIR in dir_names:
+            dir_names.remove(PYTHON_CACHE_DIR)
         rel_dir = os.path.relpath(current_root, SITE_ROOT_SOURCE)
         target_dir = output_root if rel_dir == "." else os.path.join(output_root, rel_dir)
         os.makedirs(target_dir, exist_ok=True)

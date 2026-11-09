@@ -16,6 +16,7 @@
 |-----------------------------|-----------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
 | Build entry point           | [`src/build/build_site.py`](../src/build/build_site.py)                     | Thin orchestration entry point. Handles env input setup, host-root discovery, hook boundaries, main/extra comic coordination, and RSS.    |
 | Build pipeline modules      | [`src/build/`](../src/build/)                                               | Purpose-built modules for the build pipeline, including site config, page discovery, comic data assembly, rendering, output handling, and image/transcript helpers. |
+| Content staging policy      | [`src/build/output/content_staging.py`](../src/build/output/content_staging.py) | Resolves site-wide opt-in copying/hidden policy, validates selected source identities, and stages eligible folders and auxiliary content. |
 | Shared utilities            | [`src/core/utils.py`](../src/core/utils.py)                                 | Cross-cutting helpers for root discovery, config parsing, path/url building, templating, social media data, and build checkpoints.        |
 | RSS generation              | [`src/integrations/rss.py`](../src/integrations/rss.py)                     | Builds RSS feed jobs and serializes RSS XML for the main comic and Extra Comics.                                                          |
 | Page and image models       | [`src/build/content/page_models.py`](../src/build/content/page_models.py)   | Structured page/image/archive models plus internal identity, navigation, and fallback helpers.                                            |
@@ -74,19 +75,31 @@ This structure is intentionally file-based and low-friction:
 
 ## Data Flow
 
+The opt-in [selective staging policy](features/content-staging/) uses the same
+discovered pages for rendering and page-folder copying. Copying remains in the
+output layer, which prunes all managed main/Extra Comic `comics/` directories
+from the auxiliary-content pass. Thumbnails remain a source-side cache generated
+before copying. Final hidden-path filtering still follows root copies and hooks.
+
 1. A host `comic_git` repo invokes the engine locally or through the reusable [`build_site.yaml`](../.github/workflows/build_site.yaml) workflow.
 2. [`src/build/build_site.py`](../src/build/build_site.py) finds the project root, selects `your_content/comic_info.toml` when present or falls back to `comic_info.ini`, resolves the site URL, loads theme hooks, and orchestrates the build order for Extra Comics and the main comic.
 3. [`src/build/site_builder.py`](../src/build/site_builder.py) coordinates the per-comic build pipeline using the lower-level modules.
 4. [`src/build/content/page_sources.py`](../src/build/content/page_sources.py) parses legacy INI or TOML into source-only page/image models, preserving omitted versus explicitly blank values.
 5. [`src/build/content/page_discovery.py`](../src/build/content/page_discovery.py) scans page folders, applies scheduling and source precedence, validates image paths, resolves fallbacks once, and constructs ordered `ComicPage`/`ComicImage` models.
 6. [`src/build/content/comic_data.py`](../src/build/content/comic_data.py) enriches pages with navigation, post HTML, archive dates, and the structured hook boundary.
-7. [`src/build/output/images.py`](../src/build/output/images.py) resolves page and image thumbnails according to archive mode, generation, explicit-asset, and overwrite policies.
+7. [`src/build/output/images.py`](../src/build/output/images.py) resolves page and image thumbnails according to archive mode, generation, explicit-asset, and overwrite policies. Generated thumbnails remain in source folders as a reusable cache, including in selective mode.
 8. [`src/build/content/page_metadata.py`](../src/build/content/page_metadata.py) writes resolved public metadata after thumbnail processing. Every build also deploys [`schemas/page_info_list.schema.json`](../schemas/page_info_list.schema.json).
-9. [`src/build/output/rendering.py`](../src/build/output/rendering.py) projects narrow template contexts and renders built-in or theme templates.
+9. [`src/build/output/rendering.py`](../src/build/output/rendering.py) projects narrow template contexts and renders built-in or theme templates. In selective mode, the per-comic pipeline then stages the selected page folders through [`content_staging.py`](../src/build/output/content_staging.py).
 10. [`src/integrations/rss.py`](../src/integrations/rss.py) builds page-level RSS items from structured pages for the main comic and Extra Comics.
-11. [`src/build/output/site_output.py`](../src/build/output/site_output.py) handles cleanup, staging into the configured output directory, and copying any host-managed root files from `your_content/site_root/` into the built site root.
+11. [`src/build/output/site_output.py`](../src/build/output/site_output.py) handles output cleanup, static asset copying, and `site_root` files. The selective auxiliary-content pass prunes every managed comics root so it cannot reintroduce unselected pages. Final hidden filtering follows root copying and postprocess hooks.
 12. When requested, [`src/build/output/sftp.py`](../src/build/output/sftp.py) prepares a separate deployment artifact containing the SFTP commands, connection settings, and standalone runner. Authentication secrets are supplied only when that runner executes in the deployment job.
 13. The host repo then publishes the site output to its selected target: GitHub Pages, Neocities, or SFTP hosting.
+
+For native local SFTP, [`src/scripts/deploy_sftp.py`](../src/scripts/deploy_sftp.py)
+instead builds from the real host directory into temporary output with selective
+copying enabled, then invokes [`local_sftp.py`](../src/build/output/local_sftp.py).
+The optional native transfer dependencies are separate from ordinary builds and
+the Actions artifact runner; no temporary source checkout or `lftp` bundle is used.
 
 ## Key Dependencies
 

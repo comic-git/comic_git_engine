@@ -11,7 +11,8 @@ Implemented for the upcoming 1.1.1 release; see the [security decision](decision
 * [x] Pin runtime/transitive and migration dependencies and third-party Actions; constrain hook dependencies to engine pins. Preserve moving engine release refs.
 * [x] Unit and real-CLI e2e regression coverage; ordinary generated-site goldens preserved.
 * [ ] Complete the normal release-level manual test pass before publishing 1.1.1. Documentation is staged on `comic_git_docs` branch `release/1.1.1`.
-* [ ] Selective publication/source-info exclusion remains the compatibility-sensitive [2.0+ roadmap migration](roadmap.md#selective-output-asset-staging); the raw-source privacy issue is not fixed by this patch.
+* [x] Add opt-in folder-level selective staging for 1.1.1 and use it for native local SFTP. Preserve source thumbnail caching and existing build defaults.
+* [ ] Changing staging defaults and source-info exclusion remain compatibility-sensitive [roadmap work](roadmap.md#selective-output-asset-staging); the raw-source privacy issue is not fixed by this patch.
 
 ## Medium Priority
 

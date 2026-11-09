@@ -32,8 +32,10 @@ to previously permissive behavior, reviewed exceptions to patch compatibility.
   rather than replacing a reviewed engine dependency. Pin third-party Actions to
   verified commit refs. Preserve the existing moving engine release reference policy.
 
-Selective asset staging and source-info exclusion remain the separate 2.0+
-roadmap migration. This patch does not resolve the raw source metadata exposure.
+The security work leaves raw source metadata exposure unresolved. The subsequent
+[opt-in staging decision](2026-11-07-opt-in-selective-content-staging.md) adds
+folder-level selection for 1.1.1 without changing legacy defaults. Source-info
+exclusion and a default publication-policy switch remain separate roadmap work.
 
 ## Files affected
 

@@ -346,6 +346,38 @@ Current expectation:
 - add e2e cases only when the integration risk is real and documented
 - do not modify `e2e_tests` without explicit task scope or user confirmation
 
+### Selective staging and native SFTP contracts
+
+From the engine root, run the policy/filesystem and real-CLI staging tests:
+
+```powershell
+.\venv\Scripts\python.exe -m unittest tests.build.output.test_content_staging tests.build.test_selective_staging_cli
+```
+
+The separate e2e repo adds cross-output coverage with an independent main/nested
+Extra Comic fixture. From `../e2e_tests`, run:
+
+```powershell
+.\venv\Scripts\python.exe -m pytest tests/test_selective_staging.py
+```
+
+These checks validate newly generated JSON against the schema deployed by that
+build and check agreement with HTML/navigation, combined RSS, copied assets, and
+source thumbnail caches. The fixture has semantic assertions for multiple modes;
+its static golden check flags are intentionally disabled. The dedicated pytest
+module runs those contracts in the default non-browser test suite.
+
+Install `requirements_sftp.txt` into the engine test environment to enable the
+native connection tests in `tests.build.output.test_local_sftp`. The e2e repo's
+`tests/test_native_sftp_deployment.py` additionally exercises the public local
+deployment command with a disposable loopback server. The optional real-`lftp`
+client test remains separate and requires `LFTP_BINARY` on Linux.
+
+Before interpreting full e2e golden checks, verify that the harness branch and
+linked engine revision represent the same baseline. CMS fixtures and goldens
+require a CMS-capable engine; do not refresh them just to make the 1.1.1 release
+line pass. Record mismatches independently from new selective-mode test results.
+
 ### Release-level manual regression testing
 
 What it covers:

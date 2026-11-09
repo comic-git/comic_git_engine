@@ -45,6 +45,7 @@ Use short kebab-case names matching the feature or product area. Examples: `maps
 - [CMS](cms/) - Planned CMS-backed editing, TOML migration, and admin-surface behavior, `planned`
 - [Code hooks](code-hooks/) - Expert-level Python build extensions that live in host-repo themes and are treated as a supported API, `active`
 - [Comic pages and publishing](comic-pages-and-publishing/) - Core page-folder publishing rules, scheduled-post behavior, and generated page metadata, `active`
+- [Content staging](content-staging/) - Opt-in selective page-folder copying, source thumbnail caching, and hidden-file policy, `active`
 - [Extra Comics](extra-comics/) - Multi-comic site behavior built on inheritance, selective overrides, and separate comic subdirectories, `active`
 - [RSS](rss/) - Feed generation rules for the main comic and Extra Comics, including inheritance and feed-combination behavior, `active`
 - [Social media previews](social-media-previews/) - Open Graph-style preview metadata defaults and override points for shared links, `active`

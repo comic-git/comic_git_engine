@@ -13,6 +13,7 @@ from build.output.site_output import (
     setup_output_file_space, validate_hidden_path_policy,
 )
 from build.output.sftp import SftpConfig, validate_deployment_directory, write_deployment_files
+from build.output.content_staging import resolve_copy_policy, managed_comic_roots, validate_selective_output
 from core import utils
 from core.logging_config import configure_logging
 from core.models import ComicBuildResult
@@ -43,7 +44,8 @@ def add_inputs_to_env_vars(inputs: str):
 
 
 def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False,
-         hidden_paths: str | None = None, sftp_deploy_dir: str | None = None):
+         hidden_paths: str | None = None, sftp_deploy_dir: str | None = None,
+         *, selective_copy: bool | None = None):
     configure_logging()
     checkpoint("Start", clear=True)
 
@@ -57,17 +59,30 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False,
     if sftp_deploy_dir is not None:
         sftp_config = SftpConfig.from_environment(os.environ)
         validate_deployment_directory(utils.get_output_dir(), sftp_deploy_dir)
-        if hidden_paths is None:
-            hidden_paths = ""
+    comic_info = load_main_comic_info()
+    policy = resolve_copy_policy(comic_info, selective_copy=selective_copy,
+                                 hidden_paths=hidden_paths, sftp=sftp_config is not None)
+    hidden_paths = policy.hidden_paths
     if hidden_paths is not None:
         validate_hidden_path_policy(utils.get_output_dir(), hidden_paths)
-    comic_info = load_main_comic_info()
+    if policy.selective_copy:
+        validate_selective_output(utils.get_output_dir())
+        managed_comic_roots(get_extra_comics_list(comic_info))
+        if delete_scheduled_posts:
+            logger.info('Selective copying does not delete scheduled source folders.')
+        delete_scheduled_posts = False
     comic_url, utils.BASE_DIRECTORY = utils.get_comic_url(comic_info)
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
 
     checkpoint("Get comic settings")
 
     run_hook(theme, "preprocess", [comic_info])
+
+    managed_roots = None
+    if policy.selective_copy:
+        validate_selective_output(utils.get_output_dir())
+        managed_roots = managed_comic_roots(get_extra_comics_list(comic_info))
+    build_options = {"copy_policy": policy} if policy.selective_copy else {}
 
     checkpoint("Preprocessing hook")
 
@@ -86,7 +101,7 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False,
             os.makedirs(extra_comic_output_dir, exist_ok=True)
         pages, extra_global_values = build_and_publish_comic_pages(
             comic_url, extra_comic.strip("/") + "/", extra_comic_info, delete_scheduled_posts,
-            publish_all_comics
+            publish_all_comics, **build_options
         )
         comic_results.append(
             ComicBuildResult(
@@ -101,7 +116,7 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False,
     # Build and publish pages for the main comic
     logger.info("Building main comic")
     pages, global_values = build_and_publish_comic_pages(
-        comic_url, "", comic_info, delete_scheduled_posts, publish_all_comics, extra_comic_values
+        comic_url, "", comic_info, delete_scheduled_posts, publish_all_comics, extra_comic_values, **build_options
     )
     main_comic_result = ComicBuildResult(
         comic_folder="",
@@ -118,9 +133,15 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False,
 
     output_dir = utils.get_output_dir()
     if output_dir:
-        copy_output_assets(output_dir)
+        if managed_roots is None:
+            copy_output_assets(output_dir)
+        else:
+            copy_output_assets(output_dir, managed_roots=managed_roots)
         checkpoint("Copy extra files to output directory")
-    copy_site_root_files(output_dir)
+    if policy.selective_copy:
+        copy_site_root_files(output_dir, selective_copy=True)
+    else:
+        copy_site_root_files(output_dir)
     checkpoint("Copy site_root files")
 
     run_hook(theme, "postprocess", [comic_info, pages, global_values])
@@ -140,6 +161,11 @@ def main(delete_scheduled_posts: bool = False, publish_all_comics: bool = False,
 
 def parse_args(argv: list[str] | None = None, *, preview: bool = False):
     parser = argparse.ArgumentParser(description='Manual build of comic_git')
+    parser.add_argument(
+        '--selective-copy', action=argparse.BooleanOptionalAction, default=None,
+        help='Copy only eligible comic page folders, without deleting scheduled sources. '
+             'Overrides [Build] Selective copy; requires separate output.'
+    )
     parser.add_argument(
         "-d",
         "--delete-scheduled-posts",
@@ -185,7 +211,8 @@ if __name__ == "__main__":
     args = parse_args()
     apply_cli_environment_overrides(args)
     try:
-        main(args.delete_scheduled_posts, args.publish_all_comics, args.hidden_paths, args.sftp_deploy_dir)
+        main(args.delete_scheduled_posts, args.publish_all_comics, args.hidden_paths, args.sftp_deploy_dir,
+             selective_copy=args.selective_copy)
     except Exception as e:
         # If the repo is not running in GitHub, raise the error normally
         if not os.getenv("GITHUB_REPOSITORY"):

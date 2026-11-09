@@ -162,6 +162,9 @@ class TestEntrypoints(TestCase):
             publish_all_comics=False,
             output_dir=None,
             listen="127.0.0.1",
+            hidden_paths='.htaccess',
+            sftp_deploy_dir=None,
+            selective_copy=True,
         )
         comic_info = object()
 
@@ -203,8 +206,9 @@ class TestEntrypoints(TestCase):
         self.assertEqual("/comic", module.PREVIEW_SUBDIRECTORY)
         mock_load_config.assert_called_once_with()
         mock_apply_overrides.assert_called_once_with(args)
-        mock_build.assert_called_once_with(False, False)
-        mock_watch.assert_called_once_with([False, False])
+        options = dict(hidden_paths='.htaccess', sftp_deploy_dir=None, selective_copy=True)
+        mock_build.assert_called_once_with(False, False, **options)
+        mock_watch.assert_called_once_with([False, False], options)
         thread.start.assert_called_once_with()
         mock_delete_output.assert_called_once_with(comic_info)
         self.assertEqual(

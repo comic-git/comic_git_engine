@@ -29,6 +29,11 @@ Important current behavior:
 - the main comic's `[Links Bar]` section is inherited unless the Extra Comic defines its own `[Links Bar]`
 - Extra Comics can participate in RSS independently from the main comic, including overriding inherited RSS settings
 - if an Extra Comic is configured to combine with the main RSS feed, it appears in the main feed instead of getting its own separate feed file
+- the main config's [content staging policy](../content-staging/) applies to every
+  configured Extra Comic; it is not an independent per-comic override
+- selective staging explicitly prunes each configured `your_content/<extra>/comics/`
+  root from auxiliary copying, including nested Extra Comic base directories;
+  supporting files outside those roots retain their existing paths
 
 This feature is stable in concept and is a supported way to host related but distinct streams of content on one site.
 

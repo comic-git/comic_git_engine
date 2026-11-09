@@ -6,10 +6,37 @@ from collections import OrderedDict
 from configparser import RawConfigParser
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from pathlib import Path
 from typing import Any
 
 from build.content import content_paths, transcripts
 from core import utils
+
+
+class IncompletePageMetadata(ValueError):
+    """A parseable page lacks required values; selective discovery may skip it."""
+
+
+def finish_page_source(source: 'PageSource', page_path: str) -> 'PageSource':
+    missing = []
+    if not source.post_date:
+        missing.append('Post date/post_date')
+    if any(not image.filename.strip() for image in source.images):
+        missing.append('Filename/filename')
+    if missing:
+        # Supplied unsafe/invalid assets must not hide behind another missing field.
+        from build.content.page_models import validate_page_asset_path, validate_tag_name
+        for name in source.tags + source.characters:
+            validate_tag_name(name, page_path)
+        for image in source.images:
+            if image.filename.strip():
+                validate_page_asset_path(page_path, image.filename, 'comic image')
+            if image.thumbnail:
+                validate_page_asset_path(page_path, image.thumbnail, 'thumbnail')
+        if source.thumbnail:
+            validate_page_asset_path(page_path, source.thumbnail, 'thumbnail')
+        raise IncompletePageMetadata(f'Missing required {", ".join(missing)} in {page_path}')
+    return source
 
 
 @dataclass(slots=True)
@@ -83,14 +110,16 @@ SECTION_LINE = re.compile(r"^\s*\[(?P<section>[^\r\n]+)]\s*(?:[#;].*)?$", re.MUL
 TIME_FORMAT_DIRECTIVE = re.compile(r"%(?:[-_0^#]*)(?:H|I|M|S|f|p|X|c|z|Z)")
 
 
-def load_legacy_page_source(page_path: str, comic_folder: str, comic_info) -> PageSource:
+def load_legacy_page_source(page_path: str, comic_folder: str, comic_info, *, image_filter=None) -> PageSource:
     info_path = content_paths.get_page_info_candidates(page_path)[1]
-    page_info, declared_images = load_legacy_page_ini(info_path)
+    page_info, declared_images = load_legacy_page_ini(info_path, allow_incomplete=True)
     page_id = os.path.basename(os.path.normpath(page_path))
-    images = declared_images if declared_images is not None else extract_legacy_page_images(page_path, page_info)
+    images = (declared_images if declared_images is not None
+              else extract_legacy_page_images(page_path, page_info, image_filter=image_filter))
     social_media_path = content_paths.get_page_social_media_path(page_path)
-    return PageSource(
-        post_date=legacy_date_to_iso(page_info["Post date"], comic_info.get("Comic Settings", "Date format")),
+    return finish_page_source(PageSource(
+        post_date=(legacy_date_to_iso(page_info["Post date"], comic_info.get("Comic Settings", "Date format"))
+                   if page_info.get("Post date", '').strip() else ''),
         title=page_info.get("Title"),
         images=images,
         post_text=load_legacy_page_post_text(page_path),
@@ -107,10 +136,10 @@ def load_legacy_page_source(page_path: str, comic_folder: str, comic_info) -> Pa
             for key, value in page_info.items()
             if key not in KNOWN_LEGACY_PAGE_FIELDS and not key.startswith("!")
         ),
-    )
+    ), page_path)
 
 
-def load_legacy_page_ini(path: str) -> tuple[dict[str, str], list[PageImageSource] | None]:
+def load_legacy_page_ini(path: str, *, allow_incomplete: bool = False) -> tuple[dict[str, str], list[PageImageSource] | None]:
     with open(path, "rb") as f:
         info_string = f.read().decode("utf-8")
 
@@ -157,11 +186,11 @@ def load_legacy_page_ini(path: str) -> tuple[dict[str, str], list[PageImageSourc
         if unknown:
             key = sorted(unknown)[0]
             raise ValueError(f"Unsupported key [{section}] {key} in {path}")
-        if "Filename" not in values or not values["Filename"].strip():
+        if not allow_incomplete and ("Filename" not in values or not values["Filename"].strip()):
             raise ValueError(f"Missing required Filename in [{section}] in {path}")
         images.append(
             PageImageSource(
-                filename=values["Filename"],
+                filename=values.get("Filename", ''),
                 title=values.get("Title"),
                 alt_text=values.get("Alt text"),
                 screen_reader_text=values.get("Screen reader text"),
@@ -177,10 +206,12 @@ def load_page_source_from_toml(path: str) -> PageSource:
     unknown = set(data) - KNOWN_TOML_PAGE_FIELDS
     if unknown:
         raise ValueError(f"Unsupported key {sorted(unknown)[0]} in info.toml")
-    return PageSource(
-        post_date=require_toml_post_date(data, "post_date"),
+    return finish_page_source(PageSource(
+        post_date=(require_toml_post_date(data, "post_date")
+                   if "post_date" in data and not (isinstance(data['post_date'], str)
+                                                   and not data['post_date'].strip()) else ''),
         title=get_optional_toml_string(data, "title"),
-        images=require_toml_image_list(data, "images"),
+        images=require_toml_image_list(data, "images", allow_incomplete=True),
         post_text=get_optional_toml_string(data, "post_text") or "",
         alt_text=get_optional_toml_string(data, "alt_text"),
         screen_reader_text=get_optional_toml_string(data, "screen_reader_text"),
@@ -191,7 +222,7 @@ def load_page_source_from_toml(path: str) -> PageSource:
         transcripts=OrderedDict(require_toml_string_map(data, "transcripts").items()),
         social_media=require_toml_table(data, "social_media"),
         extra=OrderedDict(require_toml_string_map(data, "extra").items()),
-    )
+    ), os.path.dirname(path))
 
 
 def serialize_page_source_to_toml(page_source: PageSource) -> str:
@@ -244,13 +275,15 @@ def page_image_source_to_toml_data(image: PageImageSource) -> OrderedDict[str, s
     return data
 
 
-def extract_legacy_page_images(page_path: str, page_info: dict[str, str]) -> list[PageImageSource]:
+def extract_legacy_page_images(page_path: str, page_info: dict[str, str], *, image_filter=None) -> list[PageImageSource]:
     filenames = page_info.get("Filenames") or page_info.get("Filename", "")
     if filenames:
         return [PageImageSource(filename) for filename in utils.str_to_list(filenames)]
     image_files = []
     for filename in os.listdir(page_path):
         if filename.startswith("_"):
+            continue
+        if image_filter is not None and not image_filter((Path(page_path) / filename).as_posix()):
             continue
         if re.search(r"\.(jpg|jpeg|png|tif|tiff|gif|bmp|webp|webv|svg|eps)$", filename):
             image_files.append(filename)
@@ -359,7 +392,7 @@ def get_optional_toml_string(data: dict[str, Any], key: str) -> str | None:
     return value
 
 
-def require_toml_image_list(data: dict[str, Any], key: str) -> list[PageImageSource]:
+def require_toml_image_list(data: dict[str, Any], key: str, *, allow_incomplete: bool = False) -> list[PageImageSource]:
     value = data.get(key, [])
     if not isinstance(value, list):
         raise ValueError(f"Expected '{key}' to be an array of tables in info.toml")
@@ -371,8 +404,8 @@ def require_toml_image_list(data: dict[str, Any], key: str) -> list[PageImageSou
         unknown = set(item) - KNOWN_TOML_IMAGE_FIELDS
         if unknown:
             raise ValueError(f"Unsupported key {path}.{sorted(unknown)[0]} in info.toml")
-        filename = item.get("filename")
-        if not isinstance(filename, str) or not filename.strip():
+        filename = item.get("filename", '')
+        if not isinstance(filename, str) or (not allow_incomplete and not filename.strip()):
             raise ValueError(f"Expected '{path}.filename' to be a non-empty string in info.toml")
         images.append(
             PageImageSource(

@@ -18,8 +18,9 @@ separately from the server's filesystem path.
 
 - Passwords are the normal setup to explain to creators. An unencrypted OpenSSH
   private key is also supported. Exactly one authentication method must be
-  supplied, and both require a verified server host key. Credentials are provided
-  only to the deployment job, never stored in the site or deployment artifacts.
+  supplied, and both require a verified server host key. The transfer receives
+  credentials after the build. Site output and deployment artifacts contain no
+  credentials supplied through the SFTP settings.
 - comic_git owns the selected website directory. Cleanup is on by default, so
   obsolete pages and other files disappear. `SFTP_CLEAN: false` retains them.
   Exact paths in `SFTP_EXCLUDE_PATHS` belong to the server and are neither
@@ -43,12 +44,29 @@ separately from the server's filesystem path.
 
 ## Build and workflow boundary
 
-The build owns publication policy and prepares a separate, credential-free
+In GitHub Actions, the build owns publication policy and prepares a separate, credential-free
 deployment bundle. The deploy job only transfers the prepared site with the
 credentials supplied at that point. This makes the same policy testable without a
 live server. SFTP requires a separate output directory so filtering cannot remove
 source files; legacy in-place output is unsupported. GitHub Pages and Neocities
 retain their existing hidden-file artifact behavior.
+
+The local command enables [selective staging](../content-staging/), building
+from the actual host checkout into temporary output. Future source folders remain
+intact and hooks can read host-owned inputs; thumbnail generation still creates
+or updates the committable source cache. Existing previews remain separate.
+Its optional Python SFTP dependencies support native Windows environments
+and stay out of regular builds and the GitHub artifact runner. Run the engine's
+loopback tests with `requirements_sftp.txt` installed to exercise both
+authentication methods and host-key verification.
+
+Hosted SFTP builds keep legacy content copying unless the main config opts into
+selective staging. The native local command always enables it. Both use the
+explicit SFTP hidden-path allowlist, which takes precedence over configured
+include-all; local transfer does not prepare or execute the Actions `lftp` bundle.
+The local command suppresses build-subprocess bytecode writes so importing theme
+hooks does not add Python cache files to creator content. `--publish-all-comics`
+on that command explicitly uploads future pages too.
 
 ## Supporting documents
 

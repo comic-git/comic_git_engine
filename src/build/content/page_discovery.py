@@ -3,6 +3,7 @@ import os
 import shutil
 from datetime import datetime
 from glob import iglob
+from pathlib import Path
 
 from configparser import RawConfigParser
 from pytz import InvalidTimeError, timezone
@@ -23,7 +24,8 @@ from build.content.page_models import (
     validate_unique_filenames,
     validate_tag_name,
 )
-from build.content.page_sources import PageSource, iso_date_to_legacy, post_date_to_datetime
+from build.content.page_sources import PageSource, IncompletePageMetadata, iso_date_to_legacy, post_date_to_datetime
+from build.output.content_staging import ContentCopyPolicy, check_source_tree, page_selection, validate_selected_pages
 from build.content.site_config import get_image_title_fallback
 from build.content.transcripts import render_transcript_sources, sort_transcript_languages
 from core import utils
@@ -37,6 +39,7 @@ def discover_pages(
         comic_info: RawConfigParser,
         delete_scheduled_posts: bool,
         publish_all_comics: bool,
+        *, copy_policy: ContentCopyPolicy | None = None,
 ) -> tuple[list[ComicPage], int]:
     try:
         tz_info = timezone(comic_info.get("Comic Settings", "Timezone"))
@@ -52,9 +55,25 @@ def discover_pages(
     pages = []
     scheduled_post_count = 0
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
-    for page_path in iglob(f"your_content/{comic_folder}comics/*/"):
+    candidates = iglob(f"your_content/{comic_folder}comics/*/")
+    if copy_policy is not None:
+        root = Path('your_content') / comic_folder / 'comics'
+        candidates = (str(path) for path in root.iterdir()
+                      if path.is_dir() and copy_policy.allows(path.as_posix())
+                      and copy_policy.allows(f'{comic_folder}comic/{path.name}')) if root.exists() else []
+        delete_scheduled_posts = False
+    for page_path in candidates:
         page_path = normalize_web_path(page_path) + "/"
-        filepath, page_source = load_page_source(page_path, comic_folder, comic_info)
+        if copy_policy is not None:
+            check_source_tree(Path(page_path))
+        try:
+            options = {'image_filter': copy_policy.allows} if copy_policy is not None else {}
+            filepath, page_source = load_page_source(page_path, comic_folder, comic_info, **options)
+        except IncompletePageMetadata as error:
+            if copy_policy is None:
+                raise
+            logger.warning('%s. Skipping incomplete page %s', error, page_path)
+            continue
         if page_source is None or filepath is None:
             logger.warning("%s is missing its info.ini/info.toml file. Skipping", page_path)
             continue
@@ -70,11 +89,14 @@ def discover_pages(
         if post_date > local_time and not publish_all_comics:
             scheduled_post_count += 1
             if delete_scheduled_posts:
+                if Path("your_content").resolve() not in Path(page_path).resolve().parents:
+                    raise ValueError(f"Scheduled page directory is outside your_content: {page_path}")
                 logger.warning("Deleting scheduled page %s", page_path)
                 shutil.rmtree(page_path)
             continue
 
         page = build_discovered_page(comic_folder, comic_info, page_path, page_source, tz_info)
+        selected = page_selection([page], comic_folder) if copy_policy is not None else None
         hook_result = run_hook(
             theme,
             "extra_page_info_processing",
@@ -82,6 +104,8 @@ def discover_pages(
         )
         if hook_result is not None:
             page = hook_result
+        if selected is not None:
+            validate_selected_pages([page], selected, copy_policy)
         logger.debug("Page: %s", page)
         pages.append(page)
 

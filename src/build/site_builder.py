@@ -14,6 +14,7 @@ from build.content.page_models import ArchiveEntry, ArchiveEntryMode, ComicPage
 from build.content.site_config import get_archive_entry_mode, get_links_list, get_show_text_only_posts
 from build.output.images import process_comic_images
 from build.output.rendering import write_html_files
+from build.output.content_staging import ContentCopyPolicy, page_selection, validate_selected_pages, stage_page_assets
 from integrations.hooks import run_hook
 from integrations.webring import load_webring_data
 
@@ -119,17 +120,24 @@ def build_and_publish_comic_pages(
         delete_scheduled_posts: bool,
         publish_all_comics: bool,
         extra_comics_dict: Optional[dict] = None,
+        *, copy_policy: ContentCopyPolicy | None = None,
 ) -> tuple[list[ComicPage], dict]:
+    discovery_options = {"copy_policy": copy_policy} if copy_policy is not None else {}
     pages, scheduled_post_count = discover_pages(
-        comic_folder, comic_info, delete_scheduled_posts, publish_all_comics
+        comic_folder, comic_info, delete_scheduled_posts, publish_all_comics, **discovery_options
     )
+    selected = page_selection(pages, comic_folder) if copy_policy is not None else None
     logger.debug("Page build order for '%s': %s", comic_folder, [page.page_name for page in pages])
     utils.checkpoint(f"Get info for all pages in '{comic_folder}'")
 
     pages = build_comic_pages(comic_folder, comic_info, pages)
+    if selected is not None:
+        validate_selected_pages(pages, selected, copy_policy)
     utils.checkpoint(f"Enrich comic pages for '{comic_folder}'")
 
     process_comic_images(comic_info, pages)
+    if selected is not None:
+        validate_selected_pages(pages, selected, copy_policy)
     utils.checkpoint(f"Process comic images in '{comic_folder}'")
 
     save_page_metadata(
@@ -183,8 +191,12 @@ def build_and_publish_comic_pages(
     )
     if extra_global_variables:
         global_values.update(extra_global_variables)
+    if selected is not None:
+        validate_selected_pages(pages, selected, copy_policy)
     utils.checkpoint(f"Run hook for extra global values in '{comic_folder}'")
 
     write_html_files(comic_folder, comic_info, pages, global_values)
+    if selected is not None:
+        stage_page_assets(utils.get_output_dir(), selected)
     utils.checkpoint(f"Write HTML files for '{comic_folder}'")
     return pages, global_values

@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
@@ -14,6 +15,9 @@ class TestLocalSftpDeployment(TestCase):
         directory = TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.host = Path(directory.name)
+        self.host_engine = self.host / "comic_git_engine"
+        for name in ("templates", "css", "js", "schemas"):
+            shutil.copytree(deploy_sftp.ENGINE_ROOT / name, self.host_engine / name)
         content = self.host / "your_content"
         (content / "site_root").mkdir(parents=True)
         (content / "site_root/.htaccess").write_text("rules", encoding="utf-8")
@@ -49,12 +53,15 @@ class TestLocalSftpDeployment(TestCase):
         preview = self.host / "build"
         preview.mkdir()
         (preview / "preview.txt").write_text("preview", encoding="utf-8")
+        (self.host_engine / "templates/index.tpl").write_text("<!-- host template -->", encoding="utf-8")
+        (self.host_engine / "css/base.css").write_text("/* host stylesheet */", encoding="utf-8")
 
         def inspect_transfer(output, config, env):
             site = Path(output)
-            self.assertTrue((site / "index.html").is_file())
+            self.assertIn("<!-- host template -->", (site / "index.html").read_text(encoding="utf-8"))
             self.assertTrue((site / "comic/ready/index.html").is_file())
-            self.assertTrue((site / "comic_git_engine/css/base.css").is_file())
+            self.assertEqual("/* host stylesheet */",
+                             (site / "comic_git_engine/css/base.css").read_text(encoding="utf-8"))
             self.assertTrue((site / "comic_git_engine/js/comic.js").is_file())
             self.assertTrue((site / "comic_git_engine/schemas/page_info_list.schema.json").is_file())
             self.assertTrue((site / "your_content/comics/ready/asset.txt").is_file())

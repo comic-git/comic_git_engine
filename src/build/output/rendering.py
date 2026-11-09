@@ -31,7 +31,7 @@ def write_html_files(
             "to [Pages] to generate character and tag archives.",
             comic_label,
         )
-    template_folders = [str(utils.ENGINE_ROOT / "templates")]
+    template_folders = ["comic_git_engine/templates"]
     theme = comic_info.get("Comic Settings", "Theme", fallback="default")
     if theme:
         template_folders.insert(0, f"your_content/themes/{theme}/templates")

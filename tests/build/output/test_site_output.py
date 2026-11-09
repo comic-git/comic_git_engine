@@ -185,7 +185,7 @@ class TestSiteOutput(TestCase):
         self.assertEqual(4, mock_copytree.call_count)
         self.assertIn(
             (
-                Path(__file__).resolve().parents[3] / "schemas",
+                Path("comic_git_engine/schemas"),
                 Path("output/comic_git_engine/schemas"),
             ),
             [call.args for call in mock_copytree.call_args_list],

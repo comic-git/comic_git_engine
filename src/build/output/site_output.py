@@ -6,7 +6,7 @@ from pathlib import Path, PurePosixPath
 
 from build.content.loaders import load_main_comic_info
 from build.content.site_config import get_extra_comics_list, get_pages_list
-from core.utils import ENGINE_ROOT, get_output_dir
+from core.utils import get_output_dir
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +107,8 @@ def copy_output_assets(output_dir: str, *, managed_roots: tuple[Path, ...] | Non
         return
     ignore = shutil.ignore_patterns(PYTHON_CACHE_DIR) if managed_roots is not None else None
     for directory in ("css", "js", "schemas"):
-        shutil.copytree(ENGINE_ROOT / directory, Path(output_dir) / "comic_git_engine" / directory, ignore=ignore)
+        source = Path("comic_git_engine") / directory
+        shutil.copytree(source, Path(output_dir) / source, ignore=ignore)
     if managed_roots is None:
         shutil.copytree("your_content", os.path.join(output_dir, "your_content"))
     else:
